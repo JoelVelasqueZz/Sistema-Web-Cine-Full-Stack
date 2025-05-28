@@ -1,0 +1,120 @@
+
+  /* Hero Section */
+  .hero-section {
+    background: linear-gradient(135deg, #0d6efd 0%, #6610f2 100%);
+    border-radius: 1.5rem;
+    margin: 1rem;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .hero-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, transparent 100%);
+    pointer-events: none;
+  }
+  
+  .text-shadow {
+    text-shadow: 2px 2px 8px rgba(0,0,0,0.3);
+  }
+  
+  .hero-image-container {
+    position: relative;
+  }
+  
+  .hero-image {
+    transition: transform 0.3s ease;
+    border: 4px solid rgba(255,255,255,0.2);
+  }
+  
+  .hero-image:hover {
+    transform: scale(1.05);
+  }
+  
+  .btn-warning {
+    background: linear-gradient(45deg, #ffc107, #ff8f00);
+    border: none;
+    transition: all 0.3s ease;
+  }
+  
+  .btn-warning:hover {
+    background: linear-gradient(45deg, #ff8f00, #ffc107);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(255, 193, 7, 0.4);
+  }
+
+  /* Movie Cards */
+  .movie-card {
+    transition: all 0.3s ease;
+    border-radius: 1rem;
+    overflow: hidden;
+  }
+  
+  .movie-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 15px 35px rgba(13, 110, 253, 0.2) !important;
+  }
+  
+  .movie-card .card-img-top {
+    transition: all 0.3s ease;
+  }
+  
+  .movie-card:hover .card-img-top {
+    filter: brightness(1.1) saturate(1.2);
+  }
+  
+  .movie-card .badge {
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+
+  /* Categories */
+  .category-card {
+    transition: all 0.3s ease;
+    border-radius: 1rem;
+    cursor: pointer;
+  }
+  
+  .category-card:hover {
+    transform: translateY(-8px) scale(1.05);
+    box-shadow: 0 15px 35px rgba(13, 110, 253, 0.15) !important;
+  }
+  
+  .category-icon {
+    transition: all 0.3s ease;
+  }
+  
+  .category-card:hover .category-icon i {
+    transform: scale(1.2) rotate(5deg);
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 991px) {
+    .hero-section {
+      text-align: center;
+      margin: 0.5rem;
+    }
+    
+    .display-3 {
+      font-size: 2.5rem;
+    }
+    
+    .hero-section .row {
+      flex-direction: column-reverse;
+    }
+  }
+  
+  @media (max-width: 576px) {
+    .display-5 {
+      font-size: 1.8rem;
+    }
+    
+    .movie-card .card-title {
+      font-size: 1rem;
+    }
+  }

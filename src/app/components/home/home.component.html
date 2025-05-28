@@ -1,0 +1,302 @@
+<!-- home.component.html -->
+<div class="container-fluid">
+  
+  <!-- Hero Section -->
+  <section class="hero-section bg-primary text-white py-5 mb-5">
+    <div class="container">
+      <div class="row align-items-center g-4">
+        <div class="col-lg-6">
+          <h1 class="display-3 fw-bold mb-4 text-shadow">
+            <i class="fas fa-film me-3 text-warning"></i>
+            Bienvenido a Parky Films
+          </h1>
+          <p class="lead mb-4 fs-4 lh-lg">
+            Descubre las mejores películas, desde los últimos estrenos hasta los clásicos de todos los tiempos.
+          </p>
+          <div class="d-flex gap-3 flex-wrap">
+            <button class="btn btn-warning btn-lg px-4 py-3 fw-semibold" [routerLink]="['/movie-list']">
+              <i class="fas fa-play me-2"></i>Ver Películas
+            </button>
+            <button class="btn btn-outline-light btn-lg px-4 py-3 fw-semibold">
+              <i class="fas fa-info-circle me-2"></i>Más Info
+            </button>
+          </div>
+        </div>
+        <div class="col-lg-6 text-center">
+          <div class="hero-image-container">
+            <img src="assets/movies/destinofinal.png" 
+                 class="img-fluid rounded-3 shadow-lg hero-image" 
+                 alt="Película destacada"
+                 style="max-height: 400px; object-fit: cover;">
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Películas Destacadas -->
+  <section class="featured-movies mb-5">
+    <div class="container">
+      <div class="row mb-4">
+        <div class="col-12">
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <h2 class="display-5 fw-bold text-primary mb-0">
+              <i class="fas fa-star text-warning me-3"></i>
+              Películas Destacadas
+            </h2>
+            <a class="btn btn-outline-primary btn-lg" [routerLink]="['/movies']">
+                <i class="fas fa-arrow-right me-2"></i>Ver todas
+            </a>
+          </div>
+          <hr class="border-primary border-2 mt-3">
+        </div>
+      </div>
+      
+      <div class="row g-4">
+        <!-- Movie Card 1 -->
+        <div class="col-lg-3 col-md-6 col-sm-12">
+          <div class="card h-100 shadow-lg border-0 movie-card">
+            <div class="position-relative">
+              <img src="assets/movies/avatar.png" 
+                   class="card-img-top" 
+                   alt="Avatar: El Camino del Agua"
+                   style="height: 300px; object-fit: cover;">
+              <div class="position-absolute top-0 end-0 m-2">
+                <span class="badge bg-warning text-dark fs-6 px-3 py-2">
+                  <i class="fas fa-star me-1"></i> 8.1
+                </span>
+              </div>
+            </div>
+            <div class="card-body d-flex flex-column bg-light">
+              <h5 class="card-title text-primary fw-bold">Avatar: El Camino del Agua</h5>
+              <div class="mb-3">
+                <span class="badge bg-primary me-2">
+                  <i class="fas fa-theater-masks me-1"></i> Aventura
+                </span>
+                <span class="badge bg-secondary">
+                  <i class="fas fa-calendar me-1"></i> 2022
+                </span>
+              </div>
+              <div class="mt-auto">
+                <div class="d-flex justify-content-between align-items-center">
+                  <small class="text-muted fw-semibold">
+                    <i class="fas fa-clock me-1"></i> 3h 12min
+                  </small>
+                  <button (click)="verPelicula(0)" class="btn btn-primary btn-sm">
+                      <i class="fas fa-play me-2"></i>Ver más
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Movie Card 2 -->
+        <div class="col-lg-3 col-md-6 col-sm-12">
+          <div class="card h-100 shadow-lg border-0 movie-card">
+            <div class="position-relative">
+              <img src="assets/movies/topgun.png" 
+                   class="card-img-top" 
+                   alt="Top Gun: Maverick"
+                   style="height: 300px; object-fit: cover;">
+              <div class="position-absolute top-0 end-0 m-2">
+                <span class="badge bg-warning text-dark fs-6 px-3 py-2">
+                  <i class="fas fa-star me-1"></i> 8.3
+                </span>
+              </div>
+            </div>
+            <div class="card-body d-flex flex-column bg-light">
+              <h5 class="card-title text-primary fw-bold">Top Gun: Maverick</h5>
+              <div class="mb-3">
+                <span class="badge bg-primary me-2">
+                  <i class="fas fa-fist-raised me-1"></i> Acción
+                </span>
+                <span class="badge bg-secondary">
+                  <i class="fas fa-calendar me-1"></i> 2022
+                </span>
+              </div>
+              <div class="mt-auto">
+                <div class="d-flex justify-content-between align-items-center">
+                  <small class="text-muted fw-semibold">
+                    <i class="fas fa-clock me-1"></i> 2h 11min
+                  </small>
+                  <button (click)="verPelicula(1)" class="btn btn-primary btn-sm">
+                    <i class="fas fa-eye me-1"></i> Ver más
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Movie Card 3 -->
+        <div class="col-lg-3 col-md-6 col-sm-12">
+          <div class="card h-100 shadow-lg border-0 movie-card">
+            <div class="position-relative">
+              <img src="assets/movies/blackpanter2.png" 
+                   class="card-img-top" 
+                   alt="Black Panther: Wakanda Forever"
+                   style="height: 300px; object-fit: cover;">
+              <div class="position-absolute top-0 end-0 m-2">
+                <span class="badge bg-warning text-dark fs-6 px-3 py-2">
+                  <i class="fas fa-star me-1"></i> 7.8
+                </span>
+              </div>
+            </div>
+            <div class="card-body d-flex flex-column bg-light">
+              <h5 class="card-title text-primary fw-bold">Black Panther: Wakanda Forever</h5>
+              <div class="mb-3">
+                <span class="badge bg-primary me-2">
+                  <i class="fas fa-fist-raised me-1"></i> Acción
+                </span>
+                <span class="badge bg-secondary">
+                  <i class="fas fa-calendar me-1"></i> 2022
+                </span>
+              </div>
+              <div class="mt-auto">
+                <div class="d-flex justify-content-between align-items-center">
+                  <small class="text-muted fw-semibold">
+                    <i class="fas fa-clock me-1"></i> 2h 41min
+                  </small>
+                  <button (click)="verPelicula(2)" class="btn btn-primary btn-sm">
+                    <i class="fas fa-eye me-1"></i> Ver más
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Movie Card 4 -->
+        <div class="col-lg-3 col-md-6 col-sm-12">
+          <div class="card h-100 shadow-lg border-0 movie-card">
+            <div class="position-relative">
+              <img src="assets/movies/batman.png" 
+                   class="card-img-top" 
+                   alt="The Batman"
+                   style="height: 300px; object-fit: cover;">
+              <div class="position-absolute top-0 end-0 m-2">
+                <span class="badge bg-warning text-dark fs-6 px-3 py-2">
+                  <i class="fas fa-star me-1"></i> 7.9
+                </span>
+              </div>
+            </div>
+            <div class="card-body d-flex flex-column bg-light">
+              <h5 class="card-title text-primary fw-bold">The Batman</h5>
+              <div class="mb-3">
+                <span class="badge bg-primary me-2">
+                  <i class="fas fa-fist-raised me-1"></i> Acción
+                </span>
+                <span class="badge bg-secondary">
+                  <i class="fas fa-calendar me-1"></i> 2022
+                </span>
+              </div>
+              <div class="mt-auto">
+                <div class="d-flex justify-content-between align-items-center">
+                  <small class="text-muted fw-semibold">
+                    <i class="fas fa-clock me-1"></i> 2h 56min
+                  </small>
+                  <button (click)="verPelicula(3  )" class="btn btn-primary btn-sm">
+                    <i class="fas fa-eye me-1"></i> Ver más
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Categorías -->
+  <section class="categories mb-5">
+    <div class="container">
+      <div class="row mb-4">
+        <div class="col-12 text-center">
+          <h2 class="display-5 fw-bold text-primary mb-3">
+            <i class="fas fa-list me-3 text-warning"></i>
+            Explora por Género
+          </h2>
+          <p class="lead text-muted">Encuentra tu película perfecta navegando por categorías</p>
+          <hr class="border-primary border-2 w-25 mx-auto">
+        </div>
+      </div>
+      
+      <div class="row g-4">
+        <div class="col-lg-2 col-md-4 col-sm-6">
+          <div class="card h-100 shadow-lg border-0 category-card bg-light">
+            <div class="card-body text-center p-4">
+              <div class="category-icon mb-3">
+                <i class="fas fa-rocket fa-3x text-primary"></i>
+              </div>
+              <h6 class="card-title fw-bold text-primary">Acción</h6>
+              <small class="text-muted">Aventuras llenas de adrenalina</small>
+            </div>
+          </div>
+        </div>
+        
+        <div class="col-lg-2 col-md-4 col-sm-6">
+          <div class="card h-100 shadow-lg border-0 category-card bg-light">
+            <div class="card-body text-center p-4">
+              <div class="category-icon mb-3">
+                <i class="fas fa-heart fa-3x text-danger"></i>
+              </div>
+              <h6 class="card-title fw-bold text-primary">Romance</h6>
+              <small class="text-muted">Historias de amor eternas</small>
+            </div>
+          </div>
+        </div>
+        
+        <div class="col-lg-2 col-md-4 col-sm-6">
+          <div class="card h-100 shadow-lg border-0 category-card bg-light">
+            <div class="card-body text-center p-4">
+              <div class="category-icon mb-3">
+                <i class="fas fa-laugh fa-3x text-warning"></i>
+              </div>
+              <h6 class="card-title fw-bold text-primary">Comedia</h6>
+              <small class="text-muted">Diversión garantizada</small>
+            </div>
+          </div>
+        </div>
+        
+        <div class="col-lg-2 col-md-4 col-sm-6">
+          <div class="card h-100 shadow-lg border-0 category-card bg-light">
+            <div class="card-body text-center p-4">
+              <div class="category-icon mb-3">
+                <i class="fas fa-ghost fa-3x text-secondary"></i>
+              </div>
+              <h6 class="card-title fw-bold text-primary">Terror</h6>
+              <small class="text-muted">Suspenso y emociones fuertes</small>
+            </div>
+          </div>
+        </div>
+        
+        <div class="col-lg-2 col-md-4 col-sm-6">
+          <div class="card h-100 shadow-lg border-0 category-card bg-light">
+            <div class="card-body text-center p-4">
+              <div class="category-icon mb-3">
+                <i class="fas fa-magic fa-3x text-info"></i>
+              </div>
+              <h6 class="card-title fw-bold text-primary">Fantasía</h6>
+              <small class="text-muted">Mundos mágicos e imaginarios</small>
+            </div>
+          </div>
+        </div>
+        
+        <div class="col-lg-2 col-md-4 col-sm-6">
+          <div class="card h-100 shadow-lg border-0 category-card bg-light">
+            <div class="card-body text-center p-4">
+              <div class="category-icon mb-3">
+                <i class="fas fa-search fa-3x text-success"></i>
+              </div>
+              <h6 class="card-title fw-bold text-primary">Misterio</h6>
+              <small class="text-muted">Enigmas por resolver</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+

@@ -1,0 +1,162 @@
+<!-- navbar.component.html - COMPLETO Y CORREGIDO -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
+  <div class="container">
+    <!-- Logo/Brand -->
+    <a class="navbar-brand fw-bold" [routerLink]="['/home']">
+      <i class="fas fa-film me-2"></i>
+      Parky Films
+    </a>
+    <!-- Toggle button para móvil -->
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <!-- Links del navbar -->
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav me-auto">
+        <li class="nav-item">
+          <a class="nav-link" routerLinkActive="active" [routerLink]="['home']">Home</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" routerLinkActive="active" [routerLink]="['movies']">Películas</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#">
+            <i class="fas fa-star me-1"></i>Populares
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#">
+            <i class="fas fa-clock me-1"></i>Estrenos
+          </a>
+        </li>
+      </ul>
+
+
+            <!-- CARRITO DE COMPRAS -->
+      <div class="position-relative me-3">
+        <button class="btn btn-outline-success position-relative" 
+                [routerLink]="['/cart']"
+                [class.btn-success]="cartService.getTotalItems() > 0">
+          <i class="fas fa-shopping-cart"></i>
+          <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                *ngIf="cartService.getTotalItems() > 0">
+            {{ cartService.getTotalItems() }}
+          </span>
+        </button>
+      </div>
+      
+      <!-- Barra de búsqueda mejorada con autocompletado -->
+      <div class="search-container position-relative me-3">
+        <form class="d-flex" role="search" (ngSubmit)="buscarPelicula(buscarTexto.value)" #formBuscar="ngForm">
+          <div class="input-group">
+            <input class="form-control" 
+                   type="search" 
+                   placeholder="Buscar película..." 
+                   aria-label="Search" 
+                   #buscarTexto
+                   name="buscar"
+                   (input)="onBuscarInput($event)"
+                   (focus)="mostrarSugerencias = true"
+                   autocomplete="off">
+            <button class="btn btn-outline-success" type="submit">
+              <i class="fas fa-search"></i>
+            </button>
+          </div>
+        </form>
+        
+        <!-- Dropdown de sugerencias -->
+        <div class="suggestions-dropdown position-absolute w-100 mt-1" 
+             *ngIf="mostrarSugerencias && sugerencias.length > 0"
+             style="z-index: 1050;">
+          <div class="card shadow-lg border-0">
+            <div class="list-group list-group-flush">
+              <button type="button" 
+                      class="list-group-item list-group-item-action d-flex align-items-center py-2"
+                      *ngFor="let sugerencia of sugerencias; let i = index"
+                      (click)="seleccionarSugerencia(sugerencia)"
+                      [class.active]="i === sugerenciaSeleccionada">
+                <img [src]="sugerencia.poster" 
+                     class="me-3 rounded" 
+                     style="width: 40px; height: 60px; object-fit: cover;"
+                     alt="{{ sugerencia.titulo }}">
+                <div class="flex-grow-1">
+                  <h6 class="mb-1 fw-semibold">{{ sugerencia.titulo }}</h6>
+                  <small class="text-muted">{{ sugerencia.anio }} • {{ sugerencia.genero }}</small>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECCIÓN DE USUARIO - CORREGIDA -->
+      <div class="d-flex align-items-center">
+        
+        <!-- SI NO ESTÁ LOGUEADO - Mostrar botones Login y Registro -->
+        <ng-container *ngIf="!authService.isLoggedIn()">
+          <button class="btn btn-outline-light me-2" (click)="goToLogin()">
+            <i class="fas fa-sign-in-alt me-1"></i>Login
+          </button>
+          <button class="btn btn-primary" (click)="goToRegister()">
+            <i class="fas fa-user-plus me-1"></i>Registro
+          </button>
+        </ng-container>
+
+        <!-- SI ESTÁ LOGUEADO - Mostrar usuario y logout -->
+        <ng-container *ngIf="authService.isLoggedIn()">
+          <!-- Dropdown del usuario -->
+          <div class="dropdown">
+            <button class="btn btn-outline-light dropdown-toggle d-flex align-items-center" 
+                    type="button"
+                    data-bs-toggle="dropdown" 
+                    aria-expanded="false">
+              <img [src]="authService.getCurrentUser()?.avatar || 'https://ui-avatars.com/api/?name=U&background=6c757d&color=fff&size=128'" 
+                   class="rounded-circle me-2" 
+                   style="width: 24px; height: 24px; object-fit: cover;"
+                   alt="Avatar">
+              <span>{{ authService.getCurrentUserName() }}</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li>
+                <h6 class="dropdown-header">
+                  <i class="fas fa-user-circle me-2"></i>
+                  {{ authService.getCurrentUser()?.nombre }}
+                </h6>
+              </li>
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <a class="dropdown-item" href="#">
+                  <i class="fas fa-user me-2"></i>Mi Perfil
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item" href="#">
+                  <i class="fas fa-heart me-2"></i>Mis Favoritas
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item" href="#">
+                  <i class="fas fa-history me-2"></i>Historial
+                </a>
+              </li>
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <button class="dropdown-item text-danger" (click)="logout()">
+                  <i class="fas fa-sign-out-alt me-2"></i>Cerrar Sesión
+                </button>
+              </li>
+            </ul>
+          </div>
+        </ng-container>
+
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- Overlay para cerrar sugerencias al hacer clic fuera -->
+<div class="search-overlay" 
+     *ngIf="mostrarSugerencias" 
+     (click)="cerrarSugerencias()"
+     style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1040;">
+</div>
