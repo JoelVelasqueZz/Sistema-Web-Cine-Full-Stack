@@ -32,6 +32,7 @@ export class NavbarComponent {
       this.mostrarSugerencias = false;
       return;
     }
+
     if (this.terminoBusqueda.trim().length >= 2) {
       this.sugerencias = this.movieService.buscarPeliculas(this.terminoBusqueda).slice(0, 5);
       this.mostrarSugerencias = this.sugerencias.length > 0;
@@ -65,25 +66,6 @@ export class NavbarComponent {
       console.log('Navegación exitosa:', success);
     }).catch(error => {
       console.error('Error en navegación:', error);
-    });
-  }
-
-  // MÉTODOS DE NAVEGACIÓN PARA LOGIN/REGISTER
-  goToLogin() {
-    console.log('Navegando a login...');
-    this.router.navigate(['/login']).then(success => {
-      console.log('Navegación a login exitosa:', success);
-    }).catch(error => {
-      console.error('Error navegando a login:', error);
-    });
-  }
-
-  goToRegister() {
-    console.log('Navegando a registro...');
-    this.router.navigate(['/register']).then(success => {
-      console.log('Navegación a registro exitosa:', success);
-    }).catch(error => {
-      console.error('Error navegando a registro:', error);
     });
   }
 

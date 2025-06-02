@@ -1,6 +1,9 @@
-import { Component } from '@angular/core';
-import { Router } from '@angular/router';
+import { Component, OnInit } from '@angular/core';
+import { Router, ActivatedRoute } from '@angular/router';
 import { Pelicula, MovieService } from '../../services/movie.service';
+import { AuthService } from '../../services/auth.service'; // 🆕 AGREGAR
+import { UserService } from '../../services/user.service'; // 🆕 AGREGAR
+import { ToastService } from '../../services/toast.service'; // 🆕 AGREGAR
 
 @Component({
   selector: 'app-movie-list',
@@ -8,22 +11,186 @@ import { Pelicula, MovieService } from '../../services/movie.service';
   templateUrl: './movie-list.component.html',
   styleUrl: './movie-list.component.css'
 })
-export class MovieListComponent {
-scrollToTop() {
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+export class MovieListComponent implements OnInit {
 
-}
-   peliculas:Pelicula[] = [];
-  constructor(private _movieService:MovieService, private router:Router) {
+  peliculas: Pelicula[] = [];
+  peliculasOriginales: Pelicula[] = [];
+  peliculasFiltradas: Pelicula[] = [];
+  filtroActivo: string = 'ninguno';
+  
+  generoSeleccionado: string = 'todos';
+  generosDisponibles: string[] = [];
 
+  constructor(
+    private _movieService: MovieService, 
+    private router: Router,
+    private route: ActivatedRoute,
+    public authService: AuthService,    // 🆕 AGREGAR (público para usar en template)
+    private userService: UserService,   // 🆕 AGREGAR
+    private toastService: ToastService  // 🆕 AGREGAR
+  ) {}
+
+  ngOnInit(): void {
+    this.peliculasOriginales = this._movieService.getPeliculas();
+    this.peliculas = [...this.peliculasOriginales];
+    this.peliculasFiltradas = [...this.peliculas];
+    this.extraerGeneros();
+    this.verificarParametrosURL();
+    console.log(this.peliculas);
   }
 
-  ngOnInit():void{
-    this.peliculas=this._movieService.getPeliculas();
-     console.log(this.peliculas);
+  // 🆕 NUEVO: Verificar si una película está en favoritas
+  isInFavorites(peliculaIndex: number): boolean {
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser) return false;
+    
+    return this.userService.isInFavorites(currentUser.id, peliculaIndex);
   }
-  verPelicula(idx: number){
-    //console.log(idx);
+
+  // 🆕 NUEVO: Toggle favoritas
+  toggleFavorite(peliculaIndex: number, event: Event): void {
+    event.stopPropagation(); // Evitar que se active el click del overlay
+    
+    // Verificar si está logueado
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser) {
+      this.toastService.showWarning('Debes iniciar sesión para agregar favoritas');
+      this.router.navigate(['/login']);
+      return;
+    }
+
+    const pelicula = this.peliculas[peliculaIndex];
+    if (!pelicula) return;
+
+    const isCurrentlyFavorite = this.isInFavorites(peliculaIndex);
+
+    if (isCurrentlyFavorite) {
+      // Remover de favoritas
+      const success = this.userService.removeFromFavorites(currentUser.id, peliculaIndex);
+      if (success) {
+        this.toastService.showSuccess(`"${pelicula.titulo}" removida de favoritas`);
+      } else {
+        this.toastService.showError('Error al remover de favoritas');
+      }
+    } else {
+      // Agregar a favoritas
+      const peliculaFavorita = {
+        peliculaId: peliculaIndex,
+        titulo: pelicula.titulo,
+        poster: pelicula.poster,
+        genero: pelicula.genero,
+        anio: pelicula.anio,
+        rating: pelicula.rating,
+        fechaAgregada: new Date().toISOString()
+      };
+
+      const success = this.userService.addToFavorites(currentUser.id, peliculaFavorita);
+      if (success) {
+        this.toastService.showSuccess(`"${pelicula.titulo}" agregada a favoritas`);
+      } else {
+        this.toastService.showWarning('La película ya está en favoritas');
+      }
+    }
+  }
+
+  // TODOS TUS MÉTODOS EXISTENTES SE MANTIENEN IGUAL...
+  extraerGeneros(): void {
+    const generosEnPeliculas = [...new Set(this.peliculasOriginales.map(p => p.genero).filter(g => g))];
+    const generosPredefinidos = ['Acción', 'Aventura', 'Romance', 'Comedia', 'Terror', 'Fantasía', 'Misterio', 'Drama', 'Ciencia Ficción'];
+    const todosLosGeneros = [...new Set([...generosEnPeliculas, ...generosPredefinidos])];
+    this.generosDisponibles = todosLosGeneros.sort();
+  }
+
+  verificarParametrosURL(): void {
+    this.route.queryParams.subscribe(params => {
+      if (params['genre']) {
+        this.filtrarPorGenero(params['genre']);
+      }
+    });
+  }
+
+  filtrarPorGenero(genero: string): void {
+    this.generoSeleccionado = genero;
+    this.aplicarFiltrosCombinados();
+  }
+
+  private aplicarFiltrosCombinados(): void {
+    let peliculasBase: Pelicula[];
+    if (this.generoSeleccionado === 'todos') {
+      peliculasBase = [...this.peliculasOriginales];
+    } else {
+      peliculasBase = this.peliculasOriginales.filter(pelicula => 
+        pelicula.genero && pelicula.genero.toLowerCase() === this.generoSeleccionado.toLowerCase()
+      );
+    }
+
+    switch (this.filtroActivo) {
+      case 'rating':
+        this.peliculas = peliculasBase.sort((a, b) => b.rating - a.rating);
+        break;
+      case 'recientes':
+        this.peliculas = peliculasBase.sort((a, b) => {
+          const fechaA = new Date(a.fechaEstreno).getTime();
+          const fechaB = new Date(b.fechaEstreno).getTime();
+          return fechaB - fechaA;
+        });
+        break;
+      case 'alfabetico':
+        this.peliculas = peliculasBase.sort((a, b) => {
+          return a.titulo.localeCompare(b.titulo, 'es', { sensitivity: 'base' });
+        });
+        break;
+      default:
+        this.peliculas = peliculasBase;
+    }
+    
+    this.peliculasFiltradas = [...this.peliculas];
+  }
+
+  aplicarFiltro(tipoFiltro: string): void {
+    this.filtroActivo = tipoFiltro;
+    this.aplicarFiltrosCombinados();
+  }
+
+  limpiarFiltros(): void {
+    this.filtroActivo = 'ninguno';
+    this.generoSeleccionado = 'todos';
+    this.peliculas = [...this.peliculasOriginales];
+    this.peliculasFiltradas = [...this.peliculas];
+  }
+
+  hayFiltrosActivos(): boolean {
+    return this.filtroActivo !== 'ninguno' || this.generoSeleccionado !== 'todos';
+  }
+
+  contarPeliculasPorGenero(genero: string): number {
+    if (genero === 'todos') {
+      return this.peliculasOriginales.length;
+    }
+    const count = this.peliculasOriginales.filter(p => 
+      p.genero && p.genero.toLowerCase() === genero.toLowerCase()
+    ).length;
+    return count;
+  }
+
+  getNombreGenero(): string {
+    return this.generoSeleccionado === 'todos' ? 'Todos los géneros' : this.generoSeleccionado;
+  }
+
+  getNombreFiltro(): string {
+    switch (this.filtroActivo) {
+      case 'rating': return 'Mejor Rating';
+      case 'recientes': return 'Más Recientes';
+      case 'alfabetico': return 'Orden Alfabético';
+      default: return 'Sin filtro';
+    }
+  }
+
+  scrollToTop(): void {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  verPelicula(idx: number): void {
     this.router.navigate(['/movie', idx]);
   }
 }

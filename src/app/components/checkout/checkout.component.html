@@ -108,26 +108,60 @@
               </div>
             </div>
             
-            <!-- Datos de tarjeta -->
+            <!-- Datos de tarjeta con validaciones -->
             <div *ngIf="datosCheckout.metodoPago === 'tarjeta'">
+              
+              <!-- Número de tarjeta -->
               <div class="row mb-3">
                 <div class="col-12">
                   <label class="form-label">Número de Tarjeta *</label>
-                  <input type="text" 
-                         class="form-control" 
-                         [(ngModel)]="datosCheckout.numeroTarjeta"
-                         name="numeroTarjeta"
-                         placeholder="1234 5678 9012 3456"
-                         maxlength="19">
+                  <div class="input-group">
+                    <input type="text" 
+                           class="form-control"
+                           [class.is-valid]="validacionTarjeta.valid && datosCheckout.numeroTarjeta.length > 0"
+                           [class.is-invalid]="!validacionTarjeta.valid && datosCheckout.numeroTarjeta.length > 0"
+                           [(ngModel)]="datosCheckout.numeroTarjeta"
+                           name="numeroTarjeta"
+                           placeholder="1234 5678 9012 3456"
+                           maxlength="19"
+                           (input)="onNumeroTarjetaChange()"
+                           (keypress)="onlyNumbers($event)">
+                    
+                    <!-- Icono del tipo de tarjeta -->
+                    <span class="input-group-text" *ngIf="validacionTarjeta.tipo && datosCheckout.numeroTarjeta.length > 3">
+                      <i class="fab" 
+                         [class.fa-cc-visa]="validacionTarjeta.tipo === 'Visa'"
+                         [class.fa-cc-mastercard]="validacionTarjeta.tipo === 'MasterCard'"
+                         [class.fa-cc-amex]="validacionTarjeta.tipo === 'American Express'"
+                         [class.text-primary]="validacionTarjeta.tipo === 'Visa'"
+                         [class.text-warning]="validacionTarjeta.tipo === 'MasterCard'"
+                         [class.text-info]="validacionTarjeta.tipo === 'American Express'">
+                      </i>
+                    </span>
+                  </div>
+                  
+                  <!-- Feedback de validación -->
+                  <div class="mt-1">
+                    <small class="text-success" *ngIf="validacionTarjeta.valid && datosCheckout.numeroTarjeta.length > 0">
+                      <i class="fas fa-check-circle me-1"></i>{{ validacionTarjeta.message }}
+                    </small>
+                    <small class="text-danger" *ngIf="!validacionTarjeta.valid && datosCheckout.numeroTarjeta.length > 0">
+                      <i class="fas fa-exclamation-circle me-1"></i>{{ validacionTarjeta.message }}
+                    </small>
+                  </div>
                 </div>
               </div>
               
               <div class="row mb-3">
+                <!-- Mes de expiración -->
                 <div class="col-md-4">
                   <label class="form-label">Mes *</label>
-                  <select class="form-select" 
+                  <select class="form-select"
+                          [class.is-valid]="validacionFecha.valid && datosCheckout.mesExpiracion && datosCheckout.anioExpiracion"
+                          [class.is-invalid]="!validacionFecha.valid && datosCheckout.mesExpiracion && datosCheckout.anioExpiracion"
                           [(ngModel)]="datosCheckout.mesExpiracion"
-                          name="mesExpiracion">
+                          name="mesExpiracion"
+                          (change)="onFechaExpiracionChange()">
                     <option value="">Mes</option>
                     <option value="01">01</option>
                     <option value="02">02</option>
@@ -143,30 +177,63 @@
                     <option value="12">12</option>
                   </select>
                 </div>
+                
+                <!-- Año de expiración -->
                 <div class="col-md-4">
                   <label class="form-label">Año *</label>
-                  <select class="form-select" 
+                  <select class="form-select"
+                          [class.is-valid]="validacionFecha.valid && datosCheckout.mesExpiracion && datosCheckout.anioExpiracion"
+                          [class.is-invalid]="!validacionFecha.valid && datosCheckout.mesExpiracion && datosCheckout.anioExpiracion"
                           [(ngModel)]="datosCheckout.anioExpiracion"
-                          name="anioExpiracion">
+                          name="anioExpiracion"
+                          (change)="onFechaExpiracionChange()">
                     <option value="">Año</option>
-                    <option value="2024">2024</option>
-                    <option value="2025">2025</option>
-                    <option value="2026">2026</option>
-                    <option value="2027">2027</option>
-                    <option value="2028">2028</option>
-                    <option value="2029">2029</option>
+                    <option *ngFor="let year of getYearsArray()" [value]="year">{{ year }}</option>
                   </select>
                 </div>
+                
+                <!-- CVV -->
                 <div class="col-md-4">
-                  <label class="form-label">CVV *</label>
+                  <label class="form-label">
+                    CVV *
+                    <i class="fas fa-question-circle text-muted ms-1" 
+                       title="Código de seguridad de 3-4 dígitos"></i>
+                  </label>
                   <input type="text" 
-                         class="form-control" 
+                         class="form-control"
+                         [class.is-valid]="validacionCVV.valid && datosCheckout.cvv.length > 0"
+                         [class.is-invalid]="!validacionCVV.valid && datosCheckout.cvv.length > 0"
                          [(ngModel)]="datosCheckout.cvv"
                          name="cvv"
-                         placeholder="123"
-                         maxlength="4">
+                         [placeholder]="getCVVPlaceholder()"
+                         [maxlength]="getCVVMaxLength()"
+                         (input)="onCVVChange()"
+                         (keypress)="onlyNumbers($event)">
+                  
+                  <!-- Feedback CVV -->
+                  <div class="mt-1">
+                    <small class="text-success" *ngIf="validacionCVV.valid && datosCheckout.cvv.length > 0">
+                      <i class="fas fa-check-circle me-1"></i>{{ validacionCVV.message }}
+                    </small>
+                    <small class="text-danger" *ngIf="!validacionCVV.valid && datosCheckout.cvv.length > 0">
+                      <i class="fas fa-exclamation-circle me-1"></i>{{ validacionCVV.message }}
+                    </small>
+                  </div>
                 </div>
               </div>
+              
+              <!-- Feedback de fecha -->
+              <div class="row mb-3" *ngIf="datosCheckout.mesExpiracion && datosCheckout.anioExpiracion">
+                <div class="col-12">
+                  <small class="text-success" *ngIf="validacionFecha.valid">
+                    <i class="fas fa-check-circle me-1"></i>{{ validacionFecha.message }}
+                  </small>
+                  <small class="text-danger" *ngIf="!validacionFecha.valid">
+                    <i class="fas fa-exclamation-circle me-1"></i>{{ validacionFecha.message }}
+                  </small>
+                </div>
+              </div>
+              
             </div>
             
             <!-- PayPal -->
@@ -193,7 +260,7 @@
             <div class="d-grid">
               <button type="submit" 
                       class="btn btn-success btn-lg"
-                      [disabled]="checkoutForm.invalid || procesandoPago">
+                      [disabled]="!isFormValid() || procesandoPago">
                 <span *ngIf="!procesandoPago">
                   <i class="fas fa-lock me-2"></i>
                   Pagar ${{ total.toFixed(2) }}
@@ -222,19 +289,38 @@
         </div>
         <div class="card-body">
           
-          <!-- Items -->
+          <!-- Items del carrito con información detallada -->
           <div class="mb-3" *ngFor="let item of cartItems; let last = last">
             <div class="d-flex justify-content-between align-items-start">
               <div class="flex-grow-1">
-                <h6 class="mb-1 small">{{ item.pelicula.titulo }}</h6>
+                <h6 class="mb-1 small fw-bold">{{ item.pelicula.titulo }}</h6>
                 <small class="text-muted">
-                  {{ item.funcion.sala }} • {{ item.funcion.hora }}<br>
-                  Cantidad: {{ item.cantidad }}
+                  <i class="fas fa-door-open me-1"></i>{{ item.funcion.sala }} • 
+                  <i class="fas fa-clock me-1"></i>{{ item.funcion.hora }}<br>
+                  
+                  <!-- Información fija de asientos -->
+                  <span class="text-success fw-bold d-block mt-1">
+                    <i class="fas fa-couch me-1"></i>
+                    {{ item.cantidad }} entrada{{ item.cantidad > 1 ? 's' : '' }} - Asientos seleccionados
+                  </span>
+                  
+                  <!-- Tipo de asientos -->
+                  <span *ngIf="item.precio > item.funcion.precio" class="badge bg-warning text-dark ms-0 mt-1">
+                    <i class="fas fa-crown me-1"></i>Asientos VIP
+                  </span>
+                  
+                  <span *ngIf="item.precio === item.funcion.precio" class="badge bg-info ms-0 mt-1">
+                    <i class="fas fa-chair me-1"></i>Asientos Estándar
+                  </span>
                 </small>
               </div>
-              <span class="fw-bold">${{ item.subtotal.toFixed(2) }}</span>
+              <div class="text-end">
+                <span class="fw-bold text-success">${{ item.subtotal.toFixed(2) }}</span>
+                <br>
+                <small class="text-muted">${{ item.precio.toFixed(2) }} por entrada</small>
+              </div>
             </div>
-            <hr *ngIf="!last">
+            <hr *ngIf="!last" class="my-3">
           </div>
           
           <!-- Totales -->
@@ -262,5 +348,4 @@
     </div>
     
   </div>
-
 </div>

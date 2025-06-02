@@ -1,0 +1,257 @@
+<div class="container mt-4">
+  <div class="row">
+    <div class="col-12">
+      <!-- Header del Perfil -->
+      <div class="card bg-primary text-white mb-4">
+        <div class="card-body p-4">
+          <div class="row align-items-center">
+            <div class="col-auto">
+              <img [src]="currentUser?.avatar" 
+                   class="rounded-circle border border-3 border-white" 
+                   style="width: 80px; height: 80px; object-fit: cover;"
+                   alt="Avatar">
+            </div>
+            <div class="col">
+              <h2 class="mb-1">{{ currentUser?.nombre }}</h2>
+              <p class="mb-1 opacity-75">{{ currentUser?.email }}</p>
+              <span class="badge" 
+                    [class.bg-danger]="authService.isAdmin()" 
+                    [class.bg-light]="authService.isCliente()"
+                    [class.text-dark]="authService.isCliente()">
+                <i class="fas fa-crown me-1" *ngIf="authService.isAdmin()"></i>
+                <i class="fas fa-user me-1" *ngIf="authService.isCliente()"></i>
+                {{ currentUser?.role }}
+              </span>
+            </div>
+            <div class="col-auto">
+              <button class="btn btn-light" 
+                      (click)="toggleEditMode()"
+                      [disabled]="loading">
+                <i class="fas fa-edit me-2"></i>
+                {{ editMode ? 'Cancelar' : 'Editar Perfil' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Información del Perfil / Formulario de Edición -->
+    <div class="col-lg-8">
+      <div class="card shadow-sm">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="fas fa-user-circle me-2"></i>
+            {{ editMode ? 'Editar Información' : 'Información del Perfil' }}
+          </h5>
+        </div>
+        <div class="card-body">
+          
+          <!-- Modo Vista -->
+          <div *ngIf="!editMode">
+            <div class="row mb-3">
+              <div class="col-sm-3">
+                <strong>Nombre Completo:</strong>
+              </div>
+              <div class="col-sm-9">
+                {{ currentUser?.nombre }}
+              </div>
+            </div>
+            <div class="row mb-3">
+              <div class="col-sm-3">
+                <strong>Email:</strong>
+              </div>
+              <div class="col-sm-9">
+                {{ currentUser?.email }}
+              </div>
+            </div>
+            <div class="row mb-3">
+              <div class="col-sm-3">
+                <strong>Fecha de Registro:</strong>
+              </div>
+              <div class="col-sm-9">
+                {{ currentUser?.fechaRegistro | date:'longDate' }}
+              </div>
+            </div>
+            <div class="row mb-3">
+              <div class="col-sm-3">
+                <strong>Tiempo en la plataforma:</strong>
+              </div>
+              <div class="col-sm-9">
+                {{ getAccountAge() }}
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-sm-3">
+                <strong>Estado:</strong>
+              </div>
+              <div class="col-sm-9">
+                <span class="badge bg-success">
+                  <i class="fas fa-check-circle me-1"></i>
+                  Cuenta Activa
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Modo Edición -->
+          <form *ngIf="editMode" (ngSubmit)="saveProfile()">
+            <!-- Nombre -->
+            <div class="mb-3">
+              <label for="nombre" class="form-label">
+                <i class="fas fa-user me-1"></i>
+                Nombre Completo
+              </label>
+              <input type="text" 
+                     class="form-control" 
+                     id="nombre"
+                     [(ngModel)]="profileForm.nombre"
+                     name="nombre"
+                     required>
+            </div>
+
+            <!-- Email -->
+            <div class="mb-3">
+              <label for="email" class="form-label">
+                <i class="fas fa-envelope me-1"></i>
+                Email
+              </label>
+              <input type="email" 
+                     class="form-control" 
+                     id="email"
+                     [(ngModel)]="profileForm.email"
+                     name="email"
+                     required>
+            </div>
+
+            <!-- Avatar -->
+            <div class="mb-3">
+              <label class="form-label">
+                <i class="fas fa-image me-1"></i>
+                Avatar
+              </label>
+              <div class="d-flex align-items-center mb-2">
+                <img [src]="profileForm.avatar" 
+                     class="rounded-circle me-3" 
+                     style="width: 50px; height: 50px; object-fit: cover;"
+                     alt="Avatar Preview">
+                <button type="button" 
+                        class="btn btn-outline-primary btn-sm"
+                        (click)="showAvatarOptions = !showAvatarOptions">
+                  <i class="fas fa-palette me-1"></i>
+                  Cambiar Avatar
+                </button>
+              </div>
+              
+              <!-- Opciones de Avatar -->
+              <div class="row g-2" *ngIf="showAvatarOptions">
+                <div class="col-auto" *ngFor="let avatar of avatarOptions">
+                  <img [src]="avatar" 
+                       class="rounded-circle border cursor-pointer" 
+                       style="width: 40px; height: 40px; object-fit: cover;"
+                       [class.border-primary]="profileForm.avatar === avatar"
+                       [class.border-3]="profileForm.avatar === avatar"
+                       (click)="selectAvatar(avatar)"
+                       alt="Avatar Option">
+                </div>
+              </div>
+            </div>
+
+            <!-- Botones -->
+            <div class="d-flex gap-2">
+              <button type="submit" 
+                      class="btn btn-primary"
+                      [disabled]="loading">
+                <span *ngIf="!loading">
+                  <i class="fas fa-save me-2"></i>
+                  Guardar Cambios
+                </span>
+                <span *ngIf="loading">
+                  <span class="spinner-border spinner-border-sm me-2"></span>
+                  Guardando...
+                </span>
+              </button>
+              <button type="button" 
+                      class="btn btn-secondary"
+                      (click)="toggleEditMode()"
+                      [disabled]="loading">
+                <i class="fas fa-times me-2"></i>
+                Cancelar
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Estadísticas del Usuario -->
+    <div class="col-lg-4">
+      <div class="card shadow-sm">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="fas fa-chart-pie me-2"></i>
+            Estadísticas
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="text-center mb-3" *ngIf="userStats">
+            <div class="row g-3">
+              <div class="col-6">
+                <div class="border rounded p-3">
+                  <h3 class="text-primary mb-1">{{ userStats.totalFavoritas }}</h3>
+                  <small class="text-muted">Favoritas</small>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="border rounded p-3">
+                  <h3 class="text-success mb-1">{{ userStats.totalVistas }}</h3>
+                  <small class="text-muted">Vistas</small>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="mb-3" *ngIf="userStats">
+            <strong>Género Favorito:</strong>
+            <span class="badge bg-info ms-2">{{ userStats.generoFavorito }}</span>
+          </div>
+          
+          <div *ngIf="userStats?.ultimaActividad">
+            <strong>Última Actividad:</strong>
+            <p class="text-muted small mb-0">
+              {{ userStats?.ultimaActividad | date:'short' }}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Enlaces Rápidos -->
+      <div class="card shadow-sm mt-3">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="fas fa-link me-2"></i>
+            Enlaces Rápidos
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="d-grid gap-2">
+            <a class="btn btn-outline-primary" [routerLink]="['/favorites']">
+              <i class="fas fa-heart me-2"></i>
+              Mis Favoritas
+            </a>
+            <a class="btn btn-outline-success" [routerLink]="['/history']">
+              <i class="fas fa-history me-2"></i>
+              Mi Historial
+            </a>
+            <a class="btn btn-outline-warning" [routerLink]="['/movies']">
+              <i class="fas fa-film me-2"></i>
+              Explorar Películas
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,478 @@
+<!-- admin-dashboard.component.html -->
+<div class="admin-dashboard">
+  
+  <!-- Header de bienvenida -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="welcome-card bg-gradient-primary text-white p-4 rounded-3 shadow">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h4 class="mb-1">¡Bienvenido al Panel de Control!</h4>
+            <p class="mb-0 opacity-75">
+              <i class="fas fa-calendar me-2"></i>
+              {{ getCurrentDate() }} • Última actualización: {{ getLastUpdateTime() }}
+            </p>
+          </div>
+          <div class="d-none d-md-block">
+            <i class="fas fa-chart-line fa-3x opacity-50"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Estadísticas principales -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <h5 class="mb-3">
+        <i class="fas fa-chart-pie me-2 text-primary"></i>
+        Estadísticas Generales
+      </h5>
+    </div>
+  </div>
+
+  <div class="row mb-4 g-3">
+    
+    <!-- Total Películas -->
+    <div class="col-lg-3 col-md-6">
+      <div class="card stat-card bg-primary text-white h-100 border-0 shadow">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <div class="stat-number">{{ stats.totalPeliculas }}</div>
+              <div class="stat-label">Películas Totales</div>
+              <small class="stat-change">
+                <i class="fas fa-arrow-up me-1"></i>+2 este mes
+              </small>
+            </div>
+            <div class="stat-icon">
+              <i class="fas fa-film fa-2x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Total Usuarios -->
+    <div class="col-lg-3 col-md-6">
+      <div class="card stat-card bg-success text-white h-100 border-0 shadow">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <div class="stat-number">{{ stats.totalUsuarios }}</div>
+              <div class="stat-label">Usuarios Registrados</div>
+              <small class="stat-change">
+                <i class="fas fa-arrow-up me-1"></i>{{ stats.usuariosActivos }} activos
+              </small>
+            </div>
+            <div class="stat-icon">
+              <i class="fas fa-users fa-2x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Total Ventas -->
+    <div class="col-lg-3 col-md-6">
+      <div class="card stat-card bg-info text-white h-100 border-0 shadow">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <div class="stat-number">{{ stats.totalVentas }}</div>
+              <div class="stat-label">Ventas Totales</div>
+              <small class="stat-change">
+                <i class="fas fa-arrow-up me-1"></i>+5 esta semana
+              </small>
+            </div>
+            <div class="stat-icon">
+              <i class="fas fa-shopping-cart fa-2x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ingresos del Mes -->
+    <div class="col-lg-3 col-md-6">
+      <div class="card stat-card bg-warning text-dark h-100 border-0 shadow">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <div class="stat-number">${{ stats.ingresosMes.toFixed(2) }}</div>
+              <div class="stat-label">Ingresos del Mes</div>
+              <small class="stat-change">
+                <i class="fas fa-arrow-up me-1"></i>+15% vs mes anterior
+              </small>
+            </div>
+            <div class="stat-icon">
+              <i class="fas fa-dollar-sign fa-2x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Gráficos y datos detallados -->
+  <div class="row mb-4">
+    
+    <!-- Películas por Género (Gráfico) -->
+    <div class="col-lg-6 mb-4">
+      <div class="card h-100 shadow-sm">
+        <div class="card-header bg-light">
+          <h6 class="mb-0">
+            <i class="fas fa-chart-donut me-2 text-primary"></i>
+            Distribución por Género
+          </h6>
+        </div>
+        <div class="card-body">
+          <div class="genre-chart">
+            <div class="row g-2">
+              <div class="col-6" *ngFor="let genero of stats.generosMasPopulares">
+                <div class="progress-item">
+                  <div class="d-flex justify-content-between align-items-center mb-1">
+                    <small class="fw-semibold">{{ genero.genero }}</small>
+                    <small class="text-muted">{{ genero.cantidad }}</small>
+                  </div>
+                  <div class="progress" style="height: 8px;">
+                    <div class="progress-bar" 
+                         [style.width.%]="genero.porcentaje"
+                         [class]="getGenreColorClass(genero.genero)">
+                    </div>
+                  </div>
+                  <small class="text-muted">{{ genero.porcentaje }}%</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Películas Más Populares -->
+    <div class="col-lg-6 mb-4">
+      <div class="card h-100 shadow-sm">
+        <div class="card-header bg-light">
+          <h6 class="mb-0">
+            <i class="fas fa-star me-2 text-warning"></i>
+            Películas Más Populares
+          </h6>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-sm table-hover">
+              <thead>
+                <tr>
+                  <th>Película</th>
+                  <th>Vistas</th>
+                  <th>Rating</th>
+                  <th>Género</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let pelicula of stats.peliculasPopulares; let i = index">
+                  <td>
+                    <div class="d-flex align-items-center">
+                      <span class="badge me-2" 
+                            [class.bg-warning]="i === 0"
+                            [class.bg-secondary]="i === 1"
+                            [class.bg-success]="i === 2"
+                            [class.bg-primary]="i > 2">
+                        {{ i + 1 }}
+                      </span>
+                      <span class="fw-semibold">{{ pelicula.titulo }}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <span class="badge bg-primary">{{ pelicula.vistas }}</span>
+                  </td>
+                  <td>
+                    <span class="badge bg-warning text-dark">
+                      <i class="fas fa-star"></i> {{ pelicula.rating }}
+                    </span>
+                  </td>
+                  <td>
+                    <small class="text-muted">{{ pelicula.genero }}</small>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Actividad Reciente y Ventas -->
+  <div class="row mb-4">
+    
+    <!-- Actividad Reciente -->
+    <div class="col-lg-6 mb-4">
+      <div class="card h-100 shadow-sm">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+          <h6 class="mb-0">
+            <i class="fas fa-clock me-2 text-info"></i>
+            Actividad Reciente
+          </h6>
+          <button class="btn btn-sm btn-outline-primary" (click)="refreshActivity()">
+            <i class="fas fa-sync-alt" [class.fa-spin]="refreshingActivity"></i>
+          </button>
+        </div>
+        <div class="card-body p-0">
+          <div class="activity-timeline">
+            <div class="activity-item" *ngFor="let actividad of stats.actividadReciente">
+              <div class="d-flex align-items-start p-3 border-bottom">
+                <div class="activity-icon me-3">
+                  <i [class]="actividad.icono" 
+                     [class.text-success]="actividad.color === 'success'"
+                     [class.text-primary]="actividad.color === 'primary'"
+                     [class.text-info]="actividad.color === 'info'"
+                     [class.text-warning]="actividad.color === 'warning'"
+                     [class.text-danger]="actividad.color === 'danger'"></i>
+                </div>
+                <div class="activity-content flex-grow-1">
+                  <p class="mb-1 fw-semibold">{{ actividad.descripcion }}</p>
+                  <small class="text-muted">
+                    <i class="fas fa-clock me-1"></i>
+                    {{ formatActivityDate(actividad.fecha) }}
+                  </small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ventas Recientes -->
+    <div class="col-lg-6 mb-4">
+      <div class="card h-100 shadow-sm">
+        <div class="card-header bg-light">
+          <h6 class="mb-0">
+            <i class="fas fa-receipt me-2 text-success"></i>
+            Ventas Recientes
+          </h6>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-sm">
+              <thead>
+                <tr>
+                  <th>Usuario</th>
+                  <th>Película</th>
+                  <th>Total</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let venta of stats.ventasRecientes">
+                  <td>
+                    <div class="d-flex align-items-center">
+                      <img src="https://ui-avatars.com/api/?name={{ venta.usuario }}&size=24" 
+                           class="rounded-circle me-2" 
+                           width="24" height="24">
+                      <span class="small">{{ venta.usuario }}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <small class="fw-semibold">{{ venta.pelicula | slice:0:20 }}...</small>
+                  </td>
+                  <td>
+                    <span class="fw-bold text-success">${{ venta.total }}</span>
+                  </td>
+                  <td>
+                    <span class="badge badge-sm" 
+                          [class.bg-success]="venta.estado === 'completada'"
+                          [class.bg-warning]="venta.estado === 'pendiente'"
+                          [class.bg-danger]="venta.estado === 'cancelada'">
+                      {{ venta.estado }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Reportes Rápidos -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <h5 class="mb-3">
+        <i class="fas fa-file-alt me-2 text-warning"></i>
+        Reportes Rápidos
+      </h5>
+    </div>
+  </div>
+
+  <div class="row mb-4 g-3">
+    
+    <!-- Reporte de Ventas -->
+    <div class="col-lg-3 col-md-6">
+      <div class="card report-card h-100 border-0 shadow-sm">
+        <div class="card-body text-center">
+          <div class="report-icon mb-3">
+            <i class="fas fa-chart-line fa-3x text-success"></i>
+          </div>
+          <h6 class="card-title">Reporte de Ventas</h6>
+          <p class="card-text small text-muted">Generar reporte detallado de ventas por período</p>
+          <button class="btn btn-outline-success btn-sm" 
+                  (click)="generateSalesReport()"
+                  [disabled]="generatingReport">
+            <span *ngIf="!generatingReport">
+              <i class="fas fa-download me-1"></i>Generar
+            </span>
+            <span *ngIf="generatingReport">
+              <span class="spinner-border spinner-border-sm me-1"></span>Generando...
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reporte de Usuarios -->
+    <div class="col-lg-3 col-md-6">
+      <div class="card report-card h-100 border-0 shadow-sm">
+        <div class="card-body text-center">
+          <div class="report-icon mb-3">
+            <i class="fas fa-users fa-3x text-info"></i>
+          </div>
+          <h6 class="card-title">Reporte de Usuarios</h6>
+          <p class="card-text small text-muted">Estadísticas y análisis de usuarios registrados</p>
+          <button class="btn btn-outline-info btn-sm" 
+                  (click)="generateUsersReport()"
+                  [disabled]="generatingReport">
+            <span *ngIf="!generatingReport">
+              <i class="fas fa-download me-1"></i>Generar
+            </span>
+            <span *ngIf="generatingReport">
+              <span class="spinner-border spinner-border-sm me-1"></span>Generando...
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reporte de Películas -->
+    <div class="col-lg-3 col-md-6">
+      <div class="card report-card h-100 border-0 shadow-sm">
+        <div class="card-body text-center">
+          <div class="report-icon mb-3">
+            <i class="fas fa-film fa-3x text-primary"></i>
+          </div>
+          <h6 class="card-title">Reporte de Películas</h6>
+          <p class="card-text small text-muted">Análisis de catálogo y popularidad</p>
+          <button class="btn btn-outline-primary btn-sm" 
+                  (click)="generateMoviesReport()"
+                  [disabled]="generatingReport">
+            <span *ngIf="!generatingReport">
+              <i class="fas fa-download me-1"></i>Generar
+            </span>
+            <span *ngIf="generatingReport">
+              <span class="spinner-border spinner-border-sm me-1"></span>Generando...
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reporte Completo -->
+    <div class="col-lg-3 col-md-6">
+      <div class="card report-card h-100 border-0 shadow-sm bg-gradient-warning">
+        <div class="card-body text-center text-dark">
+          <div class="report-icon mb-3">
+            <i class="fas fa-file-pdf fa-3x text-dark"></i>
+          </div>
+          <h6 class="card-title fw-bold">Reporte Completo</h6>
+          <p class="card-text small">Reporte ejecutivo con todas las métricas</p>
+          <button class="btn btn-dark btn-sm" 
+                  (click)="generateCompleteReport()"
+                  [disabled]="generatingReport">
+            <span *ngIf="!generatingReport">
+              <i class="fas fa-crown me-1"></i>Generar PDF
+            </span>
+            <span *ngIf="generatingReport">
+              <span class="spinner-border spinner-border-sm me-1"></span>Generando...
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Acciones Rápidas -->
+  <div class="row">
+    <div class="col-12">
+      <div class="card shadow-sm">
+        <div class="card-header bg-light">
+          <h6 class="mb-0">
+            <i class="fas fa-bolt me-2 text-warning"></i>
+            Acciones Rápidas
+          </h6>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            
+            <div class="col-lg-2 col-md-4 col-6">
+              <button class="btn btn-outline-primary w-100 py-3" 
+                      [routerLink]="['/admin/movies']"
+                      [queryParams]="{action: 'add'}">
+                <i class="fas fa-plus-circle fa-2x d-block mb-2"></i>
+                <small>Agregar Película</small>
+              </button>
+            </div>
+            
+            <div class="col-lg-2 col-md-4 col-6">
+              <button class="btn btn-outline-success w-100 py-3" 
+                      [routerLink]="['/admin/users']">
+                <i class="fas fa-user-plus fa-2x d-block mb-2"></i>
+                <small>Gestionar Usuarios</small>
+              </button>
+            </div>
+            
+            <div class="col-lg-2 col-md-4 col-6">
+              <button class="btn btn-outline-info w-100 py-3" 
+                      (click)="viewSystemLogs()">
+                <i class="fas fa-list-alt fa-2x d-block mb-2"></i>
+                <small>Ver Logs</small>
+              </button>
+            </div>
+            
+            <div class="col-lg-2 col-md-4 col-6">
+              <button class="btn btn-outline-warning w-100 py-3" 
+                      (click)="systemBackup()">
+                <i class="fas fa-save fa-2x d-block mb-2"></i>
+                <small>Backup Sistema</small>
+              </button>
+            </div>
+            
+            <div class="col-lg-2 col-md-4 col-6">
+              <button class="btn btn-outline-secondary w-100 py-3" 
+                      (click)="viewSettings()">
+                <i class="fas fa-cog fa-2x d-block mb-2"></i>
+                <small>Configuración</small>
+              </button>
+            </div>
+            
+            <div class="col-lg-2 col-md-4 col-6">
+              <button class="btn btn-outline-danger w-100 py-3" 
+                      (click)="systemMaintenance()">
+                <i class="fas fa-tools fa-2x d-block mb-2"></i>
+                <small>Mantenimiento</small>
+              </button>
+            </div>
+            
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>

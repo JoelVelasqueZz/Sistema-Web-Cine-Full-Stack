@@ -22,7 +22,19 @@ import { ShoppingCartComponent } from './components/shopping-cart/shopping-cart.
 import { CheckoutComponent } from './components/checkout/checkout.component';
 import { SeatSelectionComponent } from './components/seat-selection/seat-selection.component';
 import { ToastComponent } from './components/toast/toast.component';
+import { ComingSoonComponent } from './components/coming-soon/coming-soon.component';
+import { ComingSoonDetailComponent } from './components/coming-soon-detail/coming-soon-detail.component';
+import { EmailService } from './services/email.service';
+import { PaypalSimulationService } from './services/paypal-simulation.service';
+import { ProfileComponent } from './components/profile/profile.component';
+import { FavoritesComponent } from './components/favorites/favorites.component';
+import { HistoryComponent } from './components/history/history.component';
+import { AdminLayoutComponent } from './components/admin/admin-layout/admin-layout.component';
+import { AdminDashboardComponent } from './components/admin/admin-dashboard/admin-dashboard.component';
+import { AdminMoviesComponent } from './components/admin/admin-movies/admin-movies.component';
+import { AdminUsersComponent } from './components/admin/admin-users/admin-users.component';
 
+import { AdminService } from './services/admin.service';
 @NgModule({
   declarations: [
     AppComponent,
@@ -36,7 +48,11 @@ import { ToastComponent } from './components/toast/toast.component';
     RegisterComponent, 
     TicketPurchaseComponent, 
     ShoppingCartComponent, 
-    CheckoutComponent, SeatSelectionComponent, ToastComponent   
+    CheckoutComponent, 
+    SeatSelectionComponent, 
+    ToastComponent, 
+    ComingSoonComponent, 
+    ComingSoonDetailComponent, ProfileComponent, FavoritesComponent, HistoryComponent, AdminLayoutComponent, AdminDashboardComponent, AdminMoviesComponent, AdminUsersComponent,   
   ],
   imports: [
     BrowserModule,
@@ -47,7 +63,10 @@ import { ToastComponent } from './components/toast/toast.component';
   ],
   providers: [
     AuthService,
-    CartService
+    CartService,
+    EmailService,
+    PaypalSimulationService,
+    AdminService
   ],
   bootstrap: [AppComponent]
 })

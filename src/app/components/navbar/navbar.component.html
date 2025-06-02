@@ -1,4 +1,4 @@
-<!-- navbar.component.html - COMPLETO Y CORREGIDO -->
+<!-- navbar.component.html - RUTAS CORREGIDAS -->
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
   <div class="container">
     <!-- Logo/Brand -->
@@ -14,25 +14,26 @@
     <div class="collapse navbar-collapse" id="navbarNav">
       <ul class="navbar-nav me-auto">
         <li class="nav-item">
-          <a class="nav-link" routerLinkActive="active" [routerLink]="['home']">Home</a>
+          <a class="nav-link" routerLinkActive="active" [routerLink]="['/home']">Home</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" routerLinkActive="active" [routerLink]="['movies']">Películas</a>
+          <a class="nav-link" routerLinkActive="active" [routerLink]="['/movies']">Películas</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" href="#">
-            <i class="fas fa-star me-1"></i>Populares
+          <a class="nav-link" routerLinkActive="active" [routerLink]="['/coming-soon']">
+         <i class="fas fa-calendar-alt me-1"></i>Estrenos
+        </a>
+        </li>
+        <!-- 🆕 NUEVO ENLACE BAR -->
+        <li class="nav-item">
+          <a class="nav-link" routerLinkActive="active" [routerLink]="['/bar']">
+            <i class="fas fa-shopping-bag me-1"></i>Bar
           </a>
         </li>
-        <li class="nav-item">
-          <a class="nav-link" href="#">
-            <i class="fas fa-clock me-1"></i>Estrenos
-          </a>
-        </li>
+        
       </ul>
-
-
-            <!-- CARRITO DE COMPRAS -->
+      
+      <!-- CARRITO DE COMPRAS -->
       <div class="position-relative me-3">
         <button class="btn btn-outline-success position-relative" 
                 [routerLink]="['/cart']"
@@ -88,21 +89,20 @@
           </div>
         </div>
       </div>
-
-      <!-- SECCIÓN DE USUARIO - CORREGIDA -->
+      <!-- SECCIÓN DE USUARIO - ACTUALIZADA CON ROLES -->
       <div class="d-flex align-items-center">
         
         <!-- SI NO ESTÁ LOGUEADO - Mostrar botones Login y Registro -->
         <ng-container *ngIf="!authService.isLoggedIn()">
-          <button class="btn btn-outline-light me-2" (click)="goToLogin()">
+          <button class="btn btn-outline-light me-2" [routerLink]="['/login']">
             <i class="fas fa-sign-in-alt me-1"></i>Login
           </button>
-          <button class="btn btn-primary" (click)="goToRegister()">
+          <button class="btn btn-primary" [routerLink]="['/register']">
             <i class="fas fa-user-plus me-1"></i>Registro
           </button>
         </ng-container>
-
-        <!-- SI ESTÁ LOGUEADO - Mostrar usuario y logout -->
+        
+        <!-- SI ESTÁ LOGUEADO - Mostrar usuario y opciones según rol -->
         <ng-container *ngIf="authService.isLoggedIn()">
           <!-- Dropdown del usuario -->
           <div class="dropdown">
@@ -115,6 +115,12 @@
                    style="width: 24px; height: 24px; object-fit: cover;"
                    alt="Avatar">
               <span>{{ authService.getCurrentUserName() }}</span>
+              <!-- 🆕 BADGE DE ROL -->
+              <span class="badge ms-2" 
+                    [class.bg-danger]="authService.isAdmin()" 
+                    [class.bg-primary]="authService.isCliente()">
+                {{ authService.getCurrentUserRole() }}
+              </span>
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
               <li>
@@ -124,21 +130,50 @@
                 </h6>
               </li>
               <li><hr class="dropdown-divider"></li>
+              
+              <!-- 🆕 OPCIONES DE CLIENTE (TODOS LOS USUARIOS) -->
               <li>
-                <a class="dropdown-item" href="#">
+                <a class="dropdown-item" [routerLink]="['/profile']">
                   <i class="fas fa-user me-2"></i>Mi Perfil
                 </a>
               </li>
               <li>
-                <a class="dropdown-item" href="#">
+                <a class="dropdown-item" [routerLink]="['/favorites']">
                   <i class="fas fa-heart me-2"></i>Mis Favoritas
                 </a>
               </li>
               <li>
-                <a class="dropdown-item" href="#">
+                <a class="dropdown-item" [routerLink]="['/history']">
                   <i class="fas fa-history me-2"></i>Historial
                 </a>
               </li>
+              
+              <!-- 🆕 SEPARADOR Y OPCIONES DE ADMIN (SOLO ADMINS) -->
+              <ng-container *ngIf="authService.isAdmin()">
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                  <h6 class="dropdown-header text-danger">
+                    <i class="fas fa-crown me-2"></i>
+                    Panel de Administración
+                  </h6>
+                </li>
+                <li>
+                  <a class="dropdown-item text-danger" [routerLink]="['/admin/dashboard']">
+                    <i class="fas fa-tachometer-alt me-2"></i>Dashboard Admin
+                  </a>
+                </li>
+                <li>
+                  <a class="dropdown-item text-danger" [routerLink]="['/admin/movies']">
+                    <i class="fas fa-film me-2"></i>Gestionar Películas
+                  </a>
+                </li>
+                <li>
+                  <a class="dropdown-item text-danger" [routerLink]="['/admin/users']">
+                    <i class="fas fa-users me-2"></i>Gestionar Usuarios
+                  </a>
+                </li>
+              </ng-container>
+              
               <li><hr class="dropdown-divider"></li>
               <li>
                 <button class="dropdown-item text-danger" (click)="logout()">
@@ -148,7 +183,6 @@
             </ul>
           </div>
         </ng-container>
-
       </div>
     </div>
   </div>

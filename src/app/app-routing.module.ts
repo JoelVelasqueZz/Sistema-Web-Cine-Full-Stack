@@ -12,6 +12,18 @@ import { LoginComponent } from './components/login/login.component';
 import { RegisterComponent } from './components/register/register.component';
 import { SeatSelectionComponent } from './components/seat-selection/seat-selection.component';
 import { AuthGuard } from './guards/auth.guard';
+import { ComingSoonComponent } from './components/coming-soon/coming-soon.component';
+import { ComingSoonDetailComponent } from './components/coming-soon-detail/coming-soon-detail.component';
+import { ProfileComponent } from './components/profile/profile.component';
+import { FavoritesComponent } from './components/favorites/favorites.component';
+import { HistoryComponent } from './components/history/history.component';
+import { AdminGuard } from './guards/admin.guard';
+
+//IMPORTAR COMPONENTES ADMIN
+import { AdminLayoutComponent } from './components/admin/admin-layout/admin-layout.component';
+import { AdminDashboardComponent } from './components/admin/admin-dashboard/admin-dashboard.component';
+import { AdminMoviesComponent } from './components/admin/admin-movies/admin-movies.component';
+import { AdminUsersComponent } from './components/admin/admin-users/admin-users.component';
 
 const routes: Routes = [
   { path: 'home', component: HomeComponent },
@@ -21,21 +33,54 @@ const routes: Routes = [
   { 
     path: 'seat-selection/:movieId/:funcionId/:cantidad', 
     component: SeatSelectionComponent,
-    canActivate: [AuthGuard]  // ← PROTEGIDA: Requiere login
+    canActivate: [AuthGuard]
   },
   { 
     path: 'cart', 
     component: ShoppingCartComponent,
-    canActivate: [AuthGuard]  // ← PROTEGIDA: Requiere login
+    canActivate: [AuthGuard]
   },
   { 
     path: 'checkout', 
     component: CheckoutComponent,
-    canActivate: [AuthGuard]  // ← PROTEGIDA: Requiere login
+    canActivate: [AuthGuard]
   },
   { path: 'buscar/:termino', component: SearchComponent },
   { path: 'login', component: LoginComponent },
   { path: 'register', component: RegisterComponent },
+  { path: 'coming-soon', component: ComingSoonComponent },
+  { path: 'coming-soon/:id', component: ComingSoonDetailComponent },
+  
+  // RUTAS DE PERFIL (PROTEGIDAS)
+  { 
+    path: 'profile', 
+    component: ProfileComponent,
+    canActivate: [AuthGuard]
+  },
+  { 
+    path: 'favorites', 
+    component: FavoritesComponent,
+    canActivate: [AuthGuard]
+  },
+  { 
+    path: 'history', 
+    component: HistoryComponent,
+    canActivate: [AuthGuard]
+  },
+
+  // 🔥 RUTAS DE ADMINISTRACIÓN (PROTEGIDAS CON AdminGuard)
+  {
+    path: 'admin',
+    component: AdminLayoutComponent,
+    canActivate: [AuthGuard, AdminGuard],
+    children: [
+      { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+      { path: 'dashboard', component: AdminDashboardComponent },
+      { path: 'movies', component: AdminMoviesComponent },
+      { path: 'users', component: AdminUsersComponent }
+    ]
+  },
+
   { path: '', redirectTo: '/home', pathMatch: 'full' },
   { path: '**', redirectTo: '/home' }
 ];

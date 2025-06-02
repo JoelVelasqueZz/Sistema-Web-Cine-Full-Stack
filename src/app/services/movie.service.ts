@@ -134,7 +134,7 @@ export class MovieService {
       duracion: "1h 54min",
       rating: 7.2,
       director: "Greta Gerwig",
-      trailer: "gH2mRECr6y4" // Barbie Trailer
+      trailer: "zh4KhVSMwtQ" // Barbie Trailer
     },
     {
       titulo: "The Flash",
@@ -174,8 +174,199 @@ export class MovieService {
       rating: 8.2,
       director: "Chad Stahelski",
       trailer: "8ubRKDsM1FI" // John Wick: Chapter 4 Trailer
-    }
-  ];
+    },
+    {
+  titulo: "Titanic",
+  sinopsis: "En abril de 1912, Rose DeWitt Bukater, una joven de clase alta de 17 años, aborda el Titanic con su prometido Cal Hockley y su madre Ruth. Atrapada en un compromiso que no desea, Rose contempla el suicidio hasta que conoce a Jack Dawson, un artista bohemio que ganó su boleto en una partida de póker. A pesar de las diferencias de clase social, Jack y Rose se enamoran profundamente. Su historia de amor se desarrolla contra el telón de fondo del 'barco insumergible' durante su viaje inaugural de Southampton a Nueva York. Sin embargo, el destino les tiene preparado un trágico final cuando el Titanic choca contra un iceberg en la madrugada del 15 de abril. En medio del caos y la tragedia, Jack y Rose luchan por estar juntos mientras el barco se hunde lentamente en las heladas aguas del Atlántico Norte.",
+  poster: "assets/movies/titanic.png",
+  fechaEstreno: "1997-12-19",
+  estudio: "assets/studios/paramount.png",
+  genero: "Romance",
+  anio: 1997,
+  duracion: "3h 14min",
+  rating: 7.9,
+  director: "James Cameron",
+  trailer: "1EMkCJWQIDY"
+},
+{
+  titulo: "El Señor de los Anillos: La Comunidad del Anillo",
+  sinopsis: "En la Tierra Media, el hobbit Frodo Bolsón hereda un anillo mágico de su tío Bilbo. El mago Gandalf le revela que este es el Anillo Único, forjado por el Señor Oscuro Sauron para controlar todos los demás Anillos de Poder. Para destruir el mal para siempre, Frodo debe llevar el Anillo a través de la Tierra Media hasta las llamas del Monte del Destino, donde fue forjado. Acompañado por sus fieles amigos hobbits Sam, Merry y Pippin, y guiado por el misterioso Aragorn, Frodo se embarca en una épica aventura. En el Concilio de Elrond en Rivendel, se forma la Comunidad del Anillo: Frodo, sus amigos hobbits, Gandalf, Aragorn, el elfo Legolas, el enano Gimli y Boromir de Gondor. Juntos, deben enfrentar peligros inimaginables, desde orcos y trolls hasta la traición y la tentación del poder del Anillo, en una misión que determinará el destino de toda la Tierra Media.",
+  poster: "assets/movies/lotr1.png",
+  fechaEstreno: "2001-12-19",
+  estudio: "assets/studios/warner.png",
+  genero: "Fantasía",
+  anio: 2001,
+  duracion: "2h 58min",
+  rating: 8.8,
+  director: "Peter Jackson",
+  trailer: "AK0L4xvNgkU"
+},
+{
+  titulo: "El Sexto Sentido",
+  sinopsis: "Malcolm Crowe es un psicólogo infantil de renombre en Filadelfia que comienza a tratar a Cole Sear, un niño de ocho años que es perturbado y retraído. Cole vive aterrorizado por un secreto sobrenatural: puede ver y comunicarse con personas muertas que no saben que han fallecido. Estas apariciones lo visitan constantemente, buscando su ayuda para resolver asuntos pendientes. Malcolm, inicialmente escéptico, comienza a creer en las habilidades del niño a medida que desarrollan una relación de confianza. Mientras intenta ayudar a Cole a lidiar con su don y encontrar paz, Malcolm también lucha con sus propios demonios personales y profesionales. La historia se desarrolla como un misterio psicológico profundo, explorando temas de muerte, aceptación y redención. A medida que Cole aprende a no temer su habilidad, sino a usarla para ayudar a los espíritus en pena, tanto él como Malcolm descubren verdades que cambiarán sus vidas para siempre.",
+  poster: "assets/movies/sixthsense.png",
+  fechaEstreno: "1999-08-06",
+  estudio: "assets/studios/disney.png",
+  genero: "Misterio",
+  anio: 1999,
+  duracion: "1h 47min",
+  rating: 8.2,
+  director: "M. Night Shyamalan",
+  trailer: "VG9AGf66tXM"
+},
+{
+  titulo: "La La Land",
+  sinopsis: "En Los Ángeles, Sebastian es un pianista de jazz que lucha por mantener vivo el género musical que ama, mientras trabaja en cafeterías entre audiciones. Mia es una actriz aspirante que sirve café a las estrellas de cine entre audiciones fallidas. Cuando sus caminos se cruzan, se enamoran perdidamente, pero mientras sus carreras los llevan en diferentes direcciones, deben enfrentar decisiones desgarradoras que pondrán a prueba su relación. A través de elaboradas secuencias musicales y coreografías, la película celebra los sueños y el amor mientras explora el costo de perseguir la grandeza artística. En una ciudad conocida por destruir esperanzas y romper corazones, Sebastian y Mia deben decidir si su amor puede sobrevivir a las presiones de Hollywood y sus ambiciones personales. Con números musicales deslumbrantes ambientados en icónicas locaciones de Los Ángeles, desde las colinas de Hollywood hasta el observatorio Griffith, la película es un homenaje tanto al cine clásico como a los soñadores modernos.",
+  poster: "assets/movies/lalaland.png",
+  fechaEstreno: "2016-12-09",
+  estudio: "assets/studios/lionsgate.png",
+  genero: "Romance",
+  anio: 2016,
+  duracion: "2h 8min",
+  rating: 8.0,
+  director: "Damien Chazelle",
+  trailer: "0pdqf4P9MB8"
+},
+{
+  titulo: "Harry Potter y la Piedra Filosofal",
+  sinopsis: "Harry Potter ha vivido bajo las escaleras en casa de sus terribles tíos, los Dursley, durante diez años. Su cumpleaños número 11, Harry descubre que es un mago poderoso con un lugar esperándolo en el Colegio Hogwarts de Magia y Hechicería. Hagrid, el guardián de llaves de Hogwarts, le revela que sus padres fueron asesinados por el malvado mago Voldemort, y que Harry sobrevivió milagrosamente, ganándose el apodo de 'El Niño que Vivió'. En Hogwarts, Harry hace sus primeros amigos verdaderos, Hermione Granger y Ron Weasley, mientras aprende sobre el mundo mágico que nunca supo que existía. Junto a sus nuevos amigos, Harry descubre sus talentos naturales para el vuelo en escoba y se convierte en el buscador más joven en siglos para el equipo de Quidditch de Gryffindor. Sin embargo, algo malévolo se esconde en los pasillos del colegio, y Harry y sus amigos deben proteger la Piedra Filosofal de quien busca usarla para regresar al poder.",
+  poster: "assets/movies/harrypotter1.png",
+  fechaEstreno: "2001-11-16",
+  estudio: "assets/studios/warner.png",
+  genero: "Fantasía",
+  anio: 2001,
+  duracion: "2h 32min",
+  rating: 7.6,
+  director: "Chris Columbus",
+  trailer: "VyHV0BRtdxo"
+},
+{
+  titulo: "Zodiac",
+  sinopsis: "Basada en hechos reales, la película narra la investigación del asesino en serie conocido como 'Zodiac', que aterrorizó el área de la Bahía de San Francisco entre finales de los años 60 y principios de los 70. El cartógrafo Robert Graysmith se obsesiona con descifrar los crípticos mensajes cifrados que el asesino envía a los periódicos locales. Junto al inspector Dave Toschi y el reportero del San Francisco Chronicle Paul Avery, Graysmith se sumerge en una investigación que consumirá años de su vida. A medida que los cuerpos se acumulan y las pistas se vuelven más esquivas, la investigación se convierte en una obsesión peligrosa que afecta la salud mental y las relaciones personales de todos los involucrados. El asesino se burla de la policía y los medios con cartas cifradas, llamadas telefónicas amenazantes y una serie de asesinatos aparentemente aleatorios. La película explora la naturaleza obsesiva de la investigación criminal y el costo personal de buscar la verdad cuando el caso permanece sin resolver durante décadas.",
+  poster: "assets/movies/zodiac.png",
+  fechaEstreno: "2007-03-02",
+  estudio: "assets/studios/paramount.png",
+  genero: "Misterio",
+  anio: 2007,
+  duracion: "2h 37min",
+  rating: 7.7,
+  director: "David Fincher",
+  trailer: "yNncHPl1UXg"
+},
+];
+
+  private proximosEstrenos: ProximoEstreno[] = [
+  // === JUNIO 2025 ===
+  {
+    id: 1,
+    titulo: "Kayara: La Princesa Inca",
+    sinopsis: "Una épica aventura que narra la historia de Kayara, una valiente princesa inca que debe salvar su reino de una amenaza ancestral. Entre tradiciones milenarias y poderes místicos, ella descubrirá su verdadero destino mientras lucha por proteger a su pueblo y preservar la sabiduría de sus antepasados.",
+    poster: "assets/movies/kayara.png",
+    fechaEstreno: "2025-06-06",
+    estudio: "assets/studios/paramount.png",
+    genero: "Aventura",
+    director: "Carlos López Estrada",
+    trailer: "rDX5wVVBW4Y",
+    duracion: "2h 10min",
+    actores: ["Yalitza Aparicio", "Oscar Isaac", "Stephanie Beatriz", "John Leguizamo"]
+  },
+  {
+    id: 2,
+    titulo: "Elio",
+    sinopsis: "Elio, un niño soñador y fanático del espacio, es confundido accidentalmente con el representante intergaláctico de la Tierra y transportado al Comuniverso, una organización de seres extraterrestres. Ahora debe demostrar que la humanidad merece su lugar en el cosmos.",
+    poster: "assets/movies/elio.png",
+    fechaEstreno: "2025-06-13",
+    estudio: "assets/studios/disney.png",
+    genero: "Animación",
+    director: "Adrian Molina",
+    trailer: "QkA4XR5GUos",
+    duracion: "1h 35min",
+    actores: ["Yonas Kibreab", "Zoe Saldaña", "Remy Edgerly", "Brad Garrett"]
+  },
+  {
+    id: 3,
+    titulo: "Cómo Entrenar a tu Dragón",
+    sinopsis: "La adaptación en acción real de la querida historia animada. Hiccup, un joven vikingo poco convencional, descubre una amistad inesperada con Toothless, un dragón Furia Nocturna herido. Juntos cambiarán para siempre la relación entre humanos y dragones en la isla de Berk.",
+    poster: "assets/movies/dragon.png",
+    fechaEstreno: "2025-06-20",
+    estudio: "assets/studios/universal.png",
+    genero: "Aventura",
+    director: "Dean DeBlois",
+    trailer: "liGB1ssYn38",
+    duracion: "2h 15min",
+    actores: ["Mason Thames", "Nico Parker", "Gerard Butler", "Nick Frost"]
+  },
+  {
+    id: 4,
+    titulo: "Amor En La Gran Ciudad",
+    sinopsis: "Una comedia romántica contemporánea que sigue las vidas entrelazadas de varias parejas en una metrópoli moderna. Entre citas por aplicaciones, encuentros casuales y segundas oportunidades, descubrirán que el amor verdadero puede encontrarse en los lugares más inesperados.",
+    poster: "assets/movies/amor.png",
+    fechaEstreno: "2025-06-27",
+    estudio: "assets/studios/sony.png",
+    genero: "Romance",
+    director: "Nancy Meyers",
+    trailer: "cZIRfrrI5OA",
+    duracion: "1h 55min",
+    actores: ["Emma Stone", "Ryan Gosling", "Regina King", "Michael Cera"]
+  },
+  {
+    id: 5,
+    titulo: "Entre Plumas y Picos",
+    sinopsis: "Una divertida aventura animada que sigue a un grupo de aves urbanas que deben trabajar juntas para salvar su hogar en el parque central de la ciudad. Con humor inteligente y un mensaje ecológico, descubrirán el poder de la comunidad y la amistad.",
+    poster: "assets/movies/picos.png",
+    fechaEstreno: "2025-06-27",
+    estudio: "assets/studios/disney.png",
+    genero: "Animación",
+    director: "Rich Moore",
+    trailer: "nCOXDyzoEP0",
+    duracion: "1h 28min",
+    actores: ["Tina Fey", "Pedro Pascal", "Awkwafina", "Danny DeVito"]
+  },
+
+  // === JULIO 2025 ===
+  {
+    id: 6,
+    titulo: "Jurassic World: El Renacer",
+    sinopsis: "Una nueva era comienza cuando los dinosaurios y los humanos deben aprender a coexistir en un mundo cambiado para siempre. Cuando una expedición científica descubre una especie prehistórica que podría reescribir la historia de la evolución, deberán enfrentar peligros ancestrales y dilemas éticos modernos.",
+    poster: "assets/movies/jurassic.png",
+    fechaEstreno: "2025-07-02",
+    estudio: "assets/studios/universal.png",
+    genero: "Aventura",
+    director: "Gareth Edwards",
+    trailer: "Xx74GxwtNOE",
+    duracion: "2h 27min",
+    actores: ["Scarlett Johansson", "Jonathan Bailey", "Mahershala Ali", "Rupert Friend"]
+  },
+  {
+    id: 7,
+    titulo: "Los 4 Fantásticos: Primeros Pasos",
+    sinopsis: "Reed Richards, Sue Storm, Johnny Storm y Ben Grimm se embarcan en una peligrosa misión espacial que alterará sus vidas para siempre. Cuando adquieren poderes extraordinarios tras exponerse a rayos cósmicos, deberán aprender a trabajar en equipo para proteger la Tierra de amenazas que van más allá de su comprensión.",
+    poster: "assets/movies/fantasticos.png",
+    fechaEstreno: "2025-07-25",
+    estudio: "assets/studios/marvel.png",
+    genero: "Acción",
+    director: "Matt Shakman",
+    trailer: "wgwo9MB0Tk4",
+    duracion: "2h 20min",
+    actores: ["Pedro Pascal", "Vanessa Kirby", "Joseph Quinn", "Ebon Moss-Bachrach"]
+  },
+
+  // === OCTUBRE 2025 ===
+  {
+    id: 8,
+    titulo: "Tron: Ares",
+    sinopsis: "Un programa altamente sofisticado llamado Ares es enviado del mundo digital al mundo real en una peligrosa misión. Esta nueva entrega de la saga Tron explora las consecuencias cuando la inteligencia artificial traspasa las barreras entre lo digital y lo físico, amenazando con cambiar ambos mundos para siempre.",
+    poster: "assets/movies/tron.png",
+    fechaEstreno: "2025-10-10",
+    estudio: "assets/studios/disney.png",
+    genero: "Ciencia Ficción",
+    director: "Joachim Rønning",
+    trailer: "asnVBRyndiI",
+    duracion: "2h 05min",
+    actores: ["Jared Leto", "Greta Lee", "Evan Peters", "Hasan Minhaj"]
+  }
+];
+
 
   // FUNCIONES DE CINE PARA CADA PELÍCULA (usar índices del array)
   private funcionesCine: { [peliculaId: number]: FuncionCine[] } = {
@@ -393,7 +584,127 @@ export class MovieService {
         asientosDisponibles: 35,
         formato: '2D'
       }
-    ]
+    ],
+    13: [ // Titanic
+  {
+    id: 'tit-001',
+    fecha: '2024-12-20',
+    hora: '18:30',
+    sala: 'Sala 15 - Premium',
+    precio: 11.00,
+    asientosDisponibles: 40,
+    formato: '2D Remasterizado'
+  },
+  {
+    id: 'tit-002',
+    fecha: '2024-12-21',
+    hora: '14:00',
+    sala: 'Sala 15 - Premium',
+    precio: 11.00,
+    asientosDisponibles: 45,
+    formato: '2D Remasterizado'
+  }
+],
+14: [ // El Señor de los Anillos: La Comunidad del Anillo
+  {
+    id: 'lotr-001',
+    fecha: '2024-12-20',
+    hora: '16:00',
+    sala: 'Sala 16 - IMAX',
+    precio: 12.00,
+    asientosDisponibles: 48,
+    formato: 'IMAX Extendida'
+  },
+  {
+    id: 'lotr-002',
+    fecha: '2024-12-21',
+    hora: '19:30',
+    sala: 'Sala 16 - IMAX',
+    precio: 12.00,
+    asientosDisponibles: 35,
+    formato: 'IMAX Extendida'
+  }
+],
+15: [ // El Sexto Sentido
+  {
+    id: 'six-001',
+    fecha: '2024-12-20',
+    hora: '21:00',
+    sala: 'Sala 17',
+    precio: 8.50,
+    asientosDisponibles: 30,
+    formato: '2D'
+  },
+  {
+    id: 'six-002',
+    fecha: '2024-12-21',
+    hora: '23:00',
+    sala: 'Sala 17',
+    precio: 8.50,
+    asientosDisponibles: 25,
+    formato: '2D'
+  }
+],
+16: [ // La La Land
+  {
+    id: 'lala-001',
+    fecha: '2024-12-20',
+    hora: '17:15',
+    sala: 'Sala 18',
+    precio: 9.00,
+    asientosDisponibles: 42,
+    formato: '2D'
+  },
+  {
+    id: 'lala-002',
+    fecha: '2024-12-21',
+    hora: '20:00',
+    sala: 'Sala 18',
+    precio: 9.00,
+    asientosDisponibles: 38,
+    formato: '2D'
+  }
+],
+17: [ // Harry Potter y la Piedra Filosofal
+  {
+    id: 'hp-001',
+    fecha: '2024-12-20',
+    hora: '15:30',
+    sala: 'Sala 19',
+    precio: 8.50,
+    asientosDisponibles: 50,
+    formato: '2D'
+  },
+  {
+    id: 'hp-002',
+    fecha: '2024-12-21',
+    hora: '18:45',
+    sala: 'Sala 19',
+    precio: 8.50,
+    asientosDisponibles: 45,
+    formato: '2D'
+  }
+],
+18: [ // Zodiac
+  {
+    id: 'zod-001',
+    fecha: '2024-12-20',
+    hora: '20:15',
+    sala: 'Sala 20',
+    precio: 9.50,
+    asientosDisponibles: 32,
+    formato: '2D'
+  },
+  {
+    id: 'zod-002',
+    fecha: '2024-12-21',
+    hora: '22:45',
+    sala: 'Sala 20',
+    precio: 9.50,
+    asientosDisponibles: 28,
+    formato: '2D'
+  }
+  ]
   };
   private seatMaps: { [salaId: string]: SeatMap } = {
   'Sala 1 - IMAX': {
@@ -424,12 +735,66 @@ export class MovieService {
     vipRows: ['D', 'E'],
     disabledSeats: [],
     occupiedSeats: []
-  }
+  },
+  'Sala 15 - Premium': {
+  rows: ['A', 'B', 'C', 'D', 'E', 'F', 'G'],
+  seatsPerRow: 10,
+  vipRows: ['E', 'F', 'G'],
+  disabledSeats: [],
+  occupiedSeats: ['D5', 'D6']
+},
+'Sala 16 - IMAX': {
+  rows: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'],
+  seatsPerRow: 12,
+  vipRows: ['F', 'G', 'H'],
+  disabledSeats: ['A1', 'A12', 'I1', 'I12'],
+  occupiedSeats: ['E6', 'E7', 'F6', 'F7']
+},
+'Sala 17': {
+  rows: ['A', 'B', 'C', 'D', 'E', 'F'],
+  seatsPerRow: 8,
+  vipRows: ['D', 'E'],
+  disabledSeats: [],
+  occupiedSeats: ['C3', 'C4']
+},
+'Sala 18': {
+  rows: ['A', 'B', 'C', 'D', 'E', 'F', 'G'],
+  seatsPerRow: 10,
+  vipRows: ['E', 'F'],
+  disabledSeats: [],
+  occupiedSeats: ['B5', 'B6', 'C5', 'C6']
+},
+'Sala 19': {
+  rows: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'],
+  seatsPerRow: 12,
+  vipRows: ['F', 'G'],
+  disabledSeats: ['A1', 'A12'],
+  occupiedSeats: ['D6', 'D7', 'E6', 'E7']
+},
+'Sala 20': {
+  rows: ['A', 'B', 'C', 'D', 'E', 'F'],
+  seatsPerRow: 8,
+  vipRows: ['D', 'E'],
+  disabledSeats: [],
+  occupiedSeats: ['C2', 'C3', 'D2', 'D3']
+}
 };
   
 
 getSeatMap(salaName: string): SeatMap {
   return this.seatMaps[salaName] || this.seatMaps['default'];
+}
+
+// Métodos para obtener próximos estrenos
+getProximosEstrenos(): ProximoEstreno[] {
+  // Ordenar por fecha de estreno
+  return this.proximosEstrenos.sort((a, b) => {
+    return new Date(a.fechaEstreno).getTime() - new Date(b.fechaEstreno).getTime();
+  });
+}
+
+getProximoEstreno(id: number): ProximoEstreno | null {
+  return this.proximosEstrenos.find(estreno => estreno.id === id) || null;
 }
 
 // GENERAR ASIENTOS PARA UNA FUNCIÓN
@@ -471,10 +836,326 @@ updateOccupiedSeats(funcionId: string, seatIds: string[]): void {
   const seatMap = this.getSeatMap(funcion.sala);
   seatMap.occupiedSeats = [...seatMap.occupiedSeats, ...seatIds];
 }
+addPelicula(pelicula: Omit<Pelicula, 'idx'>): boolean {
+  try {
+    // Validar datos requeridos
+    if (!pelicula.titulo || !pelicula.sinopsis || !pelicula.genero) {
+      console.error('Faltan datos requeridos para crear la película');
+      return false;
+    }
+
+    // Crear nueva película
+    const nuevaPelicula: Pelicula = {
+      ...pelicula,
+      // Asegurar que tenga todos los campos necesarios
+      trailer: pelicula.trailer || '',
+      poster: pelicula.poster || 'assets/movies/default.png'
+    };
+
+    // Agregar al array
+    this.peliculas.push(nuevaPelicula);
+    
+    // Guardar en localStorage para persistencia
+    this.savePeliculasToStorage();
+    
+    console.log('Película agregada exitosamente:', nuevaPelicula.titulo);
+    return true;
+    
+  } catch (error) {
+    console.error('Error al agregar película:', error);
+    return false;
+  }
+}
+
+/**
+ * Actualizar película existente (solo admin)
+ */
+updatePelicula(index: number, peliculaData: Partial<Pelicula>): boolean {
+  try {
+    // Verificar que el índice sea válido
+    if (index < 0 || index >= this.peliculas.length) {
+      console.error('Índice de película inválido');
+      return false;
+    }
+
+    // Actualizar película
+    this.peliculas[index] = {
+      ...this.peliculas[index],
+      ...peliculaData
+    };
+
+    // Guardar cambios
+    this.savePeliculasToStorage();
+    
+    console.log('Película actualizada exitosamente:', this.peliculas[index].titulo);
+    return true;
+    
+  } catch (error) {
+    console.error('Error al actualizar película:', error);
+    return false;
+  }
+}
+
+/**
+ * Eliminar película (solo admin)
+ */
+deletePelicula(index: number): boolean {
+  try {
+    // Verificar que el índice sea válido
+    if (index < 0 || index >= this.peliculas.length) {
+      console.error('Índice de película inválido');
+      return false;
+    }
+
+    const peliculaEliminada = this.peliculas[index];
+    
+    // Eliminar película del array
+    this.peliculas.splice(index, 1);
+    
+    // Eliminar funciones asociadas
+    if (this.funcionesCine[index]) {
+      delete this.funcionesCine[index];
+    }
+    
+    // Reorganizar índices de funciones
+    this.reorganizarIndicesFunciones(index);
+    
+    // Guardar cambios
+    this.savePeliculasToStorage();
+    this.saveFuncionesToStorage();
+    
+    console.log('Película eliminada exitosamente:', peliculaEliminada.titulo);
+    return true;
+    
+  } catch (error) {
+    console.error('Error al eliminar película:', error);
+    return false;
+  }
+}
+
+/**
+ * Agregar función a una película (solo admin)
+ */
+addFuncionToPelicula(peliculaIndex: number, funcion: Omit<FuncionCine, 'id'>): boolean {
+  try {
+    // Verificar que la película existe
+    if (peliculaIndex < 0 || peliculaIndex >= this.peliculas.length) {
+      console.error('Índice de película inválido');
+      return false;
+    }
+
+    // Generar ID único para la función
+    const funcionId = this.generateFuncionId(peliculaIndex);
+    
+    const nuevaFuncion: FuncionCine = {
+      ...funcion,
+      id: funcionId
+    };
+
+    // Crear array de funciones si no existe
+    if (!this.funcionesCine[peliculaIndex]) {
+      this.funcionesCine[peliculaIndex] = [];
+    }
+
+    // Agregar función
+    this.funcionesCine[peliculaIndex].push(nuevaFuncion);
+    
+    // Guardar cambios
+    this.saveFuncionesToStorage();
+    
+    console.log('Función agregada exitosamente:', nuevaFuncion);
+    return true;
+    
+  } catch (error) {
+    console.error('Error al agregar función:', error);
+    return false;
+  }
+}
+
+/**
+ * Eliminar función específica (solo admin)
+ */
+deleteFuncion(funcionId: string): boolean {
+  try {
+    for (const peliculaId in this.funcionesCine) {
+      const funciones = this.funcionesCine[peliculaId];
+      const funcionIndex = funciones.findIndex(f => f.id === funcionId);
+      
+      if (funcionIndex !== -1) {
+        // Eliminar función
+        funciones.splice(funcionIndex, 1);
+        
+        // Guardar cambios
+        this.saveFuncionesToStorage();
+        
+        console.log('Función eliminada exitosamente:', funcionId);
+        return true;
+      }
+    }
+    
+    console.error('Función no encontrada:', funcionId);
+    return false;
+    
+  } catch (error) {
+    console.error('Error al eliminar función:', error);
+    return false;
+  }
+}
+
+// ==================== MÉTODOS AUXILIARES ====================
+
+/**
+ * Generar ID único para función
+ */
+private generateFuncionId(peliculaIndex: number): string {
+  const pelicula = this.peliculas[peliculaIndex];
+  const prefix = pelicula.titulo.substring(0, 3).toLowerCase().replace(/\s/g, '');
+  const timestamp = Date.now().toString().slice(-6);
+  return `${prefix}-${timestamp}`;
+}
+
+/**
+ * Reorganizar índices de funciones después de eliminar película
+ */
+private reorganizarIndicesFunciones(deletedIndex: number): void {
+  const nuevasFunciones: { [peliculaId: number]: FuncionCine[] } = {};
+  
+  for (const peliculaId in this.funcionesCine) {
+    const index = parseInt(peliculaId);
+    
+    if (index < deletedIndex) {
+      // Mantener el mismo índice
+      nuevasFunciones[index] = this.funcionesCine[index];
+    } else if (index > deletedIndex) {
+      // Reducir índice en 1
+      nuevasFunciones[index - 1] = this.funcionesCine[index];
+    }
+    // Si index === deletedIndex, no lo copiamos (se elimina)
+  }
+  
+  this.funcionesCine = nuevasFunciones;
+}
+
+/**
+ * Guardar películas en localStorage
+ */
+private savePeliculasToStorage(): void {
+  try {
+    localStorage.setItem('parky_peliculas', JSON.stringify(this.peliculas));
+  } catch (error) {
+    console.error('Error al guardar películas en localStorage:', error);
+  }
+}
+
+/**
+ * Guardar funciones en localStorage
+ */
+private saveFuncionesToStorage(): void {
+  try {
+    localStorage.setItem('parky_funciones', JSON.stringify(this.funcionesCine));
+  } catch (error) {
+    console.error('Error al guardar funciones en localStorage:', error);
+  }
+}
+
+/**
+ * Cargar películas desde localStorage
+ */
+private loadPeliculasFromStorage(): void {
+  try {
+    const savedPeliculas = localStorage.getItem('parky_peliculas');
+    if (savedPeliculas) {
+      const peliculas = JSON.parse(savedPeliculas);
+      // Solo cargar si hay películas guardadas y el array actual está vacío o es el inicial
+      if (peliculas.length > 0) {
+        this.peliculas = peliculas;
+        console.log('Películas cargadas desde localStorage:', peliculas.length);
+      }
+    }
+  } catch (error) {
+    console.error('Error al cargar películas desde localStorage:', error);
+  }
+}
+
+/**
+ * Cargar funciones desde localStorage
+ */
+private loadFuncionesFromStorage(): void {
+  try {
+    const savedFunciones = localStorage.getItem('parky_funciones');
+    if (savedFunciones) {
+      const funciones = JSON.parse(savedFunciones);
+      this.funcionesCine = { ...this.funcionesCine, ...funciones };
+      console.log('Funciones cargadas desde localStorage');
+    }
+  } catch (error) {
+    console.error('Error al cargar funciones desde localStorage:', error);
+  }
+}
+
+/**
+ * Validar datos de película
+ */
+validatePeliculaData(pelicula: Partial<Pelicula>): { valid: boolean; errors: string[] } {
+  const errors: string[] = [];
+
+  // Validaciones requeridas
+  if (!pelicula.titulo?.trim()) {
+    errors.push('El título es requerido');
+  }
+
+  if (!pelicula.director?.trim()) {
+    errors.push('El director es requerido');
+  }
+
+  if (!pelicula.sinopsis?.trim()) {
+    errors.push('La sinopsis es requerida');
+  }
+
+  if (!pelicula.genero?.trim()) {
+    errors.push('El género es requerido');
+  }
+
+  if (!pelicula.anio || pelicula.anio < 1900 || pelicula.anio > new Date().getFullYear() + 5) {
+    errors.push('El año debe ser válido');
+  }
+
+  if (!pelicula.rating || pelicula.rating < 0 || pelicula.rating > 10) {
+    errors.push('El rating debe estar entre 0 y 10');
+  }
+
+  // 🔥 CAMBIO: Validación más flexible para poster
+  if (!pelicula.poster?.trim()) {
+    errors.push('La URL del poster es requerida');
+  } else {
+    // Solo verificar que tenga contenido, no formato específico
+    if (pelicula.poster.trim().length < 3) {
+      errors.push('La URL del poster debe tener al menos 3 caracteres');
+    }
+  }
+
+  if (!pelicula.fechaEstreno?.trim()) {
+    errors.push('La fecha de estreno es requerida');
+  }
+
+  if (!pelicula.duracion?.trim()) {
+    errors.push('La duración es requerida');
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors
+  };
+}
+
 
   constructor() {
-    console.log('Servicio de películas listo para usar!');
-  }
+  console.log('Servicio de películas listo para usar!');
+  
+  // 🆕 CARGAR DATOS GUARDADOS AL INICIALIZAR
+  this.loadPeliculasFromStorage();
+  this.loadFuncionesFromStorage();
+}
 
   getPeliculas(): Pelicula[] {
     return this.peliculas;
@@ -591,4 +1272,17 @@ export interface Seat {
   isOccupied: boolean;  // Ya ocupado
   isSelected: boolean;  // Seleccionado por el usuario
   price: number;        // Precio del asiento
+}
+export interface ProximoEstreno {
+  id: number;
+  titulo: string;
+  sinopsis: string;
+  poster: string;
+  fechaEstreno: string;
+  estudio: string;
+  genero: string;
+  director: string;
+  trailer: string;
+  duracion: string;
+  actores: string[];
 }

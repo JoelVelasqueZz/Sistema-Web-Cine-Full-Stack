@@ -2,7 +2,9 @@ import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MovieService, Pelicula, FuncionCine } from '../../services/movie.service';
 import { CartService } from '../../services/cart.service';
-import { ToastService } from '../../services/toast.service'; // ← AGREGAR IMPORT
+import { ToastService } from '../../services/toast.service';
+import { AuthService } from '../../services/auth.service'; // 🆕 AGREGAR
+import { UserService } from '../../services/user.service'; // 🆕 AGREGAR
 
 @Component({
   selector: 'app-ticket-purchase',
@@ -25,7 +27,9 @@ export class TicketPurchaseComponent implements OnInit {
     private router: Router,
     private movieService: MovieService,    
     private cartService: CartService,
-    private toastService: ToastService // ← AGREGAR AQUÍ
+    private toastService: ToastService,
+    public authService: AuthService,    // 🆕 AGREGAR (público para template)
+    private userService: UserService    // 🆕 AGREGAR
   ) {}
 
   ngOnInit(): void {
@@ -46,6 +50,21 @@ export class TicketPurchaseComponent implements OnInit {
         // Cargar funciones disponibles
         this.funciones = this.movieService.getFuncionesPelicula(this.peliculaIndex);
         console.log('Funciones cargadas:', this.funciones);
+        
+        // 🆕 AGREGAR AL HISTORIAL CUANDO SE VEA UNA PELÍCULA
+        const currentUser = this.authService.getCurrentUser();
+        if (currentUser) {
+          this.userService.addToHistory(currentUser.id, {
+            peliculaId: this.peliculaIndex,
+            titulo: this.pelicula.titulo,
+            poster: this.pelicula.poster,
+            genero: this.pelicula.genero,
+            anio: this.pelicula.anio,
+            fechaVista: new Date().toISOString(),
+            tipoAccion: 'vista'
+          });
+        }
+        
       } else {
         console.error('Película no encontrada');
         this.router.navigate(['/movies']);
@@ -74,7 +93,6 @@ export class TicketPurchaseComponent implements OnInit {
 
     // Verificar disponibilidad
     if (!this.cartService.checkAvailability(this.funcionSeleccionada.id, this.cantidadEntradas)) {
-      // ✅ CAMBIO: Alert por Toast
       this.toastService.showWarning('No hay suficientes asientos disponibles');
       this.agregandoCarrito = false;
       return;
@@ -101,6 +119,20 @@ export class TicketPurchaseComponent implements OnInit {
       this.router.navigate(['/movie', this.peliculaIndex]);
     } else {
       this.router.navigate(['/movies']);
+    }
+  }
+
+  incrementarCantidad(): void {
+    if (this.cantidadEntradas < 20) {
+      this.cantidadEntradas++;
+    } else {
+      this.toastService.showWarning('Máximo 20 entradas por función');
+    }
+  }
+
+  decrementarCantidad(): void {
+    if (this.cantidadEntradas > 1) {
+      this.cantidadEntradas--;
     }
   }
 

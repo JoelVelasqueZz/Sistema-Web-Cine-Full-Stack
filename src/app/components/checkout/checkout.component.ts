@@ -1,7 +1,11 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { CartService, CartItem } from '../../services/cart.service';
-import { ToastService } from '../../services/toast.service'; // ← AGREGAR IMPORT
+import { ToastService } from '../../services/toast.service';
+import { EmailService } from '../../services/email.service';
+import { PaypalSimulationService, PayPalResult } from '../../services/paypal-simulation.service';
+import { AuthService } from '../../services/auth.service'; 
+import { UserService } from '../../services/user.service';
 
 @Component({
   selector: 'app-checkout',
@@ -26,6 +30,11 @@ export class CheckoutComponent implements OnInit {
     aceptaTerminos: false
   };
 
+  // Variables de validación
+  validacionTarjeta = { valid: false, tipo: '', message: '' };
+  validacionFecha = { valid: false, message: '' };
+  validacionCVV = { valid: false, message: '' };
+
   // Cálculos
   subtotal: number = 0;
   serviceFee: number = 0;
@@ -35,7 +44,11 @@ export class CheckoutComponent implements OnInit {
   constructor(
     private cartService: CartService,
     private router: Router,
-    private toastService: ToastService // ← AGREGAR AQUÍ
+    private toastService: ToastService,
+    private emailService: EmailService,
+    private paypalService: PaypalSimulationService,
+    public authService: AuthService,
+    private userService: UserService
   ) {}
 
   ngOnInit(): void {
@@ -45,108 +58,129 @@ export class CheckoutComponent implements OnInit {
   cargarDatos(): void {
     this.cartItems = this.cartService.getCartItems();
     
-    // Si no hay items, redirigir al carrito
     if (this.cartItems.length === 0) {
       this.router.navigate(['/cart']);
       return;
     }
 
-    // Calcular totales
     this.subtotal = this.cartService.getTotal();
-    this.serviceFee = this.subtotal * 0.05; // 5% cargo por servicio
-    this.taxes = (this.subtotal + this.serviceFee) * 0.08; // 8% impuestos
+    this.serviceFee = this.subtotal * 0.05;
+    this.taxes = (this.subtotal + this.serviceFee) * 0.08;
     this.total = this.subtotal + this.serviceFee + this.taxes;
   }
 
-  procesarPago(): void {
-    if (!this.validarFormulario()) {
-      return;
+  // Validación en tiempo real del número de tarjeta
+  onNumeroTarjetaChange(): void {
+    // Formatear número (agregar espacios cada 4 dígitos)
+    const numero = this.datosCheckout.numeroTarjeta.replace(/\s/g, '');
+    const formatted = numero.replace(/(.{4})/g, '$1 ').trim();
+    this.datosCheckout.numeroTarjeta = formatted;
+
+    // Validar
+    this.validacionTarjeta = this.validarNumeroTarjeta(numero);
+    
+    // Limpiar CVV si cambia tipo de tarjeta
+    if (this.datosCheckout.cvv) {
+      this.onCVVChange();
+    }
+  }
+
+  // Validación en tiempo real de fecha
+  onFechaExpiracionChange(): void {
+    this.validacionFecha = this.validarFechaExpiracion(
+      this.datosCheckout.mesExpiracion, 
+      this.datosCheckout.anioExpiracion
+    );
+  }
+
+  // Validación en tiempo real de CVV
+  onCVVChange(): void {
+    this.validacionCVV = this.validarCVV(this.datosCheckout.cvv, this.validacionTarjeta.tipo);
+  }
+
+  // Solo permitir números
+  onlyNumbers(event: KeyboardEvent): boolean {
+    const charCode = event.which ? event.which : event.keyCode;
+    if (charCode > 31 && (charCode < 48 || charCode > 57)) {
+      event.preventDefault();
+      return false;
+    }
+    return true;
+  }
+
+  // Generar array de años
+  getYearsArray(): number[] {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let i = currentYear; i <= currentYear + 10; i++) {
+      years.push(i);
+    }
+    return years;
+  }
+
+  // Placeholder dinámico para CVV
+  getCVVPlaceholder(): string {
+    return this.validacionTarjeta.tipo === 'American Express' ? '1234' : '123';
+  }
+
+  // Longitud máxima de CVV
+  getCVVMaxLength(): number {
+    return this.validacionTarjeta.tipo === 'American Express' ? 4 : 3;
+  }
+
+  // Validación completa del formulario
+  isFormValid(): boolean {
+    const basicInfo = !!this.datosCheckout.nombre.trim() && 
+                     !!this.datosCheckout.email.trim() && 
+                     this.datosCheckout.aceptaTerminos;
+
+    if (this.datosCheckout.metodoPago === 'paypal') {
+      return basicInfo;
     }
 
-    this.procesandoPago = true;
-
-    // Simular procesamiento de pago
-    setTimeout(() => {
-      if (this.datosCheckout.metodoPago === 'paypal') {
-        this.procesarPayPal();
-      } else {
-        this.procesarTarjeta();
-      }
-    }, 2000);
+    return basicInfo && 
+           this.validacionTarjeta.valid && 
+           this.validacionFecha.valid && 
+           this.validacionCVV.valid;
   }
 
-  procesarTarjeta(): void {
-    // Simular pago con tarjeta
-    console.log('Procesando pago con tarjeta...', this.datosCheckout);
-    
-    // ✅ NUEVO: Toast de procesamiento
-    this.toastService.showInfo('Procesando pago con tarjeta...');
-    
-    // Simular respuesta exitosa
-    this.pagoExitoso();
-  }
-
-  procesarPayPal(): void {
-    // Simular integración con PayPal
-    console.log('Redirigiendo a PayPal...');
-    
-    // ✅ CAMBIO: Alert por Toast
-    this.toastService.showInfo('Redirigiendo a PayPal...');
-    
-    // Simular pago exitoso después de PayPal
-    setTimeout(() => {
-      this.pagoExitoso();
-    }, 1000);
-  }
-
-  pagoExitoso(): void {
-    // Procesar la compra
-    this.cartService.processPurchase().then(result => {
-      console.log('Compra procesada:', result);
-      
-      this.procesandoPago = false;
-      
-      // ✅ CAMBIO: Alert por Toast de éxito (más largo)
-      this.toastService.showSuccess(
-        `¡Pago exitoso! 🎉 Tu número de orden es: ${result.orderId}. Revisa tu email para las entradas.`,
-        6000 // 6 segundos para que pueda leer el número de orden
-      );
-      
-      // Redirigir después de mostrar el toast
-      setTimeout(() => {
-        this.router.navigate(['/home']);
-      }, 2000);
-      
-    }).catch(error => {
-      console.error('Error procesando compra:', error);
-      this.procesandoPago = false;
-      
-      // ✅ CAMBIO: Alert por Toast de error
-      this.toastService.showError('Error procesando el pago. Intenta nuevamente.');
-    });
-  }
-
-  // VALIDAR NÚMERO DE TARJETA (ALGORITMO DE LUHN)
+  // Validar número de tarjeta con Algoritmo de Luhn
   validarNumeroTarjeta(numero: string): { valid: boolean, tipo: string, message: string } {
     const cleanNumber = numero.replace(/[\s-]/g, '');
     
     if (!cleanNumber) {
-      return { valid: false, tipo: '', message: 'El número de tarjeta es requerido' };
+      return { valid: false, tipo: '', message: 'Ingresa el número de tarjeta' };
     }
 
     if (!/^\d+$/.test(cleanNumber)) {
-      return { valid: false, tipo: '', message: 'El número de tarjeta solo debe contener números' };
-    }
-
-    if (cleanNumber.length < 13 || cleanNumber.length > 19) {
-      return { valid: false, tipo: '', message: 'El número de tarjeta debe tener entre 13 y 19 dígitos' };
+      return { valid: false, tipo: '', message: 'Solo se permiten números' };
     }
 
     // Detectar tipo de tarjeta
-    let tipo = 'Desconocida';
-    if (/^4/.test(cleanNumber)) tipo = 'Visa';
-    else if (/^5[1-5]/.test(cleanNumber)) tipo = 'MasterCard';
-    else if (/^3[47]/.test(cleanNumber)) tipo = 'American Express';
+    let tipo = '';
+    let expectedLength = 0;
+
+    if (/^4/.test(cleanNumber)) {
+      tipo = 'Visa';
+      expectedLength = 16;
+    } else if (/^5[1-5]/.test(cleanNumber) || /^2[2-7]/.test(cleanNumber)) {
+      tipo = 'MasterCard';
+      expectedLength = 16;
+    } else if (/^3[47]/.test(cleanNumber)) {
+      tipo = 'American Express';
+      expectedLength = 15;
+    } else {
+      return { valid: false, tipo: '', message: 'Tipo de tarjeta no soportado' };
+    }
+
+    // Verificar longitud
+    if (cleanNumber.length !== expectedLength) {
+      return { 
+        valid: false, 
+        tipo, 
+        message: `${tipo} debe tener ${expectedLength} dígitos` 
+      };
+    }
 
     // Algoritmo de Luhn
     let sum = 0;
@@ -173,10 +207,10 @@ export class CheckoutComponent implements OnInit {
     };
   }
 
-  // VALIDAR FECHA DE EXPIRACIÓN
+  // Validar fecha de expiración
   validarFechaExpiracion(mes: string, anio: string): { valid: boolean, message: string } {
     if (!mes || !anio) {
-      return { valid: false, message: 'Selecciona la fecha de expiración completa' };
+      return { valid: false, message: 'Selecciona mes y año' };
     }
 
     const mesNum = parseInt(mes);
@@ -186,60 +220,201 @@ export class CheckoutComponent implements OnInit {
     const anioActual = fechaActual.getFullYear();
 
     if (anioNum < anioActual) {
-      return { valid: false, message: 'La tarjeta ha expirado (año anterior)' };
+      return { valid: false, message: 'La tarjeta ha expirado' };
     }
 
     if (anioNum === anioActual && mesNum < mesActual) {
-      return { valid: false, message: 'La tarjeta ha expirado (mes anterior)' };
+      return { valid: false, message: 'La tarjeta ha expirado' };
+    }
+
+    if (anioNum > anioActual + 10) {
+      return { valid: false, message: 'Fecha muy lejana en el futuro' };
     }
 
     return { valid: true, message: 'Fecha de expiración válida' };
   }
 
-  validarFormulario(): boolean {
-    if (!this.datosCheckout.nombre.trim()) {
-      // ✅ CAMBIO: Alert por Toast
-      this.toastService.showWarning('Por favor ingresa tu nombre');
-      return false;
+  // Validar CVV
+  validarCVV(cvv: string, tipoTarjeta: string): { valid: boolean, message: string } {
+    if (!cvv) {
+      return { valid: false, message: 'Ingresa el código CVV' };
     }
 
-    if (!this.datosCheckout.email.trim()) {
-      // ✅ CAMBIO: Alert por Toast
-      this.toastService.showWarning('Por favor ingresa tu email');
-      return false;
+    if (!/^\d+$/.test(cvv)) {
+      return { valid: false, message: 'CVV solo debe contener números' };
     }
 
-    if (!this.datosCheckout.aceptaTerminos) {
-      // ✅ CAMBIO: Alert por Toast
-      this.toastService.showWarning('Debes aceptar los términos y condiciones');
-      return false;
+    const expectedLength = tipoTarjeta === 'American Express' ? 4 : 3;
+    
+    if (cvv.length !== expectedLength) {
+      return { 
+        valid: false, 
+        message: `CVV debe tener ${expectedLength} dígitos` 
+      };
     }
 
-    if (this.datosCheckout.metodoPago === 'tarjeta') {
-      if (!this.datosCheckout.numeroTarjeta.trim()) {
-        // ✅ CAMBIO: Alert por Toast
-        this.toastService.showWarning('Por favor ingresa el número de tarjeta');
-        return false;
+    return { valid: true, message: `CVV válido (${expectedLength} dígitos)` };
+  }
+
+  procesarPago(): void {
+    if (!this.isFormValid()) {
+      this.toastService.showWarning('Por favor completa todos los campos requeridos');
+      return;
+    }
+
+    this.procesandoPago = true;
+
+    setTimeout(() => {
+      if (this.datosCheckout.metodoPago === 'paypal') {
+        this.procesarPayPal();
+      } else {
+        this.procesarTarjeta();
       }
+    }, 2000);
+  }
 
-      if (!this.datosCheckout.mesExpiracion || !this.datosCheckout.anioExpiracion) {
-        // ✅ CAMBIO: Alert por Toast
-        this.toastService.showWarning('Por favor selecciona la fecha de expiración');
-        return false;
-      }
+  procesarTarjeta(): void {
+    console.log('Procesando pago con tarjeta...', this.datosCheckout);
+    this.toastService.showInfo('Procesando pago con tarjeta...');
+    this.pagoExitoso();
+  }
 
-      if (!this.datosCheckout.cvv.trim()) {
-        // ✅ CAMBIO: Alert por Toast
-        this.toastService.showWarning('Por favor ingresa el CVV');
-        return false;
-      }
+  procesarPayPal(): void {
+    console.log('Iniciando proceso PayPal...');
+    this.toastService.showInfo('🔄 Redirigiendo a PayPal...');
+    
+    // Preparar datos para PayPal
+    const paypalOrderData = {
+      orderId: this.generateTempOrderId(),
+      total: this.total.toFixed(2),
+      email: this.datosCheckout.email,
+      items: this.cartItems
+    };
+    
+    // Simular redirección a PayPal
+    this.paypalService.simulatePayPalRedirect(paypalOrderData)
+      .then((result: PayPalResult) => {
+        console.log('✅ Respuesta de PayPal:', result);
+        
+        if (result.success) {
+          // PayPal exitoso
+          this.toastService.showSuccess('✅ Pago con PayPal exitoso!');
+          
+          // Continuar con el proceso normal
+          this.pagoExitoso(result);
+          
+        } else {
+          // PayPal falló
+          this.procesandoPago = false;
+          this.toastService.showError('❌ ' + (result.error || 'Error en PayPal'));
+        }
+      })
+      .catch((error: any) => {
+        console.error('❌ Error en PayPal:', error);
+        this.procesandoPago = false;
+        this.toastService.showError('❌ Error de conexión con PayPal');
+      });
+  }
+
+  pagoExitoso(paypalResult?: PayPalResult): void {
+  this.cartService.processPurchase().then(result => {
+    console.log('Compra procesada:', result);
+    
+    // 🆕 AGREGAR AL HISTORIAL CUANDO SE COMPLETE LA COMPRA
+    const currentUser = this.authService.getCurrentUser();
+if (currentUser) {
+  // Agregar cada película comprada al historial
+  this.cartItems.forEach((item, index) => {
+    this.userService.addToHistory(currentUser.id, {
+      peliculaId: index, // Usar el índice como ID
+      titulo: item.pelicula.titulo,
+      poster: item.pelicula.poster,
+      genero: item.pelicula.genero,
+      anio: item.pelicula.anio,
+      fechaVista: new Date().toISOString(),
+      tipoAccion: 'comprada'
+    });
+  });
     }
+    
+    this.procesandoPago = false;
+    
+    // Preparar datos completos incluyendo PayPal
+    const orderData = {
+      ...result,
+      nombre: this.datosCheckout.nombre,
+      email: this.datosCheckout.email,
+      telefono: this.datosCheckout.telefono,
+      metodoPago: this.datosCheckout.metodoPago === 'tarjeta' ? 'Tarjeta de Crédito' : 'PayPal',
+      subtotal: this.subtotal.toFixed(2),
+      serviceFee: this.serviceFee.toFixed(2),
+      taxes: this.taxes.toFixed(2),
+      total: this.total.toFixed(2),
+      
+      // Datos adicionales de PayPal
+      ...(paypalResult && {
+        paypalTransactionId: paypalResult.transactionId,
+        paypalPayerId: paypalResult.payerId,
+        paypalStatus: paypalResult.paymentStatus
+      })
+    };
+    
+    // Envío de email
+    this.toastService.showInfo('📧 Enviando entradas por email...');
+    
+    this.emailService.sendTicketEmail(orderData, this.cartItems)
+      .then((success) => {
+        if (success) {
+          const mensaje = paypalResult ? 
+            `¡Pago con PayPal exitoso! 🎉 Entradas enviadas a ${this.datosCheckout.email}` :
+            `¡Pago exitoso! 🎉 Entradas enviadas a ${this.datosCheckout.email}`;
+            
+          this.toastService.showSuccess(mensaje, 6000);
+          
+          // Mostrar información de transacción PayPal
+          if (paypalResult?.transactionId) {
+            setTimeout(() => {
+              this.toastService.showInfo(
+                `💳 PayPal ID: ${paypalResult.transactionId}`,
+                4000
+              );
+            }, 2000);
+          }
+          
+        } else {
+          this.toastService.showError(
+            'Error enviando email. Contacta soporte con tu número de orden: ' + result.orderId
+          );
+        }
+        
+        setTimeout(() => {
+          this.router.navigate(['/home']);
+        }, 5000);
+        
+      })
+      .catch((error: any) => {
+        console.error('Error en proceso de email:', error);
+        this.toastService.showError(
+          'Error enviando email. Tu compra fue exitosa. Orden: ' + result.orderId
+        );
+        
+        setTimeout(() => {
+          this.router.navigate(['/home']);
+        }, 3000);
+      });
+      
+  }).catch((error: any) => {
+    console.error('Error procesando compra:', error);
+    this.procesandoPago = false;
+    this.toastService.showError('Error procesando el pago. Intenta nuevamente.');
+  });
+}
 
-    return true;
+  private generateTempOrderId(): string {
+    return 'PP-' + Date.now().toString();
   }
 
   cancelarCompra(): void {
-    // ✅ CAMBIO: Confirm por Toast + navegación directa
     this.toastService.showInfo('Compra cancelada');
     this.router.navigate(['/cart']);
   }

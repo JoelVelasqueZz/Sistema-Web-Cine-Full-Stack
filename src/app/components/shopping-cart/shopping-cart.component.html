@@ -18,14 +18,14 @@
       </nav>
     </div>
   </div>
-
+  
   <!-- Loading -->
   <div class="text-center my-5" *ngIf="cargando">
     <div class="spinner-border text-primary" role="status">
       <span class="visually-hidden">Cargando carrito...</span>
     </div>
   </div>
-
+  
   <!-- Carrito vacío -->
   <div class="row" *ngIf="!cargando && cartItems.length === 0">
     <div class="col-12">
@@ -44,7 +44,7 @@
       </div>
     </div>
   </div>
-
+  
   <!-- Items del carrito -->
   <div class="row" *ngIf="!cargando && cartItems.length > 0">
     
@@ -81,6 +81,14 @@
                 <div class="mt-2">
                   <span class="badge bg-info me-1">{{ item.funcion.sala }}</span>
                   <span class="badge bg-secondary me-1">{{ item.funcion.formato }}</span>
+                  
+                  <!-- ✅ NUEVO: Badge indicando tipo de asientos -->
+                  <span *ngIf="item.precio > item.funcion.precio" class="badge bg-warning text-dark me-1">
+                    <i class="fas fa-crown me-1"></i>VIP
+                  </span>
+                  <span *ngIf="item.precio === item.funcion.precio" class="badge bg-success me-1">
+                    <i class="fas fa-chair me-1"></i>Estándar
+                  </span>
                 </div>
                 
                 <div class="mt-2">
@@ -96,26 +104,17 @@
                 </div>
               </div>
               
-              <!-- Cantidad y precio -->
+              <!-- ✅ CANTIDAD FIJA - SIN BOTONES DE EDICIÓN -->
               <div class="col-md-2 text-center mb-3 mb-md-0">
-                <label class="form-label small text-muted">Cantidad</label>
-                <div class="input-group input-group-sm">
-                  <button class="btn btn-outline-secondary" 
-                          type="button" 
-                          (click)="decrementarCantidad(item)"
-                          [disabled]="item.cantidad <= 1">
-                    <i class="fas fa-minus"></i>
-                  </button>
-                  <input type="text" 
-                         class="form-control text-center" 
-                         [value]="item.cantidad" 
-                         readonly>
-                  <button class="btn btn-outline-secondary" 
-                          type="button" 
-                          (click)="incrementarCantidad(item)"
-                          [disabled]="item.cantidad >= 10">
-                    <i class="fas fa-plus"></i>
-                  </button>
+                <label class="form-label small text-muted">Asientos</label>
+                <div class="d-flex flex-column align-items-center">
+                  <div class="bg-light rounded px-3 py-2 mb-2">
+                    <span class="fw-bold text-primary fs-5">{{ item.cantidad }}</span>
+                  </div>
+                  <small class="text-success fw-bold">
+                    <i class="fas fa-couch me-1"></i>Seleccionados
+                  </small>
+                  <small class="text-muted">${{ item.precio.toFixed(2) }} c/u</small>
                 </div>
               </div>
               
@@ -130,6 +129,13 @@
                         title="Eliminar entrada">
                   <i class="fas fa-trash"></i>
                 </button>
+                
+                <!-- ✅ NUEVO: Mensaje explicativo -->
+                <div class="mt-2">
+                  <small class="text-muted d-block">
+                    Para cambiar cantidad, selecciona asientos nuevamente
+                  </small>
+                </div>
               </div>
               
             </div>
@@ -194,6 +200,12 @@
             Las entradas se enviarán a tu email después del pago.
           </div>
           
+          <!-- ✅ NUEVO: Nota sobre asientos -->
+          <div class="alert alert-warning small mb-3" *ngIf="cartItems.length > 0">
+            <i class="fas fa-chair me-1"></i>
+            <strong>Asientos confirmados:</strong> La cantidad no se puede modificar una vez seleccionados los asientos.
+          </div>
+          
           <!-- Botón de pago -->
           <div class="d-grid">
             <button class="btn btn-success btn-lg" 
@@ -225,7 +237,6 @@
     </div>
     
   </div>
-
 </div>
 
 <!-- Modal de confirmación para limpiar carrito -->

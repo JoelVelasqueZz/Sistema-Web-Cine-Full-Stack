@@ -2,7 +2,9 @@ import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MovieService, Pelicula, FuncionCine, Seat } from '../../services/movie.service';
 import { CartService } from '../../services/cart.service';
-import { ToastService } from '../../services/toast.service'; // ← NUEVO IMPORT
+import { ToastService } from '../../services/toast.service';
+import { AuthService } from '../../services/auth.service'; // 🆕 AGREGAR
+import { UserService } from '../../services/user.service'; // 🆕 AGREGAR
 
 @Component({
   selector: 'app-seat-selection',
@@ -25,7 +27,9 @@ export class SeatSelectionComponent implements OnInit {
     private router: Router,
     private movieService: MovieService,
     private cartService: CartService,
-    private toastService: ToastService // ← AGREGAR AQUÍ
+    private toastService: ToastService,
+    public authService: AuthService,    // 🆕 AGREGAR (público para template)
+    private userService: UserService    // 🆕 AGREGAR
   ) {}
 
   ngOnInit(): void {
@@ -70,7 +74,6 @@ export class SeatSelectionComponent implements OnInit {
     } else {
       // Verificar límite de cantidad
       if (this.selectedSeats.length >= this.cantidad) {
-        // ✅ CAMBIO: Alert por Toast
         this.toastService.showWarning(`Solo puedes seleccionar ${this.cantidad} asiento(s)`);
         return;
       }
@@ -138,7 +141,6 @@ export class SeatSelectionComponent implements OnInit {
   limpiarSeleccion(): void {
     this.selectedSeats.forEach(seat => seat.isSelected = false);
     this.selectedSeats = [];
-    // ✅ NUEVO: Toast informativo
     this.toastService.showInfo('Selección de asientos limpiada');
   }
 
@@ -148,52 +150,46 @@ export class SeatSelectionComponent implements OnInit {
 
   confirmarSeleccion(): void {
     if (this.selectedSeats.length === 0) {
-      // ✅ CAMBIO: Alert por Toast
       this.toastService.showWarning('Debes seleccionar al menos un asiento');
       return;
     }
 
     if (this.selectedSeats.length !== this.cantidad) {
-      // ✅ CAMBIO: Alert por Toast
       this.toastService.showWarning(`Debes seleccionar exactamente ${this.cantidad} asiento(s)`);
       return;
     }
 
     if (!this.pelicula || !this.funcion) {
-      // ✅ CAMBIO: Alert por Toast
       this.toastService.showError('Error: Información de película o función no disponible');
       return;
     }
 
-    // Crear objeto de compra con asientos específicos
-    const purchaseData = {
-      pelicula: this.pelicula,
-      funcion: {
-        ...this.funcion,
-        asientosSeleccionados: this.selectedSeats.map(s => s.id),
-        precioTotal: this.getTotalPrice()
-      },
-      cantidad: this.selectedSeats.length,
-      asientos: this.selectedSeats
+    // ✅ CALCULAR PRECIO PROMEDIO POR ASIENTO
+    const precioTotalAsientos = this.getTotalPrice();
+    const precioPromedioPorAsiento = precioTotalAsientos / this.selectedSeats.length;
+
+    // Crear función modificada con el precio correcto
+    const funcionConPrecioVIP = {
+      ...this.funcion,
+      precio: precioPromedioPorAsiento,  // ← PRECIO CORRECTO
+      asientosSeleccionados: this.selectedSeats.map(s => s.id),
+      precioTotal: precioTotalAsientos
     };
 
-    // Agregar al carrito
+    // Agregar al carrito con precio correcto
     this.cartService.addToCart(
       this.pelicula, 
-      purchaseData.funcion, 
+      funcionConPrecioVIP,
       this.selectedSeats.length
     );
 
-    // Marcar asientos como ocupados (simulación)
+    // Marcar asientos como ocupados
     this.movieService.updateOccupiedSeats(
       this.funcionId, 
       this.selectedSeats.map(s => s.id)
     );
 
-    // ✅ NUEVO: Toast de éxito
     this.toastService.showSuccess(`¡${this.selectedSeats.length} asiento(s) agregado(s) al carrito!`);
-
-    // Navegar al carrito
     this.router.navigate(['/cart']);
   }
 

@@ -3,8 +3,45 @@
   <!-- Header con título y años -->
   <div class="row mb-4">
     <div class="col-12">
-      <h1 class="display-4 fw-bold text-primary">{{ pelicula?.titulo }}</h1>
-      <h2 class="text-muted">({{ pelicula?.anio }})</h2>
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+        <div>
+          <h1 class="display-4 fw-bold text-primary">{{ pelicula?.titulo }}</h1>
+          <h2 class="text-muted">({{ pelicula?.anio }})</h2>
+          
+          <!-- 🔥 INDICADOR ADMIN -->
+          <div *ngIf="authService.isAdmin()" class="mt-2">
+            <span class="badge bg-danger fs-6 px-3 py-2">
+              <i class="fas fa-crown me-2"></i>MODO ADMINISTRADOR
+            </span>
+          </div>
+        </div>
+        
+        <!-- 🔥 CONTROLES DE ADMINISTRACIÓN -->
+        <div class="admin-actions" *ngIf="authService.isAdmin()">
+          <div class="btn-group" role="group">
+            <button type="button" 
+                    class="btn btn-warning"
+                    (click)="editarPelicula()"
+                    data-bs-toggle="modal" 
+                    data-bs-target="#modalEditarPelicula"
+                    title="Editar película">
+              <i class="fas fa-edit me-2"></i>Editar
+            </button>
+            <button type="button" 
+                    class="btn btn-info"
+                    (click)="gestionarFunciones()"
+                    title="Gestionar funciones">
+              <i class="fas fa-clock me-2"></i>Funciones
+            </button>
+            <button type="button" 
+                    class="btn btn-danger"
+                    (click)="confirmarEliminarPelicula()"
+                    title="Eliminar película">
+              <i class="fas fa-trash me-2"></i>Eliminar
+            </button>
+          </div>
+        </div>
+      </div>
       <hr class="border-primary border-2">
     </div>
   </div>
@@ -14,7 +51,9 @@
     
     <!-- Columna izquierda - Poster y botón -->
     <div class="col-lg-4 col-md-5">
-      <div class="card shadow-lg border-0">
+      <div class="card shadow-lg border-0"
+           [class.border-warning]="authService.isAdmin()"
+           [class.admin-highlight]="authService.isAdmin()">
         <img [src]="pelicula.poster" 
              class="card-img-top rounded-top" 
              alt="{{ pelicula?.titulo }}" 
@@ -28,11 +67,31 @@
             </span>
           </div>
           
-          <!-- Botón de regresar -->
-          <div class="d-grid">
-            <a [routerLink]="['/movies']" class="btn btn-outline-danger btn-lg">
+          <!-- 🔥 INFORMACIÓN ADMIN -->
+          <div class="admin-info mb-3" *ngIf="authService.isAdmin()">
+            <div class="card bg-light border-warning">
+              <div class="card-body p-2">
+                <h6 class="card-title text-warning mb-2">
+                  <i class="fas fa-info-circle me-1"></i>Info Admin
+                </h6>
+                <small class="text-muted d-block">ID: {{ peliculaIndex }}</small>
+                <small class="text-muted d-block">Funciones: {{ getFuncionesCount() }}</small>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Botones de acción -->
+          <div class="d-grid gap-2">
+            <a [routerLink]="['/movies']" class="btn btn-outline-primary btn-lg">
               <i class="fas fa-arrow-left me-2"></i>Regresar
             </a>
+            
+            <!-- 🔥 BOTÓN ADMIN: VER ESTADÍSTICAS -->
+            <button class="btn btn-outline-warning" 
+                    *ngIf="authService.isAdmin()"
+                    (click)="verEstadisticas()">
+              <i class="fas fa-chart-bar me-2"></i>Estadísticas
+            </button>
           </div>
         </div>
       </div>
@@ -95,6 +154,31 @@
           </div>
         </div>
         
+        <!-- 🔥 PANEL DE FUNCIONES (PARA ADMIN) -->
+        <div class="funciones-admin mb-4" *ngIf="authService.isAdmin()">
+          <h5 class="text-warning mb-3">
+            <i class="fas fa-cog me-2"></i>Gestión de Funciones
+          </h5>
+          <div class="card border-warning">
+            <div class="card-body">
+              <div class="row g-2">
+                <div class="col-md-6">
+                  <button class="btn btn-outline-success w-100"
+                          (click)="agregarFuncion()">
+                    <i class="fas fa-plus me-2"></i>Agregar Función
+                  </button>
+                </div>
+                <div class="col-md-6">
+                  <button class="btn btn-outline-info w-100"
+                          (click)="verTodasLasFunciones()">
+                    <i class="fas fa-list me-2"></i>Ver Todas ({{ getFuncionesCount() }})
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
         <!-- Sección del Trailer -->
         <div class="trailer-section mb-4" *ngIf="tieneTrailer()">
           <h5 class="text-primary mb-3">
@@ -129,7 +213,7 @@
             </div>
           </div>
         </div>
-
+        
         <!-- Logo del estudio más grande y destacado -->
         <div class="studio-section mt-4">
           <h5 class="text-primary mb-3">
@@ -143,6 +227,196 @@
           </div>
         </div>
         
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 🔥 MODAL PARA EDITAR PELÍCULA (SOLO ADMINS) -->
+<div class="modal fade" id="modalEditarPelicula" tabindex="-1" aria-labelledby="modalEditarPeliculaLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header bg-warning text-dark">
+        <h5 class="modal-title" id="modalEditarPeliculaLabel">
+          <i class="fas fa-edit me-2"></i>
+          Editar: {{ pelicula?.titulo }}
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" *ngIf="peliculaEditando">
+        
+        <!-- FORMULARIO DE EDICIÓN -->
+        <form #formularioEdicion="ngForm" (ngSubmit)="guardarEdicionPelicula(formularioEdicion)">
+          
+          <div class="row">
+            <!-- Columna izquierda -->
+            <div class="col-md-6">
+              
+              <div class="mb-3">
+                <label class="form-label">Título *</label>
+                <input type="text" 
+                       class="form-control" 
+                       name="titulo"
+                       [(ngModel)]="peliculaEditando.titulo"
+                       required>
+              </div>
+              
+              <div class="mb-3">
+                <label class="form-label">Director *</label>
+                <input type="text" 
+                       class="form-control" 
+                       name="director"
+                       [(ngModel)]="peliculaEditando.director"
+                       required>
+              </div>
+              
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label class="form-label">Año *</label>
+                    <input type="number" 
+                           class="form-control" 
+                           name="anio"
+                           [(ngModel)]="peliculaEditando.anio"
+                           required
+                           min="1900"
+                           max="2030">
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label class="form-label">Rating *</label>
+                    <input type="number" 
+                           class="form-control" 
+                           name="rating"
+                           [(ngModel)]="peliculaEditando.rating"
+                           required
+                           min="0"
+                           max="10"
+                           step="0.1">
+                  </div>
+                </div>
+              </div>
+              
+              <div class="mb-3">
+                <label class="form-label">Género *</label>
+                <select class="form-control" 
+                        name="genero"
+                        [(ngModel)]="peliculaEditando.genero"
+                        required>
+                  <option value="">Seleccionar género</option>
+                  <option value="Acción">Acción</option>
+                  <option value="Aventura">Aventura</option>
+                  <option value="Animación">Animación</option>
+                  <option value="Ciencia Ficción">Ciencia Ficción</option>
+                  <option value="Comedia">Comedia</option>
+                  <option value="Drama">Drama</option>
+                  <option value="Fantasía">Fantasía</option>
+                  <option value="Terror">Terror</option>
+                  <option value="Misterio">Misterio</option>
+                  <option value="Romance">Romance</option>
+                </select>
+              </div>
+              
+              <div class="mb-3">
+                <label class="form-label">Duración</label>
+                <input type="text" 
+                       class="form-control" 
+                       name="duracion"
+                       [(ngModel)]="peliculaEditando.duracion"
+                       placeholder="Ej: 2h 30min">
+              </div>
+              
+            </div>
+            
+            <!-- Columna derecha -->
+            <div class="col-md-6">
+              
+              <div class="mb-3">
+                <label class="form-label">URL del Poster</label>
+                <input type="url" 
+                       class="form-control" 
+                       name="poster"
+                       [(ngModel)]="peliculaEditando.poster"
+                       placeholder="https://ejemplo.com/poster.jpg">
+                
+                <!-- Vista previa del poster -->
+                <div class="mt-2" *ngIf="peliculaEditando.poster">
+                  <small class="text-muted d-block mb-1">Vista previa:</small>
+                  <img [src]="peliculaEditando.poster" 
+                       class="img-thumbnail" 
+                       style="max-width: 100px; max-height: 150px; object-fit: cover;"
+                       alt="Vista previa">
+                </div>
+              </div>
+              
+              <div class="mb-3">
+                <label class="form-label">Fecha de Estreno</label>
+                <input type="date" 
+                       class="form-control" 
+                       name="fechaEstreno"
+                       [(ngModel)]="peliculaEditando.fechaEstreno">
+              </div>
+              
+              <div class="mb-3">
+                <label class="form-label">Estudio</label>
+                <input type="text" 
+                       class="form-control" 
+                       name="estudio"
+                       [(ngModel)]="peliculaEditando.estudio"
+                       placeholder="Ej: assets/studios/disney.png">
+              </div>
+              
+              <div class="mb-3">
+                <label class="form-label">ID del Trailer (YouTube)</label>
+                <input type="text" 
+                       class="form-control" 
+                       name="trailer"
+                       [(ngModel)]="peliculaEditando.trailer"
+                       placeholder="Ej: kPMi_VxqcUc">
+                <small class="text-muted">Solo el ID del video de YouTube</small>
+              </div>
+              
+            </div>
+          </div>
+          
+          <!-- Sinopsis (ancho completo) -->
+          <div class="mb-3">
+            <label class="form-label">Sinopsis *</label>
+            <textarea class="form-control" 
+                      rows="4"
+                      name="sinopsis"
+                      [(ngModel)]="peliculaEditando.sinopsis"
+                      required
+                      placeholder="Describe la trama de la película..."></textarea>
+          </div>
+          
+          <!-- Mensajes de error/éxito -->
+          <div class="alert alert-danger" *ngIf="errorEdicion">
+            <strong>Error:</strong> {{ errorEdicion }}
+          </div>
+          
+          <div class="alert alert-success" *ngIf="exitoEdicion">
+            <strong>¡Éxito!</strong> {{ exitoEdicion }}
+          </div>
+          
+          <div class="text-end">
+            <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">
+              Cancelar
+            </button>
+            <button type="submit" 
+                    class="btn btn-warning" 
+                    [disabled]="!formularioEdicion.form.valid || guardandoEdicion">
+              <span *ngIf="!guardandoEdicion">
+                <i class="fas fa-save me-2"></i>Guardar Cambios
+              </span>
+              <span *ngIf="guardandoEdicion">
+                <span class="spinner-border spinner-border-sm me-2"></span>Guardando...
+              </span>
+            </button>
+          </div>
+          
+        </form>
       </div>
     </div>
   </div>

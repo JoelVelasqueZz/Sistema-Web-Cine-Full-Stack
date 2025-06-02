@@ -42,20 +42,6 @@ export class ShoppingCartComponent implements OnInit, OnDestroy {
     });
   }
 
-  incrementarCantidad(item: CartItem): void {
-    if (item.cantidad < 10) {
-      this.cartService.updateQuantity(item.id, item.cantidad + 1);
-    } else {
-      // ✅ NUEVO: Toast cuando llega al límite
-      this.toastService.showWarning('Máximo 10 entradas por función');
-    }
-  }
-
-  decrementarCantidad(item: CartItem): void {
-    if (item.cantidad > 1) {
-      this.cartService.updateQuantity(item.id, item.cantidad - 1);
-    }
-  }
 
   eliminarItem(itemId: string): void {
     // ✅ CAMBIO: Confirm por Toast + eliminación directa

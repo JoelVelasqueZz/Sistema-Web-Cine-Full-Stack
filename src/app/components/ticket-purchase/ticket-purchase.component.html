@@ -150,15 +150,33 @@
             <div class="col-md-4">
               <div class="row align-items-center">
                 <div class="col-6">
-                  <label class="form-label small">Cantidad:</label>
-                  <select class="form-select" [(ngModel)]="cantidadEntradas" name="cantidad">
-                    <option value="1">1 entrada</option>
-                    <option value="2">2 entradas</option>
-                    <option value="3">3 entradas</option>
-                    <option value="4">4 entradas</option>
-                    <option value="5">5 entradas</option>
-                  </select>
-                </div>
+  <label class="form-label small">Cantidad:</label>
+  <div class="input-group">
+    <button class="btn btn-outline-secondary" 
+            type="button" 
+            (click)="decrementarCantidad()"
+            [disabled]="cantidadEntradas <= 1">
+      <i class="fas fa-minus"></i>
+    </button>
+    
+    <input type="number" 
+           class="form-control text-center fw-bold" 
+           [(ngModel)]="cantidadEntradas"
+           name="cantidad"
+           min="1"
+           max="20"
+           readonly
+           style="max-width: 80px;">
+    
+    <button class="btn btn-outline-secondary" 
+            type="button" 
+            (click)="incrementarCantidad()"
+            [disabled]="cantidadEntradas >= 20">
+      <i class="fas fa-plus"></i>
+    </button>
+  </div>
+  <small class="text-muted">Máximo 20 entradas</small>
+</div>
                 <div class="col-6">
                   <label class="form-label small">Total:</label>
                   <h4 class="text-success mb-0">
