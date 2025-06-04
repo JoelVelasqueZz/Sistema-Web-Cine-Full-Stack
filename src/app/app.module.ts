@@ -8,7 +8,6 @@ import { AppComponent } from './app.component';
 import { NavbarComponent } from './components/navbar/navbar.component';
 import { HomeComponent } from './components/home/home.component';
 import { MovieListComponent } from './components/movie-list/movie-list.component';
-import { MovieCardComponent } from './components/movie-card/movie-card.component';
 import { MovieDetailComponent } from './components/movie-detail/movie-detail.component';
 import { SearchComponent } from './components/search/search.component';
 import { LoginComponent } from './components/login/login.component';
@@ -41,7 +40,6 @@ import { AdminService } from './services/admin.service';
     NavbarComponent,
     HomeComponent,
     MovieListComponent,
-    MovieCardComponent,
     MovieDetailComponent,
     SearchComponent,
     LoginComponent,     

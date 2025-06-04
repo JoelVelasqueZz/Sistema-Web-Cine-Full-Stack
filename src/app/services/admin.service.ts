@@ -165,16 +165,19 @@ export class AdminService {
   }
 
   private getPeliculasPopulares(): PeliculaPopular[] {
-    const peliculas = this.movieService.getPeliculas();
-    return peliculas
-      .slice(0, 5)
-      .map(p => ({
-        titulo: p.titulo,
-        vistas: Math.floor(Math.random() * 1000) + 100,
-        rating: p.rating,
-        genero: p.genero
-      }));
-  }
+  const peliculas = this.movieService.getPeliculas();
+  
+  // Usar datos reales de tu catálogo
+  return peliculas
+    .map(p => ({
+      titulo: p.titulo,
+      vistas: Math.floor(Math.random() * 1000) + 100, // Simular vistas por ahora
+      rating: p.rating,
+      genero: p.genero
+    }))
+    .sort((a, b) => b.rating - a.rating) // Ordenar por rating (mejores primero)
+    .slice(0, 5); // Top 5 películas
+}
 
   private getGeneroStats(): GeneroStats[] {
     const peliculas = this.movieService.getPeliculas();
@@ -396,42 +399,9 @@ export class AdminService {
   // ==================== GESTIÓN DE USUARIOS ====================
   
   // Obtener todos los usuarios desde AuthService
-  private getAllUsersFromAuth(): Usuario[] {
-    // Como tu AuthService tiene usuarios privados, necesitarías un método público
-    // Por ahora simulo con datos básicos
-    return [
-      {
-        id: 1,
-        nombre: 'Juan Pérez',
-        email: 'juan@email.com',
-        password: '123456',
-        fechaRegistro: '2024-01-15',
-        avatar: 'https://ui-avatars.com/api/?name=Juan+Perez&background=4CAF50&color=fff&size=128',
-        role: 'cliente',
-        isActive: true
-      },
-      {
-        id: 2,
-        nombre: 'María García',
-        email: 'maria@email.com',
-        password: 'admin',
-        fechaRegistro: '2024-02-10',
-        avatar: 'https://ui-avatars.com/api/?name=Maria+Garcia&background=2196F3&color=fff&size=128',
-        role: 'admin',
-        isActive: true
-      },
-      {
-        id: 3,
-        nombre: 'Admin Sistema',
-        email: 'admin@parkyfilms.com',
-        password: 'admin123',
-        fechaRegistro: '2024-01-01',
-        avatar: 'https://ui-avatars.com/api/?name=Admin+Sistema&background=FF5722&color=fff&size=128',
-        role: 'admin',
-        isActive: true
-      }
-    ];
-  }
+private getAllUsersFromAuth(): Usuario[] {
+  return this.authService.getAllRegisteredUsers();
+}
 
   // Obtener todos los usuarios (solo para admin)
   getAllUsers(): Usuario[] {
@@ -440,45 +410,51 @@ export class AdminService {
 
   // Cambiar rol de usuario (simulado)
   changeUserRole(userId: number, nuevoRol: 'cliente' | 'admin'): boolean {
-    try {
-      // Nota: Tu AuthService no tiene método updateUser
-      console.log(`Cambiando rol del usuario ${userId} a ${nuevoRol}`);
+  try {
+    const usuario = this.authService.findUserById(userId);
+    if (usuario) {
+      usuario.role = nuevoRol;
       
       this.addActividad({
         tipo: 'registro',
-        descripcion: `Usuario ID:${userId} ahora es ${nuevoRol}`,
+        descripcion: `Usuario ${usuario.nombre} ahora es ${nuevoRol}`,
         fecha: new Date().toISOString(),
         icono: 'fas fa-user-cog',
         color: 'warning'
       });
       
       return true;
-    } catch (error) {
-      console.error('Error al cambiar rol:', error);
-      return false;
     }
+    return false;
+  } catch (error) {
+    console.error('Error al cambiar rol:', error);
+    return false;
   }
+}
 
   // Activar/Desactivar usuario (simulado)
-  toggleUserStatus(userId: number): boolean {
-    try {
-      // Nota: Tu AuthService no tiene método updateUser
-      console.log(`Cambiando estado del usuario ${userId}`);
+ toggleUserStatus(userId: number): boolean {
+  try {
+    const usuario = this.authService.findUserById(userId);
+    if (usuario) {
+      usuario.isActive = !usuario.isActive;
       
       this.addActividad({
         tipo: 'registro',
-        descripcion: `Estado del usuario ID:${userId} cambiado`,
+        descripcion: `Estado del usuario ${usuario.nombre} cambiado a ${usuario.isActive ? 'activo' : 'inactivo'}`,
         fecha: new Date().toISOString(),
         icono: 'fas fa-user-check',
         color: 'success'
       });
       
       return true;
-    } catch (error) {
-      console.error('Error al cambiar estado:', error);
-      return false;
     }
+    return false;
+  } catch (error) {
+    console.error('Error al cambiar estado:', error);
+    return false;
   }
+}
 
   // ==================== REPORTES Y ANALYTICS ====================
   

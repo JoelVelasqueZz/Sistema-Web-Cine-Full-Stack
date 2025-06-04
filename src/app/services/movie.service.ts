@@ -341,7 +341,7 @@ export class MovieService {
     id: 7,
     titulo: "Los 4 Fantásticos: Primeros Pasos",
     sinopsis: "Reed Richards, Sue Storm, Johnny Storm y Ben Grimm se embarcan en una peligrosa misión espacial que alterará sus vidas para siempre. Cuando adquieren poderes extraordinarios tras exponerse a rayos cósmicos, deberán aprender a trabajar en equipo para proteger la Tierra de amenazas que van más allá de su comprensión.",
-    poster: "assets/movies/fantasticos.png",
+    poster: "  assets/movies/fantasticos.png",
     fechaEstreno: "2025-07-25",
     estudio: "assets/studios/marvel.png",
     genero: "Acción",

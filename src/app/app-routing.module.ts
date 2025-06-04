@@ -2,7 +2,6 @@ import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { HomeComponent } from './components/home/home.component';
 import { MovieListComponent } from './components/movie-list/movie-list.component';
-import { MovieCardComponent } from './components/movie-card/movie-card.component';
 import { MovieDetailComponent } from './components/movie-detail/movie-detail.component';
 import { TicketPurchaseComponent } from './components/ticket-purchase/ticket-purchase.component';
 import { ShoppingCartComponent } from './components/shopping-cart/shopping-cart.component';

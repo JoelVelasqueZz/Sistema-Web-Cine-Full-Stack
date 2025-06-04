@@ -5,6 +5,10 @@ import { AdminService } from '../../../services/admin.service';
 import { UserService } from '../../../services/user.service';
 import { ToastService } from '../../../services/toast.service';
 
+// Importar jsPDF al inicio del archivo
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
+
 @Component({
   selector: 'app-admin-users',
   standalone: false,
@@ -487,172 +491,439 @@ export class AdminUsersComponent implements OnInit {
   // ==================== REPORTES Y EXPORTACIÓN ====================
 
   /**
-   * Exportar lista de usuarios
+   * Exportar lista de usuarios en PDF
    */
   exportUsers(): void {
     this.processing = true;
-    this.toastService.showInfo('Generando exportación de usuarios...');
+    this.toastService.showInfo('Generando exportación de usuarios en PDF...');
 
     setTimeout(() => {
-      const exportData = {
-        fechaExportacion: new Date().toISOString(),
-        totalUsuarios: this.filteredUsers.length,
-        filtrosAplicados: {
-          busqueda: this.searchTerm,
-          rol: this.roleFilter,
-          estado: this.statusFilter,
-          ordenamiento: this.sortBy
-        },
-        usuarios: this.filteredUsers.map(user => ({
-          id: user.id,
-          nombre: user.nombre,
-          email: user.email,
-          rol: user.role,
-          activo: user.isActive,
-          fechaRegistro: user.fechaRegistro,
-          favoritas: this.getUserFavorites(user.id),
-          historial: this.getUserHistory(user.id)
-        }))
-      };
-
-      // Simular descarga
-      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `usuarios-export-${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-
-      this.toastService.showSuccess('Exportación completada exitosamente');
-      this.processing = false;
-    }, 2000);
+      try {
+        const doc = new jsPDF();
+        
+        // Configurar encabezado
+        this.setupPDFHeader(doc, 'EXPORTACIÓN DE USUARIOS', 
+          `Lista filtrada de usuarios del sistema - ${this.filteredUsers.length} usuarios`);
+        
+        let currentY = 110;
+        
+        // Información de filtros aplicados
+        if (this.hasActiveFilters()) {
+          doc.setFillColor(240, 240, 240);
+          doc.rect(20, currentY - 5, 170, 15, 'F');
+          doc.setFontSize(12);
+          doc.setTextColor(52, 73, 94);
+          doc.text('FILTROS APLICADOS', 25, currentY + 5);
+          currentY += 20;
+          
+          const filtros = [];
+          if (this.searchTerm) filtros.push(`Búsqueda: "${this.searchTerm}"`);
+          if (this.roleFilter) filtros.push(`Rol: ${this.roleFilter}`);
+          if (this.statusFilter !== '') filtros.push(`Estado: ${this.statusFilter === 'true' ? 'Activos' : 'Inactivos'}`);
+          
+          doc.setFontSize(10);
+          doc.setTextColor(100, 100, 100);
+          filtros.forEach(filtro => {
+            doc.text(`• ${filtro}`, 25, currentY);
+            currentY += 8;
+          });
+          currentY += 10;
+        }
+        
+        // Tabla de usuarios
+        const usuariosData = this.filteredUsers.map((usuario, index) => [
+          (index + 1).toString(),
+          usuario.nombre,
+          usuario.email.length > 30 ? usuario.email.substring(0, 30) + '...' : usuario.email,
+          usuario.role === 'admin' ? 'Admin' : 'Cliente',
+          usuario.isActive ? 'Activo' : 'Inactivo',
+          this.formatDate(usuario.fechaRegistro),
+          this.getUserFavorites(usuario.id).toString(),
+          this.getUserHistory(usuario.id).toString()
+        ]);
+        
+        autoTable(doc, {
+          head: [['#', 'Nombre', 'Email', 'Rol', 'Estado', 'Registro', 'Favoritas', 'Vistas']],
+          body: usuariosData,
+          startY: currentY,
+          theme: 'striped',
+          headStyles: { 
+            fillColor: [52, 152, 219],
+            textColor: [255, 255, 255],
+            fontSize: 10,
+            fontStyle: 'bold'
+          },
+          styles: { 
+            fontSize: 8,
+            cellPadding: { top: 3, right: 4, bottom: 3, left: 4 }
+          },
+          columnStyles: {
+            0: { cellWidth: 15, halign: 'center' },
+            1: { cellWidth: 30 },
+            2: { cellWidth: 45 },
+            3: { cellWidth: 20, halign: 'center' },
+            4: { cellWidth: 20, halign: 'center' },
+            5: { cellWidth: 25, halign: 'center' },
+            6: { cellWidth: 18, halign: 'center' },
+            7: { cellWidth: 18, halign: 'center' }
+          },
+          alternateRowStyles: { fillColor: [248, 249, 250] }
+        });
+        
+        // Configurar pie de página
+        this.setupPDFFooter(doc);
+        
+        // Descargar PDF
+        doc.save(`usuarios-export-${new Date().toISOString().split('T')[0]}.pdf`);
+        
+        this.processing = false;
+        this.toastService.showSuccess('Exportación de usuarios completada en PDF');
+        
+      } catch (error) {
+        console.error('Error generando exportación:', error);
+        this.processing = false;
+        this.toastService.showError('Error al generar la exportación PDF');
+      }
+    }, 1000);
   }
 
   /**
-   * Generar reporte de usuarios
+   * Generar reporte completo de usuarios en PDF
    */
   generateUserReport(): void {
     this.processing = true;
-    this.toastService.showInfo('Generando reporte de usuarios...');
+    this.toastService.showInfo('Generando reporte completo de usuarios...');
 
     setTimeout(() => {
-      const reporte = {
-        titulo: 'Reporte de Usuarios del Sistema',
-        fechaGeneracion: new Date().toLocaleString('es-ES'),
-        resumenEjecutivo: {
-          totalUsuarios: this.getTotalUsers(),
-          usuariosActivos: this.getActiveUsers(),
-          administradores: this.getAdminUsers(),
-          nuevosUsuarios30d: this.getRecentUsers(),
-          porcentajeActivos: Math.round((this.getActiveUsers() / this.getTotalUsers()) * 100)
-        },
-        distribucionPorRol: {
-          administradores: this.getAdminUsers(),
-          clientes: this.getTotalUsers() - this.getAdminUsers()
-        },
-        estadisticasActividad: {
-          usuariosConFavoritas: this.allUsers.filter(u => this.getUserFavorites(u.id) > 0).length,
-          usuariosConHistorial: this.allUsers.filter(u => this.getUserHistory(u.id) > 0).length,
-          promedioPeliculasFavoritas: this.getAverageFavorites(),
-          promedioHistorial: this.getAverageHistory()
-        },
-        tendencias: {
-          registrosPorMes: this.getRegistrationTrends(),
-          actividad: this.getActivityTrends()
-        },
-        recomendaciones: [
+      try {
+        const doc = new jsPDF();
+        
+        // === PÁGINA 1: RESUMEN EJECUTIVO ===
+        this.setupPDFHeader(doc, 'REPORTE COMPLETO DE USUARIOS', 
+          'Análisis detallado de la base de usuarios del sistema');
+        
+        let currentY = 110;
+        
+        // Resumen ejecutivo
+        doc.setFillColor(240, 240, 240);
+        doc.rect(20, currentY - 5, 170, 15, 'F');
+        doc.setFontSize(14);
+        doc.setTextColor(52, 73, 94);
+        doc.text('RESUMEN EJECUTIVO', 25, currentY + 5);
+        currentY += 20;
+        
+        const resumenData = [
+          ['Total de Usuarios', this.getTotalUsers().toString()],
+          ['Usuarios Activos', `${this.getActiveUsers()} (${Math.round((this.getActiveUsers()/this.getTotalUsers())*100)}%)`],
+          ['Usuarios Inactivos', `${this.getTotalUsers() - this.getActiveUsers()} (${Math.round(((this.getTotalUsers() - this.getActiveUsers())/this.getTotalUsers())*100)}%)`],
+          ['Administradores', `${this.getAdminUsers()} (${Math.round((this.getAdminUsers()/this.getTotalUsers())*100)}%)`],
+          ['Clientes', `${this.getTotalUsers() - this.getAdminUsers()} (${Math.round(((this.getTotalUsers() - this.getAdminUsers())/this.getTotalUsers())*100)}%)`],
+          ['Nuevos Usuarios (30d)', this.getRecentUsers().toString()],
+          ['Promedio Favoritas', this.getAverageFavorites().toString()],
+          ['Promedio Historial', this.getAverageHistory().toString()]
+        ];
+        
+        autoTable(doc, {
+          body: resumenData,
+          startY: currentY,
+          theme: 'plain',
+          styles: { 
+            fontSize: 11,
+            cellPadding: { top: 5, right: 10, bottom: 5, left: 10 }
+          },
+          columnStyles: {
+            0: { fontStyle: 'bold', cellWidth: 100, fillColor: [248, 249, 250] },
+            1: { cellWidth: 70, halign: 'center', fillColor: [255, 255, 255] }
+          }
+        });
+        
+        currentY = (doc as any).lastAutoTable.finalY + 20;
+        
+        // Análisis de actividad
+        doc.setFillColor(240, 240, 240);
+        doc.rect(20, currentY - 5, 170, 15, 'F');
+        doc.setFontSize(14);
+        doc.setTextColor(52, 73, 94);
+        doc.text('ANÁLISIS DE ACTIVIDAD', 25, currentY + 5);
+        currentY += 20;
+        
+        const usuariosConFavoritas = this.allUsers.filter(u => this.getUserFavorites(u.id) > 0).length;
+        const usuariosConHistorial = this.allUsers.filter(u => this.getUserHistory(u.id) > 0).length;
+        
+        const actividadData = [
+          ['Usuarios con Favoritas', `${usuariosConFavoritas} (${Math.round((usuariosConFavoritas/this.getTotalUsers())*100)}%)`],
+          ['Usuarios con Historial', `${usuariosConHistorial} (${Math.round((usuariosConHistorial/this.getTotalUsers())*100)}%)`],
+          ['Usuarios Sin Actividad', `${this.getTotalUsers() - Math.max(usuariosConFavoritas, usuariosConHistorial)} usuarios`],
+          ['Tasa de Engagement', `${Math.round((Math.max(usuariosConFavoritas, usuariosConHistorial)/this.getTotalUsers())*100)}%`]
+        ];
+        
+        autoTable(doc, {
+          body: actividadData,
+          startY: currentY,
+          theme: 'plain',
+          styles: { 
+            fontSize: 11,
+            cellPadding: { top: 5, right: 10, bottom: 5, left: 10 }
+          },
+          columnStyles: {
+            0: { fontStyle: 'bold', cellWidth: 100, fillColor: [248, 249, 250] },
+            1: { cellWidth: 70, halign: 'center', fillColor: [255, 255, 255] }
+          }
+        });
+        
+        // === PÁGINA 2: LISTA DETALLADA ===
+        doc.addPage();
+        this.setupPDFHeader(doc, 'DIRECTORIO COMPLETO', 'Lista detallada de todos los usuarios');
+        
+        currentY = 110;
+        
+        // Top usuarios más activos
+        doc.setFillColor(240, 240, 240);
+        doc.rect(20, currentY - 5, 170, 15, 'F');
+        doc.setFontSize(14);
+        doc.setTextColor(52, 73, 94);
+        doc.text('TOP USUARIOS MÁS ACTIVOS', 25, currentY + 5);
+        currentY += 15;
+        
+        const usuariosOrdenados = this.allUsers
+          .map(u => ({
+            ...u,
+            actividad: this.getUserFavorites(u.id) + this.getUserHistory(u.id)
+          }))
+          .sort((a, b) => b.actividad - a.actividad)
+          .slice(0, 10);
+          
+        const topUsuariosData = usuariosOrdenados.map((usuario, index) => [
+          (index + 1).toString(),
+          usuario.nombre,
+          usuario.role === 'admin' ? 'Admin' : 'Cliente',
+          usuario.isActive ? 'Activo' : 'Inactivo',
+          this.getUserFavorites(usuario.id).toString(),
+          this.getUserHistory(usuario.id).toString(),
+          usuario.actividad.toString()
+        ]);
+        
+        autoTable(doc, {
+          head: [['#', 'Nombre', 'Rol', 'Estado', 'Favoritas', 'Vistas', 'Total']],
+          body: topUsuariosData,
+          startY: currentY,
+          theme: 'striped',
+          headStyles: { 
+            fillColor: [46, 204, 113],
+            textColor: [255, 255, 255],
+            fontSize: 10,
+            fontStyle: 'bold'
+          },
+          styles: { 
+            fontSize: 9,
+            cellPadding: { top: 4, right: 6, bottom: 4, left: 6 }
+          },
+          columnStyles: {
+            0: { cellWidth: 15, halign: 'center' },
+            1: { cellWidth: 50 },
+            2: { cellWidth: 25, halign: 'center' },
+            3: { cellWidth: 25, halign: 'center' },
+            4: { cellWidth: 22, halign: 'center' },
+            5: { cellWidth: 22, halign: 'center' },
+            6: { cellWidth: 22, halign: 'center' }
+          },
+          alternateRowStyles: { fillColor: [248, 249, 250] }
+        });
+        
+        currentY = (doc as any).lastAutoTable.finalY + 20;
+        
+        // Recomendaciones
+        doc.setFillColor(240, 240, 240);
+        doc.rect(20, currentY - 5, 170, 15, 'F');
+        doc.setFontSize(14);
+        doc.setTextColor(52, 73, 94);
+        doc.text('RECOMENDACIONES', 25, currentY + 5);
+        currentY += 20;
+        
+        const recomendaciones = [
           'Implementar programa de retención para usuarios inactivos',
           'Crear sistema de gamificación para aumentar engagement',
           'Desarrollar contenido personalizado basado en favoritas',
-          'Establecer comunicación regular con usuarios premium'
-        ]
-      };
-
-      console.log('=== REPORTE DE USUARIOS ===');
-      console.log(reporte);
-      console.log('==========================');
-
-      this.toastService.showSuccess('Reporte de usuarios generado (ver consola)');
-      this.processing = false;
-    }, 3000);
+          'Establecer comunicación regular con usuarios frecuentes',
+          'Analizar patrones de uso para mejorar la experiencia'
+        ];
+        
+        doc.setFontSize(11);
+        doc.setTextColor(0, 0, 0);
+        recomendaciones.forEach(recomendacion => {
+          doc.text(`• ${recomendacion}`, 25, currentY);
+          currentY += 10;
+        });
+        
+        // Configurar pie de página
+        this.setupPDFFooter(doc);
+        
+        // Descargar PDF
+        doc.save(`reporte-usuarios-completo-${new Date().toISOString().split('T')[0]}.pdf`);
+        
+        this.processing = false;
+        this.toastService.showSuccess('Reporte completo de usuarios generado en PDF');
+        
+      } catch (error) {
+        console.error('Error generando reporte:', error);
+        this.processing = false;
+        this.toastService.showError('Error al generar el reporte PDF');
+      }
+    }, 2000);
   }
 
-  // ==================== UTILIDADES ====================
+  // ==================== MÉTODOS AUXILIARES PARA PDF ====================
 
   /**
-   * Formatear fecha
+   * Configurar encabezado del PDF
    */
-  formatDate(fecha: string): string {
-    return new Date(fecha).toLocaleDateString('es-ES', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  }
-
-  /**
-   * Calcular días transcurridos
-   */
-  getDaysAgo(fecha: string): number {
-    const now = new Date();
-    const then = new Date(fecha);
-    const diffTime = Math.abs(now.getTime() - then.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
-  }
-
-  /**
-   * Track function para ngFor
-   */
-  trackUser(index: number, user: Usuario): number {
-    return user.id;
-  }
-
-  /**
-   * Obtener promedio de favoritas
-   */
-  private getAverageFavorites(): number {
-    const total = this.allUsers.reduce((sum, user) => sum + this.getUserFavorites(user.id), 0);
-    return Math.round((total / this.allUsers.length) * 10) / 10;
-  }
-
-  /**
-   * Obtener promedio de historial
-   */
-  private getAverageHistory(): number {
-    const total = this.allUsers.reduce((sum, user) => sum + this.getUserHistory(user.id), 0);
-    return Math.round((total / this.allUsers.length) * 10) / 10;
-  }
-
-  /**
-   * Obtener tendencias de registro
-   */
-  private getRegistrationTrends(): any[] {
-    const meses: { [key: string]: number } = {};
+  private setupPDFHeader(doc: jsPDF, titulo: string, subtitulo?: string): void {
+    // Fondo del encabezado
+    doc.setFillColor(41, 128, 185);
+    doc.rect(0, 0, 210, 45, 'F');
     
-    this.allUsers.forEach(user => {
-      const fecha = new Date(user.fechaRegistro);
-      const mesAño = `${fecha.getFullYear()}-${(fecha.getMonth() + 1).toString().padStart(2, '0')}`;
-      meses[mesAño] = (meses[mesAño] || 0) + 1;
-    });
+    // Logo y título principal en blanco
+    doc.setFontSize(24);
+    doc.setTextColor(255, 255, 255);
+    doc.text('CinemaApp', 20, 25);
     
-    return Object.entries(meses).map(([mes, cantidad]) => ({ mes, cantidad }));
-  }
+    doc.setFontSize(12);
+    doc.text('Gestión de Usuarios', 20, 35);
+    
+    // Título del reporte
+    doc.setFontSize(18);
+    doc.setTextColor(0, 0, 0);
+    doc.text(titulo, 20, 60);
+    
+    if (subtitulo) {
+      doc.setFontSize(12);
+      doc.setTextColor(100, 100, 100);
+      doc.text(subtitulo, 20, 72);
+    }
+    
+    // Información de generación
+    doc.setFontSize(10);
+    doc.setTextColor(150, 150, 150);
+    const fechaGeneracion = new Date().toLocaleString('es-ES');
+    doc.text(`Generado el: ${fechaGeneracion}`, 20, 85);
+    doc.text(`Por: ${this.authService.getCurrentUser()?.nombre || 'Admin'}`, 20, 95);
+    
+    // Línea separadora
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth
+    doc.setLineWidth(0.5);
+   doc.line(20, 100, 190, 100);
+ }
 
-  /**
-   * Obtener tendencias de actividad
-   */
-  private getActivityTrends(): any {
-    return {
-      usuariosConActividad: this.allUsers.filter(u => 
-        this.getUserFavorites(u.id) > 0 || this.getUserHistory(u.id) > 0
-      ).length,
-      usuariosSinActividad: this.allUsers.filter(u => 
-        this.getUserFavorites(u.id) === 0 && this.getUserHistory(u.id) === 0
-      ).length
-    };
-  }
+ /**
+  * Configurar pie de página del PDF
+  */
+ private setupPDFFooter(doc: jsPDF): void {
+   const pageCount = (doc as any).internal.getNumberOfPages();
+   
+   for (let i = 1; i <= pageCount; i++) {
+     doc.setPage(i);
+     
+     // Línea superior del pie
+     doc.setDrawColor(41, 128, 185);
+     doc.setLineWidth(1);
+     doc.line(20, 275, 190, 275);
+     
+     // Información del pie
+     doc.setFontSize(8);
+     doc.setTextColor(100, 100, 100);
+     doc.text('CinemaApp - Gestión de Usuarios', 20, 282);
+     doc.text('Documento Confidencial - Solo uso interno', 20, 287);
+     
+     // Página actual
+     doc.setTextColor(41, 128, 185);
+     doc.text(`Página ${i} de ${pageCount}`, 150, 282);
+     
+     // Timestamp
+     const timestamp = new Date().toLocaleTimeString('es-ES', { 
+       hour: '2-digit', 
+       minute: '2-digit' 
+     });
+     doc.text(`Hora: ${timestamp}`, 150, 287);
+   }
+ }
+
+ // ==================== UTILIDADES ====================
+
+ /**
+  * Formatear fecha
+  */
+ formatDate(fecha: string): string {
+   return new Date(fecha).toLocaleDateString('es-ES', {
+     year: 'numeric',
+     month: 'short',
+     day: 'numeric'
+   });
+ }
+
+ /**
+  * Calcular días transcurridos
+  */
+ getDaysAgo(fecha: string): number {
+   const now = new Date();
+   const then = new Date(fecha);
+   const diffTime = Math.abs(now.getTime() - then.getTime());
+   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+   return diffDays;
+ }
+
+ /**
+  * Track function para ngFor
+  */
+ trackUser(index: number, user: Usuario): number {
+   return user.id;
+ }
+
+ /**
+  * Obtener promedio de favoritas
+  */
+ private getAverageFavorites(): number {
+   if (this.allUsers.length === 0) return 0;
+   const total = this.allUsers.reduce((sum, user) => sum + this.getUserFavorites(user.id), 0);
+   return Math.round((total / this.allUsers.length) * 10) / 10;
+ }
+
+ /**
+  * Obtener promedio de historial
+  */
+ private getAverageHistory(): number {
+   if (this.allUsers.length === 0) return 0;
+   const total = this.allUsers.reduce((sum, user) => sum + this.getUserHistory(user.id), 0);
+   return Math.round((total / this.allUsers.length) * 10) / 10;
+ }
+
+ /**
+  * Obtener tendencias de registro
+  */
+ private getRegistrationTrends(): any[] {
+   const meses: { [key: string]: number } = {};
+   
+   this.allUsers.forEach(user => {
+     const fecha = new Date(user.fechaRegistro);
+     const mesAño = `${fecha.getFullYear()}-${(fecha.getMonth() + 1).toString().padStart(2, '0')}`;
+     meses[mesAño] = (meses[mesAño] || 0) + 1;
+   });
+   
+   return Object.entries(meses).map(([mes, cantidad]) => ({ mes, cantidad }));
+ }
+
+ /**
+  * Obtener tendencias de actividad
+  */
+ private getActivityTrends(): any {
+   return {
+     usuariosConActividad: this.allUsers.filter(u => 
+       this.getUserFavorites(u.id) > 0 || this.getUserHistory(u.id) > 0
+     ).length,
+     usuariosSinActividad: this.allUsers.filter(u => 
+       this.getUserFavorites(u.id) === 0 && this.getUserHistory(u.id) === 0
+     ).length
+   };
+ }
+
 }

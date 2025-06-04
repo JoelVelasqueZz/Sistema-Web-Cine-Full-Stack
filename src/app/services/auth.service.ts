@@ -202,6 +202,21 @@ export class AuthService {
    // Generar URL del avatar
    return `https://ui-avatars.com/api/?name=${iniciales}&background=${colorAleatorio}&color=fff&size=128&bold=true`;
  }
+ public getAllRegisteredUsers(): Usuario[] {
+  return this.usuarios.slice(); // Retorna una copia del array
+}
+
+public getUsersCount(): number {
+  return this.usuarios.length;
+}
+
+public getActiveUsersCount(): number {
+  return this.usuarios.filter(u => u.isActive !== false).length;
+}
+
+public findUserById(id: number): Usuario | undefined {
+  return this.usuarios.find(u => u.id === id);
+}
 }
 
 // 🆕 INTERFACES ACTUALIZADAS
