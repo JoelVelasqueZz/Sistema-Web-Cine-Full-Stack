@@ -1,9 +1,10 @@
 // src/app/components/admin/admin-bar/admin-bar.component.ts
 import { Component, OnInit, OnDestroy } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router'; // 🔥 AGREGAR ActivatedRoute
 import { ProductoBar, BarService } from '../../../services/bar.service';
 import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
+import { Subscription } from 'rxjs'; // 🔥 AGREGAR Subscription
 
 @Component({
   selector: 'app-admin-bar',
@@ -12,6 +13,9 @@ import { ToastService } from '../../../services/toast.service';
   styleUrl: './admin-bar.component.css'
 })
 export class AdminBarComponent implements OnInit, OnDestroy {
+
+  imageLoaded: boolean = false;
+  imageError: boolean = false;
 
   productos: ProductoBar[] = [];
   productosFiltrados: ProductoBar[] = [];
@@ -40,6 +44,9 @@ export class AdminBarComponent implements OnInit, OnDestroy {
   mostrarModalConfirmacion: boolean = false;
   productoParaEliminar: number = -1;
   
+  // 🔥 AGREGAR: Subscription para query params
+  private routeSubscription: Subscription = new Subscription();
+  
   // Estadísticas
   estadisticas = {
     total: 0,
@@ -58,7 +65,8 @@ export class AdminBarComponent implements OnInit, OnDestroy {
     private barService: BarService,
     private authService: AuthService,
     private toastService: ToastService,
-    private router: Router
+    private router: Router,
+    private route: ActivatedRoute // 🔥 AGREGAR ActivatedRoute
   ) {}
 
   ngOnInit(): void {
@@ -71,11 +79,50 @@ export class AdminBarComponent implements OnInit, OnDestroy {
 
     // Cargar datos iniciales
     this.cargarProductos();
+    
+    // 🔥 AGREGAR: Verificar si viene con acción de agregar
+    this.routeSubscription = this.route.queryParams.subscribe(params => {
+      if (params['action'] === 'add') {
+        // Esperar un poco a que se carguen los datos
+        setTimeout(() => {
+          this.mostrarFormularioAgregar();
+          this.toastService.showSuccess('Formulario de agregar producto activado');
+        }, 800);
+      }
+    });
+    
     console.log('Admin Bar inicializado');
   }
+  
+  onImageError(event: any): void {
+    this.imageError = true;
+    this.imageLoaded = false;
+    console.log('Error al cargar imagen:', event);
+  }
 
+  /**
+   * Manejar carga exitosa de imagen
+   */
+  onImageLoad(event: any): void {
+    this.imageError = false;
+    this.imageLoaded = true;
+    console.log('Imagen cargada exitosamente');
+  }
+
+  /**
+   * Establecer ejemplo de imagen
+   */
+  setExampleImage(url: string): void {
+    this.productoForm.imagen = url;
+    this.imageError = false;
+    this.imageLoaded = false;
+  }
+  
   ngOnDestroy(): void {
-    // Cleanup si es necesario
+    // 🔥 ACTUALIZAR: Cleanup de subscriptions
+    if (this.routeSubscription) {
+      this.routeSubscription.unsubscribe();
+    }
   }
 
   // ==================== CARGA DE DATOS ====================
@@ -110,6 +157,8 @@ export class AdminBarComponent implements OnInit, OnDestroy {
     
     if (vista === 'lista') {
       this.resetearFormulario();
+      // 🔥 AGREGAR: Limpiar query params al volver a lista
+      this.router.navigate(['/admin/bar']);
     }
   }
 
@@ -130,6 +179,10 @@ export class AdminBarComponent implements OnInit, OnDestroy {
     this.productoEditandoId = producto.id;
     this.vistaActual = 'editar';
     this.erroresValidacion = [];
+    
+    // 🔥 AGREGAR: Resetear estados de imagen para edición
+    this.imageError = false;
+    this.imageLoaded = false;
     
     window.scrollTo({ top: 0, behavior: 'smooth' });
     console.log('Editando producto:', producto.nombre);
@@ -165,6 +218,8 @@ export class AdminBarComponent implements OnInit, OnDestroy {
             this.toastService.showSuccess('Producto agregado exitosamente');
             this.cargarProductos();
             this.vistaActual = 'lista';
+            // 🔥 AGREGAR: Limpiar query params después de agregar
+            this.router.navigate(['/admin/bar']);
           } else {
             this.toastService.showError('Error al agregar el producto');
           }
@@ -377,6 +432,10 @@ export class AdminBarComponent implements OnInit, OnDestroy {
     };
     this.productoEditandoId = -1;
     this.erroresValidacion = [];
+    
+    // 🔥 MANTENER: Reset de estados de imagen
+    this.imageError = false;
+    this.imageLoaded = false;
   }
 
   /**

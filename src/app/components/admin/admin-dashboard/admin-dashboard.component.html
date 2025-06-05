@@ -577,29 +577,28 @@
       </div>
     </div>
 
-    <!-- Reporte Combinado - NUEVO -->
-    <div class="col-lg-2 col-md-4 col-6">
-      <div class="card report-card h-100 border-0 shadow-sm bg-gradient-info">
-        <div class="card-body text-center text-white">
-          <div class="report-icon mb-3">
-            <i class="fas fa-chart-pie fa-3x text-white"></i>
-          </div>
-          <h6 class="card-title fw-bold">Combinado</h6>
-          <p class="card-text small">Cine + Bar integrado</p>
-          <button class="btn btn-light btn-sm" 
-                  (click)="generateCombinedReport()"
-                  [disabled]="generatingReport">
-            <span *ngIf="!generatingReport">
-              <i class="fas fa-download me-1"></i>Generar
-            </span>
-            <span *ngIf="generatingReport">
-              <span class="spinner-border spinner-border-sm me-1"></span>Generando...
-            </span>
-          </button>
-        </div>
+<!-- Reporte Combinado - CORREGIDO -->
+<div class="col-lg-2 col-md-4 col-6">
+  <div class="card report-card h-100 border-0 shadow-sm">
+    <div class="card-body text-center">
+      <div class="report-icon mb-3">
+        <i class="fas fa-chart-pie fa-3x text-info"></i>
       </div>
+      <h6 class="card-title">Combinado</h6>
+      <p class="card-text small text-muted">Cine + Bar integrado</p>
+      <button class="btn btn-outline-info btn-sm" 
+              (click)="generateCombinedReport()"
+              [disabled]="generatingReport">
+        <span *ngIf="!generatingReport">
+          <i class="fas fa-download me-1"></i>Generar
+        </span>
+        <span *ngIf="generatingReport">
+          <span class="spinner-border spinner-border-sm me-1"></span>Generando...
+        </span>
+      </button>
     </div>
-
+  </div>
+</div>
     <!-- Reporte Completo -->
     <div class="col-lg-2 col-md-4 col-6">
       <div class="card report-card h-100 border-0 shadow-sm bg-gradient-warning">

@@ -92,8 +92,16 @@ generateBarReport(): void {
   this.toastService.showInfo('Generando reporte del bar...');
   
   setTimeout(() => {
-    this.adminService.generateBarReport();
-    this.generatingReport = false;
+    try {
+      // Usar el método del AdminService que ya existe
+      this.adminService.generateBarReport();
+      this.generatingReport = false;
+      // No mostrar toast aquí porque ya lo hace el adminService
+    } catch (error) {
+      console.error('Error generando reporte del bar:', error);
+      this.generatingReport = false;
+      this.toastService.showError('Error al generar el reporte del bar');
+    }
   }, 1000);
 }
 
@@ -1364,7 +1372,7 @@ generateCombinedReport(): void {
     currentY += 20;
     
     const barData = this.getTopBarProducts().slice(0, 5).map(prod => [
-      prod.rankIcon || `#${prod.ranking}`,
+      prod.ranking ? `#${prod.ranking}` : '',
       prod.nombre,
       prod.categoria,
       prod.ventas.toString(),
