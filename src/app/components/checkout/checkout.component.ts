@@ -14,7 +14,6 @@ import { UserService } from '../../services/user.service';
   styleUrls: ['./checkout.component.css']
 })
 export class CheckoutComponent implements OnInit {
-
   cartItems: CartItem[] = [];
   procesandoPago: boolean = false;
   
@@ -68,6 +67,8 @@ export class CheckoutComponent implements OnInit {
     this.taxes = (this.subtotal + this.serviceFee) * 0.08;
     this.total = this.subtotal + this.serviceFee + this.taxes;
   }
+
+  // ==================== MÉTODOS DE VALIDACIÓN ====================
 
   // Validación en tiempo real del número de tarjeta
   onNumeroTarjetaChange(): void {
@@ -151,7 +152,6 @@ export class CheckoutComponent implements OnInit {
     if (!cleanNumber) {
       return { valid: false, tipo: '', message: 'Ingresa el número de tarjeta' };
     }
-
     if (!/^\d+$/.test(cleanNumber)) {
       return { valid: false, tipo: '', message: 'Solo se permiten números' };
     }
@@ -159,7 +159,6 @@ export class CheckoutComponent implements OnInit {
     // Detectar tipo de tarjeta
     let tipo = '';
     let expectedLength = 0;
-
     if (/^4/.test(cleanNumber)) {
       tipo = 'Visa';
       expectedLength = 16;
@@ -256,6 +255,8 @@ export class CheckoutComponent implements OnInit {
     return { valid: true, message: `CVV válido (${expectedLength} dígitos)` };
   }
 
+  // ==================== MÉTODOS DE PAGO ====================
+
   procesarPago(): void {
     if (!this.isFormValid()) {
       this.toastService.showWarning('Por favor completa todos los campos requeridos');
@@ -317,98 +318,116 @@ export class CheckoutComponent implements OnInit {
   }
 
   pagoExitoso(paypalResult?: PayPalResult): void {
-  this.cartService.processPurchase().then(result => {
-    console.log('Compra procesada:', result);
-    
-    // 🆕 AGREGAR AL HISTORIAL CUANDO SE COMPLETE LA COMPRA
-    const currentUser = this.authService.getCurrentUser();
-if (currentUser) {
-  // Agregar cada película comprada al historial
-  this.cartItems.forEach((item, index) => {
-    this.userService.addToHistory(currentUser.id, {
-      peliculaId: index, // Usar el índice como ID
-      titulo: item.pelicula.titulo,
-      poster: item.pelicula.poster,
-      genero: item.pelicula.genero,
-      anio: item.pelicula.anio,
-      fechaVista: new Date().toISOString(),
-      tipoAccion: 'comprada'
-    });
-  });
-    }
-    
-    this.procesandoPago = false;
-    
-    // Preparar datos completos incluyendo PayPal
-    const orderData = {
-      ...result,
-      nombre: this.datosCheckout.nombre,
-      email: this.datosCheckout.email,
-      telefono: this.datosCheckout.telefono,
-      metodoPago: this.datosCheckout.metodoPago === 'tarjeta' ? 'Tarjeta de Crédito' : 'PayPal',
-      subtotal: this.subtotal.toFixed(2),
-      serviceFee: this.serviceFee.toFixed(2),
-      taxes: this.taxes.toFixed(2),
-      total: this.total.toFixed(2),
+    this.cartService.processPurchase().then(result => {
+      console.log('Compra procesada:', result);
       
-      // Datos adicionales de PayPal
-      ...(paypalResult && {
-        paypalTransactionId: paypalResult.transactionId,
-        paypalPayerId: paypalResult.payerId,
-        paypalStatus: paypalResult.paymentStatus
-      })
-    };
-    
-    // Envío de email
-    this.toastService.showInfo('📧 Enviando entradas por email...');
-    
-    this.emailService.sendTicketEmail(orderData, this.cartItems)
-      .then((success) => {
-        if (success) {
-          const mensaje = paypalResult ? 
-            `¡Pago con PayPal exitoso! 🎉 Entradas enviadas a ${this.datosCheckout.email}` :
-            `¡Pago exitoso! 🎉 Entradas enviadas a ${this.datosCheckout.email}`;
+      // 🆕 AGREGAR AL HISTORIAL CUANDO SE COMPLETE LA COMPRA
+      const currentUser = this.authService.getCurrentUser();
+      if (currentUser) {
+        // Agregar solo las películas compradas al historial
+        this.cartItems
+          .filter(item => item.tipo === 'pelicula' && item.pelicula)
+          .forEach((item, index) => {
+            this.userService.addToHistory(currentUser.id, {
+              peliculaId: index,
+              titulo: item.pelicula!.titulo, // El ! le dice a TypeScript que sabemos que existe
+              poster: item.pelicula!.poster,
+              genero: item.pelicula!.genero,
+              anio: item.pelicula!.anio,
+              fechaVista: new Date().toISOString(),
+              tipoAccion: 'comprada'
+            });
+          });
+
+        // 🍿 Log de productos del bar comprados (opcional)
+        const productosBarComprados = this.cartItems
+          .filter(item => item.tipo === 'bar' && item.barProduct)
+          .map(item => ({
+            nombre: item.nombre || item.barProduct!.nombre,
+            cantidad: item.cantidad,
+            precio: item.subtotal
+          }));
+
+        if (productosBarComprados.length > 0) {
+          console.log('🍿 Productos del bar comprados:', productosBarComprados);
+          // Aquí podrías guardar en un historial de compras del bar si lo implementas
+        }
+      }
+      
+      this.procesandoPago = false;
+      
+      // Preparar datos completos incluyendo PayPal
+      const orderData = {
+        ...result,
+        nombre: this.datosCheckout.nombre,
+        email: this.datosCheckout.email,
+        telefono: this.datosCheckout.telefono,
+        metodoPago: this.datosCheckout.metodoPago === 'tarjeta' ? 'Tarjeta de Crédito' : 'PayPal',
+        subtotal: this.subtotal.toFixed(2),
+        serviceFee: this.serviceFee.toFixed(2),
+        taxes: this.taxes.toFixed(2),
+        total: this.total.toFixed(2),
+        
+        // Datos adicionales de PayPal
+        ...(paypalResult && {
+          paypalTransactionId: paypalResult.transactionId,
+          paypalPayerId: paypalResult.payerId,
+          paypalStatus: paypalResult.paymentStatus
+        })
+      };
+      
+      // Envío de email
+      this.toastService.showInfo('📧 Enviando entradas por email...');
+      
+      this.emailService.sendTicketEmail(orderData, this.cartItems)
+        .then((success) => {
+          if (success) {
+            const mensaje = paypalResult ? 
+              `¡Pago con PayPal exitoso! 🎉 Entradas enviadas a ${this.datosCheckout.email}` :
+              `¡Pago exitoso! 🎉 Entradas enviadas a ${this.datosCheckout.email}`;
+              
+            this.toastService.showSuccess(mensaje, 6000);
             
-          this.toastService.showSuccess(mensaje, 6000);
-          
-          // Mostrar información de transacción PayPal
-          if (paypalResult?.transactionId) {
-            setTimeout(() => {
-              this.toastService.showInfo(
-                `💳 PayPal ID: ${paypalResult.transactionId}`,
-                4000
-              );
-            }, 2000);
+            // Mostrar información de transacción PayPal
+            if (paypalResult?.transactionId) {
+              setTimeout(() => {
+                this.toastService.showInfo(
+                  `💳 PayPal ID: ${paypalResult.transactionId}`,
+                  4000
+                );
+              }, 2000);
+            }
+            
+          } else {
+            this.toastService.showError(
+              'Error enviando email. Contacta soporte con tu número de orden: ' + result.orderId
+            );
           }
           
-        } else {
+          setTimeout(() => {
+            this.router.navigate(['/home']);
+          }, 5000);
+          
+        })
+        .catch((error: any) => {
+          console.error('Error en proceso de email:', error);
           this.toastService.showError(
-            'Error enviando email. Contacta soporte con tu número de orden: ' + result.orderId
+            'Error enviando email. Tu compra fue exitosa. Orden: ' + result.orderId
           );
-        }
+          
+          setTimeout(() => {
+            this.router.navigate(['/home']);
+          }, 3000);
+        });
         
-        setTimeout(() => {
-          this.router.navigate(['/home']);
-        }, 5000);
-        
-      })
-      .catch((error: any) => {
-        console.error('Error en proceso de email:', error);
-        this.toastService.showError(
-          'Error enviando email. Tu compra fue exitosa. Orden: ' + result.orderId
-        );
-        
-        setTimeout(() => {
-          this.router.navigate(['/home']);
-        }, 3000);
-      });
-      
-  }).catch((error: any) => {
-    console.error('Error procesando compra:', error);
-    this.procesandoPago = false;
-    this.toastService.showError('Error procesando el pago. Intenta nuevamente.');
-  });
-}
+    }).catch((error: any) => {
+      console.error('Error procesando compra:', error);
+      this.procesandoPago = false;
+      this.toastService.showError('Error procesando el pago. Intenta nuevamente.');
+    });
+  }
+
+  // ==================== MÉTODOS AUXILIARES ====================
 
   private generateTempOrderId(): string {
     return 'PP-' + Date.now().toString();
@@ -417,5 +436,74 @@ if (currentUser) {
   cancelarCompra(): void {
     this.toastService.showInfo('Compra cancelada');
     this.router.navigate(['/cart']);
+  }
+
+  // ==================== MÉTODOS PARA EL TEMPLATE ====================
+
+  /**
+   * Obtener items de películas
+   */
+  getPeliculaItems(): CartItem[] {
+    return this.cartItems.filter(item => item.tipo === 'pelicula');
+  }
+
+  /**
+   * Obtener items del bar
+   */
+  getBarItems(): CartItem[] {
+    return this.cartItems.filter(item => item.tipo === 'bar');
+  }
+
+  /**
+   * Verificar si hay películas en el carrito
+   */
+  tienePeliculas(): boolean {
+    return this.getPeliculaItems().length > 0;
+  }
+
+  /**
+   * Verificar si hay productos del bar en el carrito
+   */
+  tieneProductosBar(): boolean {
+    return this.getBarItems().length > 0;
+  }
+
+  /**
+   * Obtener resumen del carrito
+   */
+  getCartSummary() {
+    return this.cartService.getCartSummary();
+  }
+
+  /**
+   * Obtener nombre del item (útil para productos del bar con opciones)
+   */
+  getItemDisplayName(item: CartItem): string {
+    if (item.tipo === 'pelicula' && item.pelicula) {
+      return item.pelicula.titulo;
+    } else if (item.tipo === 'bar') {
+      return item.nombre || item.barProduct?.nombre || 'Producto del bar';
+    }
+    return 'Item desconocido';
+  }
+
+  /**
+   * Obtener descripción del item
+   */
+  getItemDescription(item: CartItem): string {
+    if (item.tipo === 'pelicula' && item.funcion) {
+      return `${item.funcion.fecha} - ${item.funcion.hora} - ${item.funcion.sala}`;
+    } else if (item.tipo === 'bar' && item.barOptions) {
+      let description = '';
+      if (item.barOptions.tamano) {
+        description += `Tamaño: ${item.barOptions.tamano.nombre}`;
+      }
+      if (item.barOptions.extras && item.barOptions.extras.length > 0) {
+        if (description) description += ' | ';
+        description += `Extras: ${item.barOptions.extras.map(e => e.nombre).join(', ')}`;
+      }
+      return description;
+    }
+    return '';
   }
 }

@@ -3,8 +3,8 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { MovieService, Pelicula, FuncionCine, Seat } from '../../services/movie.service';
 import { CartService } from '../../services/cart.service';
 import { ToastService } from '../../services/toast.service';
-import { AuthService } from '../../services/auth.service'; // 🆕 AGREGAR
-import { UserService } from '../../services/user.service'; // 🆕 AGREGAR
+import { AuthService } from '../../services/auth.service';
+import { UserService } from '../../services/user.service';
 
 @Component({
   selector: 'app-seat-selection',
@@ -28,8 +28,8 @@ export class SeatSelectionComponent implements OnInit {
     private movieService: MovieService,
     private cartService: CartService,
     private toastService: ToastService,
-    public authService: AuthService,    // 🆕 AGREGAR (público para template)
-    private userService: UserService    // 🆕 AGREGAR
+    public authService: AuthService,
+    private userService: UserService
   ) {}
 
   ngOnInit(): void {
@@ -82,7 +82,6 @@ export class SeatSelectionComponent implements OnInit {
       seat.isSelected = true;
       this.selectedSeats.push(seat);
     }
-
     console.log('Asientos seleccionados:', this.selectedSeats);
   }
 
@@ -176,21 +175,28 @@ export class SeatSelectionComponent implements OnInit {
       precioTotal: precioTotalAsientos
     };
 
-    // Agregar al carrito con precio correcto
-    this.cartService.addToCart(
-      this.pelicula, 
-      funcionConPrecioVIP,
-      this.selectedSeats.length
-    );
+    // 🔧 USAR EL NUEVO MÉTODO DEL CART SERVICE
+    const itemCarrito = {
+      tipo: 'pelicula',
+      pelicula: this.pelicula,
+      funcion: funcionConPrecioVIP,
+      cantidad: this.selectedSeats.length
+    };
 
-    // Marcar asientos como ocupados
-    this.movieService.updateOccupiedSeats(
-      this.funcionId, 
-      this.selectedSeats.map(s => s.id)
-    );
+    const agregado = this.cartService.addToCart(itemCarrito);
 
-    this.toastService.showSuccess(`¡${this.selectedSeats.length} asiento(s) agregado(s) al carrito!`);
-    this.router.navigate(['/cart']);
+    if (agregado) {
+      // Marcar asientos como ocupados
+      this.movieService.updateOccupiedSeats(
+        this.funcionId, 
+        this.selectedSeats.map(s => s.id)
+      );
+
+      this.toastService.showSuccess(`¡${this.selectedSeats.length} asiento(s) agregado(s) al carrito!`);
+      this.router.navigate(['/cart']);
+    } else {
+      this.toastService.showError('Error al agregar al carrito');
+    }
   }
 
   formatearFecha(fecha: string): string {

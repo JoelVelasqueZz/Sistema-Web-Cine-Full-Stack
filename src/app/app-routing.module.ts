@@ -17,12 +17,15 @@ import { ProfileComponent } from './components/profile/profile.component';
 import { FavoritesComponent } from './components/favorites/favorites.component';
 import { HistoryComponent } from './components/history/history.component';
 import { AdminGuard } from './guards/admin.guard';
+import { BarListComponent } from './components/bar-list/bar-list.component';
+import { BarDetailComponent } from './components/bar-detail/bar-detail.component';
 
 //IMPORTAR COMPONENTES ADMIN
 import { AdminLayoutComponent } from './components/admin/admin-layout/admin-layout.component';
 import { AdminDashboardComponent } from './components/admin/admin-dashboard/admin-dashboard.component';
 import { AdminMoviesComponent } from './components/admin/admin-movies/admin-movies.component';
 import { AdminUsersComponent } from './components/admin/admin-users/admin-users.component';
+import { AdminBarComponent } from './components/admin/admin-bar/admin-bar.component';
 
 const routes: Routes = [
   { path: 'home', component: HomeComponent },
@@ -50,6 +53,10 @@ const routes: Routes = [
   { path: 'coming-soon', component: ComingSoonComponent },
   { path: 'coming-soon/:id', component: ComingSoonDetailComponent },
   
+  // 🍿 RUTAS DEL BAR
+  { path: 'bar', component: BarListComponent },
+  { path: 'bar/:id', component: BarDetailComponent },
+  
   // RUTAS DE PERFIL (PROTEGIDAS)
   { 
     path: 'profile', 
@@ -76,7 +83,9 @@ const routes: Routes = [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       { path: 'dashboard', component: AdminDashboardComponent },
       { path: 'movies', component: AdminMoviesComponent },
-      { path: 'users', component: AdminUsersComponent }
+      { path: 'users', component: AdminUsersComponent },
+      // 🍿 Ruta de administración del bar
+      { path: 'bar', component: AdminBarComponent }
     ]
   },
 

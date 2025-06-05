@@ -84,34 +84,34 @@ export class TicketPurchaseComponent implements OnInit {
   }
 
   agregarAlCarrito(): void {
-    if (!this.pelicula || !this.funcionSeleccionada) {
-      console.error('Faltan datos para proceder');
-      return;
-    }
-
-    this.agregandoCarrito = true;
-
-    // Verificar disponibilidad
-    if (!this.cartService.checkAvailability(this.funcionSeleccionada.id, this.cantidadEntradas)) {
-      this.toastService.showWarning('No hay suficientes asientos disponibles');
-      this.agregandoCarrito = false;
-      return;
-    }
-
-    // Simular delay de procesamiento
-    setTimeout(() => {
-      this.agregandoCarrito = false;
-      
-      // SOLO navegar a selección de asientos
-      console.log('Navegando a selección de asientos...');
-      this.router.navigate([
-        '/seat-selection', 
-        this.peliculaIndex, 
-        this.funcionSeleccionada!.id, 
-        this.cantidadEntradas
-      ]);
-    }, 1000);
+  if (!this.pelicula || !this.funcionSeleccionada) {
+    console.error('Faltan datos para proceder');
+    return;
   }
+
+  this.agregandoCarrito = true;
+
+  // Verificar disponibilidad
+  if (!this.cartService.checkAvailability(this.funcionSeleccionada.id, this.cantidadEntradas)) {
+    this.toastService.showWarning('No hay suficientes asientos disponibles');
+    this.agregandoCarrito = false;
+    return;
+  }
+
+  // Simular delay de procesamiento
+  setTimeout(() => {
+    this.agregandoCarrito = false;
+    
+    // SOLO navegar a selección de asientos
+    console.log('Navegando a selección de asientos...');
+    this.router.navigate([
+      '/seat-selection', 
+      this.peliculaIndex, 
+      this.funcionSeleccionada!.id, 
+      this.cantidadEntradas
+    ]);
+  }, 1000);
+}
 
   cancelar(): void {
     if (this.pelicula) {

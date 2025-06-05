@@ -34,6 +34,14 @@ import { AdminMoviesComponent } from './components/admin/admin-movies/admin-movi
 import { AdminUsersComponent } from './components/admin/admin-users/admin-users.component';
 
 import { AdminService } from './services/admin.service';
+
+// 🍿 COMPONENTES DEL BAR
+import { BarListComponent } from './components/bar-list/bar-list.component';
+import { BarDetailComponent } from './components/bar-detail/bar-detail.component';
+
+// 🍿 SERVICIO DEL BAR
+import { BarService } from './services/bar.service';
+
 @NgModule({
   declarations: [
     AppComponent,
@@ -50,7 +58,17 @@ import { AdminService } from './services/admin.service';
     SeatSelectionComponent, 
     ToastComponent, 
     ComingSoonComponent, 
-    ComingSoonDetailComponent, ProfileComponent, FavoritesComponent, HistoryComponent, AdminLayoutComponent, AdminDashboardComponent, AdminMoviesComponent, AdminUsersComponent,   
+    ComingSoonDetailComponent, 
+    ProfileComponent, 
+    FavoritesComponent, 
+    HistoryComponent, 
+    AdminLayoutComponent, 
+    AdminDashboardComponent, 
+    AdminMoviesComponent, 
+    AdminUsersComponent,
+    // 🍿 COMPONENTES DEL BAR
+    BarListComponent, 
+    BarDetailComponent,   
   ],
   imports: [
     BrowserModule,
@@ -64,7 +82,9 @@ import { AdminService } from './services/admin.service';
     CartService,
     EmailService,
     PaypalSimulationService,
-    AdminService
+    AdminService,
+    // 🍿 SERVICIO DEL BAR
+    BarService
   ],
   bootstrap: [AppComponent]
 })

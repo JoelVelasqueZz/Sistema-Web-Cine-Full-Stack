@@ -13,6 +13,9 @@
           <li class="breadcrumb-item">
             <a [routerLink]="['/movies']">Películas</a>
           </li>
+          <li class="breadcrumb-item">
+            <a [routerLink]="['/bar']">Bar</a>
+          </li>
           <li class="breadcrumb-item active">Carrito</li>
         </ol>
       </nav>
@@ -34,12 +37,18 @@
           <i class="fas fa-shopping-cart fa-4x text-muted mb-4"></i>
           <h4 class="text-muted mb-3">Tu carrito está vacío</h4>
           <p class="text-muted mb-4">
-            Agrega algunas entradas a tu carrito para continuar con la compra
+            Agrega algunas entradas o productos del bar para continuar
           </p>
-          <a [routerLink]="['/movies']" class="btn btn-primary btn-lg">
-            <i class="fas fa-film me-2"></i>
-            Ver Películas
-          </a>
+          <div class="d-flex gap-2 justify-content-center flex-wrap">
+            <a [routerLink]="['/movies']" class="btn btn-primary btn-lg">
+              <i class="fas fa-film me-2"></i>
+              Ver Películas
+            </a>
+            <a [routerLink]="['/bar']" class="btn btn-warning btn-lg">
+              <i class="fas fa-utensils me-2"></i>
+              Ver Bar
+            </a>
+          </div>
         </div>
       </div>
     </div>
@@ -54,7 +63,7 @@
         <div class="card-header bg-primary text-white">
           <h5 class="mb-0">
             <i class="fas fa-list me-2"></i>
-            Entradas Seleccionadas ({{ getTotalItems() }})
+            Items Seleccionados ({{ getTotalItems() }})
           </h5>
         </div>
         <div class="card-body p-0">
@@ -63,62 +72,156 @@
           <div class="border-bottom p-4" *ngFor="let item of cartItems; let i = index">
             <div class="row align-items-center">
               
-              <!-- Poster de la película -->
-              <div class="col-md-2 mb-3 mb-md-0">
-                <img [src]="item.pelicula.poster" 
-                     class="img-fluid rounded shadow-sm" 
-                     style="max-height: 120px; object-fit: cover;"
-                     alt="{{ item.pelicula.titulo }}">
-              </div>
-              
-              <!-- Información del item -->
-              <div class="col-md-6 mb-3 mb-md-0">
-                <h6 class="fw-bold mb-1">{{ item.pelicula.titulo }}</h6>
-                <p class="text-muted small mb-1">
-                  {{ item.pelicula.genero }} • {{ item.pelicula.duracion }} • {{ item.pelicula.anio }}
-                </p>
+              <!-- PELÍCULAS -->
+              <ng-container *ngIf="item.tipo === 'pelicula' && item.pelicula">
+                <!-- Poster de la película -->
+                <div class="col-md-2 mb-3 mb-md-0">
+                  <img [src]="item.pelicula.poster" 
+                       class="img-fluid rounded shadow-sm" 
+                       style="max-height: 120px; object-fit: cover;"
+                       alt="{{ item.pelicula.titulo }}">
+                </div>
                 
-                <div class="mt-2">
-                  <span class="badge bg-info me-1">{{ item.funcion.sala }}</span>
-                  <span class="badge bg-secondary me-1">{{ item.funcion.formato }}</span>
+                <!-- Información de la película -->
+                <div class="col-md-6 mb-3 mb-md-0">
+                  <h6 class="fw-bold mb-1">
+                    <i class="fas fa-film me-1 text-primary"></i>
+                    {{ item.pelicula.titulo }}
+                  </h6>
+                  <p class="text-muted small mb-1">
+                    {{ item.pelicula.genero }} • {{ item.pelicula.duracion }} • {{ item.pelicula.anio }}
+                  </p>
                   
-                  <!-- ✅ NUEVO: Badge indicando tipo de asientos -->
-                  <span *ngIf="item.precio > item.funcion.precio" class="badge bg-warning text-dark me-1">
-                    <i class="fas fa-crown me-1"></i>VIP
-                  </span>
-                  <span *ngIf="item.precio === item.funcion.precio" class="badge bg-success me-1">
-                    <i class="fas fa-chair me-1"></i>Estándar
-                  </span>
+                  <div class="mt-2">
+                    <span class="badge bg-info me-1">{{ item.funcion?.sala }}</span>
+                    <span class="badge bg-secondary me-1">{{ item.funcion?.formato }}</span>
+                    
+                    <!-- Badge indicando tipo de asientos -->
+                    <span *ngIf="item.precio > (item.funcion?.precio || 0)" class="badge bg-warning text-dark me-1">
+                      <i class="fas fa-crown me-1"></i>VIP
+                    </span>
+                    <span *ngIf="item.precio === (item.funcion?.precio || 0)" class="badge bg-success me-1">
+                      <i class="fas fa-chair me-1"></i>Estándar
+                    </span>
+                  </div>
+                  
+                  <div class="mt-2">
+                    <small class="text-muted">
+                      <i class="fas fa-calendar me-1"></i>
+                      {{ formatearFecha(item.funcion?.fecha || '') }}
+                    </small>
+                    <br>
+                    <small class="text-muted">
+                      <i class="fas fa-clock me-1"></i>
+                      {{ item.funcion?.hora }}
+                    </small>
+                  </div>
                 </div>
                 
-                <div class="mt-2">
-                  <small class="text-muted">
-                    <i class="fas fa-calendar me-1"></i>
-                    {{ formatearFecha(item.funcion.fecha) }}
-                  </small>
-                  <br>
-                  <small class="text-muted">
-                    <i class="fas fa-clock me-1"></i>
-                    {{ item.funcion.hora }}
-                  </small>
-                </div>
-              </div>
-              
-              <!-- ✅ CANTIDAD FIJA - SIN BOTONES DE EDICIÓN -->
-              <div class="col-md-2 text-center mb-3 mb-md-0">
-                <label class="form-label small text-muted">Asientos</label>
-                <div class="d-flex flex-column align-items-center">
-                  <div class="bg-light rounded px-3 py-2 mb-2">
-                    <span class="fw-bold text-primary fs-5">{{ item.cantidad }}</span>
+                <!-- Cantidad de entradas (fija) -->
+                <div class="col-md-2 text-center mb-3 mb-md-0">
+                  <label class="form-label small text-muted">Asientos</label>
+                  <div class="d-flex flex-column align-items-center">
+                    <div class="bg-light rounded px-3 py-2 mb-2">
+                      <span class="fw-bold text-primary fs-5">{{ item.cantidad }}</span>
+                    </div>
+                    <small class="text-success fw-bold">
+                      <i class="fas fa-couch me-1"></i>Seleccionados
+                    </small>
+                    <small class="text-muted">${{ item.precio.toFixed(2) }} c/u</small>
                   </div>
-                  <small class="text-success fw-bold">
-                    <i class="fas fa-couch me-1"></i>Seleccionados
-                  </small>
-                  <small class="text-muted">${{ item.precio.toFixed(2) }} c/u</small>
                 </div>
-              </div>
+              </ng-container>
+
+              <!-- PRODUCTOS DEL BAR -->
+              <ng-container *ngIf="item.tipo === 'bar' && item.barProduct">
+                <!-- Imagen del producto -->
+                <div class="col-md-2 mb-3 mb-md-0">
+                  <img [src]="item.barProduct.imagen" 
+                       class="img-fluid rounded shadow-sm" 
+                       style="max-height: 120px; object-fit: cover;"
+                       alt="{{ item.barProduct.nombre }}">
+                </div>
+                
+                <!-- Información del producto -->
+                <div class="col-md-6 mb-3 mb-md-0">
+                  <h6 class="fw-bold mb-1">
+                    <i class="fas fa-utensils me-1 text-warning"></i>
+                    {{ getItemDisplayName(item) }}
+                  </h6>
+                  <p class="text-muted small mb-1">
+                    {{ item.barProduct.categoria }}
+                  </p>
+                  
+                  <div class="mt-2">
+                    <span class="badge bg-secondary me-1">{{ item.barProduct.categoria }}</span>
+                    
+                    <!-- Badge de combo -->
+                    <span *ngIf="item.barProduct.esCombo" class="badge bg-danger me-1">
+                      <i class="fas fa-gift me-1"></i>COMBO
+                    </span>
+                  </div>
+                  
+                  <!-- Opciones del producto -->
+                  <div class="mt-2" *ngIf="getItemDescription(item)">
+                    <small class="text-muted">
+                      <i class="fas fa-info-circle me-1"></i>
+                      {{ getItemDescription(item) }}
+                    </small>
+                  </div>
+
+                  <!-- Notas especiales -->
+                  <div class="mt-1" *ngIf="item.barOptions?.notas">
+                    <small class="text-muted">
+                      <i class="fas fa-sticky-note me-1"></i>
+                      <strong>Notas:</strong> {{ item.barOptions?.notas }}
+                    </small>
+                  </div>
+                </div>
+                
+                <!-- Cantidad de productos (editable) -->
+                <div class="col-md-2 text-center mb-3 mb-md-0">
+                  <label class="form-label small text-muted">Cantidad</label>
+                  <div class="d-flex flex-column align-items-center">
+                    <div class="input-group input-group-sm mb-2" style="max-width: 120px;">
+                      <button class="btn btn-outline-secondary" 
+                              type="button" 
+                              (click)="cambiarCantidad(item.id, item.cantidad - 1)"
+                              [disabled]="item.cantidad <= 1">
+                        <i class="fas fa-minus"></i>
+                      </button>
+                      <input type="text" 
+                             class="form-control text-center" 
+                             [value]="item.cantidad" 
+                             readonly>
+                      <button class="btn btn-outline-secondary" 
+                              type="button" 
+                              (click)="cambiarCantidad(item.id, item.cantidad + 1)"
+                              [disabled]="item.cantidad >= 10">
+                        <i class="fas fa-plus"></i>
+                      </button>
+                    </div>
+                    <small class="text-muted">${{ item.precio.toFixed(2) }} c/u</small>
+                  </div>
+                </div>
+              </ng-container>
+
+              <!-- FALLBACK para items desconocidos -->
+              <ng-container *ngIf="!item.tipo || (item.tipo !== 'pelicula' && item.tipo !== 'bar')">
+                <div class="col-md-8 mb-3 mb-md-0">
+                  <h6 class="fw-bold mb-1 text-muted">
+                    <i class="fas fa-question-circle me-1"></i>
+                    Item desconocido
+                  </h6>
+                  <p class="text-muted small">Tipo: {{ item.tipo || 'No definido' }}</p>
+                </div>
+                
+                <div class="col-md-2 text-center mb-3 mb-md-0">
+                  <span class="fw-bold">{{ item.cantidad }}</span>
+                </div>
+              </ng-container>
               
-              <!-- Subtotal y eliminar -->
+              <!-- Subtotal y eliminar (común para todos) -->
               <div class="col-md-2 text-center">
                 <div class="mb-2">
                   <small class="text-muted">Subtotal</small>
@@ -126,12 +229,12 @@
                 </div>
                 <button class="btn btn-outline-danger btn-sm" 
                         (click)="eliminarItem(item.id)"
-                        title="Eliminar entrada">
+                        title="Eliminar item">
                   <i class="fas fa-trash"></i>
                 </button>
                 
-                <!-- ✅ NUEVO: Mensaje explicativo -->
-                <div class="mt-2">
+                <!-- Mensaje explicativo para películas -->
+                <div class="mt-2" *ngIf="item.tipo === 'pelicula'">
                   <small class="text-muted d-block">
                     Para cambiar cantidad, selecciona asientos nuevamente
                   </small>
@@ -145,12 +248,18 @@
       </div>
       
       <!-- Botones de acción -->
-      <div class="d-flex justify-content-between">
-        <a [routerLink]="['/movies']" class="btn btn-outline-secondary">
-          <i class="fas fa-arrow-left me-2"></i>
-          Seguir Comprando
-        </a>
-        <button class="btn btn-outline-warning" 
+      <div class="d-flex justify-content-between flex-wrap gap-2">
+        <div class="d-flex gap-2">
+          <a [routerLink]="['/movies']" class="btn btn-outline-primary">
+            <i class="fas fa-film me-2"></i>
+            Ver Películas
+          </a>
+          <a [routerLink]="['/bar']" class="btn btn-outline-warning">
+            <i class="fas fa-utensils me-2"></i>
+            Ver Bar
+          </a>
+        </div>
+        <button class="btn btn-outline-danger" 
                 (click)="limpiarCarrito()"
                 *ngIf="cartItems.length > 0">
           <i class="fas fa-trash me-2"></i>
@@ -170,9 +279,22 @@
         </div>
         <div class="card-body">
           
+          <!-- Desglose por tipo -->
+          <div class="mb-3" *ngIf="tienePeliculas() && tieneProductosBar()">
+            <div class="d-flex justify-content-between mb-1">
+              <small class="text-muted">Entradas ({{ getTotalPeliculas() }})</small>
+              <small>${{ getSubtotalPeliculas().toFixed(2) }}</small>
+            </div>
+            <div class="d-flex justify-content-between mb-2">
+              <small class="text-muted">Productos bar ({{ getTotalProductosBar() }})</small>
+              <small>${{ getSubtotalBar().toFixed(2) }}</small>
+            </div>
+            <hr class="my-2">
+          </div>
+
           <!-- Desglose de precios -->
           <div class="d-flex justify-content-between mb-2">
-            <span>Entradas ({{ getTotalItems() }})</span>
+            <span>Subtotal ({{ getTotalItems() }} items)</span>
             <span>${{ getTotal().toFixed(2) }}</span>
           </div>
           
@@ -197,13 +319,21 @@
           <!-- Información adicional -->
           <div class="alert alert-info small" *ngIf="cartItems.length > 0">
             <i class="fas fa-info-circle me-1"></i>
-            Las entradas se enviarán a tu email después del pago.
+            <span *ngIf="tienePeliculas() && !tieneProductosBar()">
+              Las entradas se enviarán a tu email después del pago.
+            </span>
+            <span *ngIf="!tienePeliculas() && tieneProductosBar()">
+              Los productos del bar estarán listos para recoger.
+            </span>
+            <span *ngIf="tienePeliculas() && tieneProductosBar()">
+              Las entradas se enviarán por email y los productos del bar estarán listos para recoger.
+            </span>
           </div>
           
-          <!-- ✅ NUEVO: Nota sobre asientos -->
-          <div class="alert alert-warning small mb-3" *ngIf="cartItems.length > 0">
+          <!-- Nota sobre asientos -->
+          <div class="alert alert-warning small mb-3" *ngIf="tienePeliculas()">
             <i class="fas fa-chair me-1"></i>
-            <strong>Asientos confirmados:</strong> La cantidad no se puede modificar una vez seleccionados los asientos.
+            <strong>Asientos confirmados:</strong> La cantidad de entradas no se puede modificar una vez seleccionados los asientos.
           </div>
           
           <!-- Botón de pago -->
@@ -252,7 +382,7 @@
       </div>
       <div class="modal-body">
         <p>¿Estás seguro de que deseas vaciar tu carrito?</p>
-        <p class="text-muted small">Esta acción eliminará todas las entradas seleccionadas.</p>
+        <p class="text-muted small">Esta acción eliminará todos los items seleccionados.</p>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
