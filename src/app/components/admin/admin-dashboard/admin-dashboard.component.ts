@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { AdminService, AdminStats } from '../../../services/admin.service';
 import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
+import { BarService } from '../../../services/bar.service';
 
 // Importar jsPDF correctamente para Angular
 import { jsPDF } from 'jspdf';
@@ -40,7 +41,8 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     private adminService: AdminService,
     private authService: AuthService,
     private toastService: ToastService,
-    private router: Router
+    private router: Router,
+    private barService: BarService
   ) { }
 
   ngOnInit(): void {
@@ -68,7 +70,84 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     }
     window.removeEventListener('adminDataRefresh', this.handleDataRefresh.bind(this));
   }
+  getBarStats(): any {
+  const barStats = this.adminService.getBarStats();
+  return {
+    totalProductos: barStats.totalProductos,
+    productosDisponibles: barStats.productosDisponibles,
+    combosEspeciales: barStats.totalCombos,
+    categorias: barStats.totalCategorias,
+    precioPromedio: barStats.precioPromedio,
+    productoMasPopular: barStats.productosPopularesBar[0]?.nombre || 'N/A',
+    ventasSimuladas: barStats.ventasSimuladasBar.length,
+    ingresoSimulado: barStats.ventasSimuladasBar.reduce((sum, v) => sum + v.total, 0)
+  };
+}
 
+/**
+ * Generar reporte rápido del bar
+ */
+generateBarReport(): void {
+  this.generatingReport = true;
+  this.toastService.showInfo('Generando reporte del bar...');
+  
+  setTimeout(() => {
+    this.adminService.generateBarReport();
+    this.generatingReport = false;
+  }, 1000);
+}
+
+/**
+ * Obtener productos más vendidos del bar para mostrar en dashboard
+ */
+getTopBarProducts(): any[] {
+  const barStats = this.adminService.getBarStats();
+  return barStats.productosPopularesBar.slice(0, 5).map((prod, index) => ({
+    ranking: index + 1,
+    nombre: prod.nombre,
+    categoria: prod.categoria,
+    ventas: prod.ventasSimuladas,
+    ingresos: prod.ingresoSimulado,
+    esCombo: prod.esCombo
+  }));
+}
+
+/**
+ * Obtener actividad reciente del bar
+ */
+getBarActivity(): any[] {
+  const barStats = this.adminService.getBarStats();
+  return barStats.ventasSimuladasBar.slice(0, 5).map(venta => ({
+    tipo: 'venta_bar',
+    descripcion: `${venta.cliente} compró ${venta.cantidad}x ${venta.producto}`,
+    fecha: venta.fecha,
+    icono: venta.esCombo ? 'fas fa-gift' : 'fas fa-utensils',
+    color: venta.esCombo ? 'danger' : 'warning',
+    monto: venta.total
+  }));
+}
+
+/**
+ * Ir a gestión del bar
+ */
+irAGestionBar(): void {
+  this.router.navigate(['/admin/bar']);
+}
+
+/**
+ * Actualizar método de actividad reciente para incluir bar
+ */
+getActividadRecienteCombinada(): any[] {
+  const actividadExistente = this.stats.actividadReciente;
+  const actividadBar = this.getBarActivity();
+  
+  // Combinar y ordenar por fecha
+  const actividadCombinada = [...actividadExistente, ...actividadBar]
+    .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
+    .slice(0, 8);
+  
+  return actividadCombinada;
+}
   // ==================== CARGA DE DATOS ====================
 
   /**
@@ -1257,7 +1336,117 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       this.toastService.showWarning('⚠️ Uso de memoria alto: considera optimizar el sistema');
     }
   }
-
+/**
+ * Generar reporte combinado (películas + bar)
+ */
+generateCombinedReport(): void {
+  this.generatingReport = true;
+  this.toastService.showInfo('Generando reporte combinado (Cine + Bar)...');
+  
+  try {
+    const doc = new jsPDF();
+    const barStats = this.getBarStats();
+    
+    // Configurar encabezado
+    this.setupPDFHeader(doc, 'REPORTE INTEGRAL PARKYFILMS', 'Análisis combinado de Cine y Bar');
+    
+    let currentY = 110;
+    
+    // Resumen ejecutivo combinado
+    currentY = this.addExecutiveSummary(doc, currentY);
+    
+    // Sección del Bar
+    doc.setFillColor(230, 126, 34);
+    doc.rect(20, currentY - 5, 170, 15, 'F');
+    doc.setFontSize(14);
+    doc.setTextColor(255, 255, 255);
+    doc.text('ANÁLISIS DEL BAR', 25, currentY + 5);
+    currentY += 20;
+    
+    const barData = this.getTopBarProducts().slice(0, 5).map(prod => [
+      prod.rankIcon || `#${prod.ranking}`,
+      prod.nombre,
+      prod.categoria,
+      prod.ventas.toString(),
+      `$${prod.ingresos.toFixed(2)}`,
+      prod.esCombo ? 'Sí' : 'No'
+    ]);
+    
+    autoTable(doc, {
+      head: [['Pos', 'Producto', 'Categoría', 'Ventas', 'Ingresos', 'Combo']],
+      body: barData,
+      startY: currentY,
+      theme: 'striped',
+      headStyles: { 
+        fillColor: [230, 126, 34],
+        textColor: [255, 255, 255],
+        fontSize: 10,
+        fontStyle: 'bold'
+      },
+      styles: { 
+        fontSize: 9,
+        cellPadding: { top: 4, right: 6, bottom: 4, left: 6 }
+      },
+      alternateRowStyles: { fillColor: [255, 248, 220] }
+    });
+    
+    currentY = (doc as any).lastAutoTable.finalY + 20;
+    
+    // Segunda página para películas si es necesario
+    if (currentY > 200) {
+      doc.addPage();
+      currentY = 30;
+    }
+    
+    // Sección del Cine
+    doc.setFillColor(52, 152, 219);
+    doc.rect(20, currentY - 5, 170, 15, 'F');
+    doc.setFontSize(14);
+    doc.setTextColor(255, 255, 255);
+    doc.text('TOP PELÍCULAS', 25, currentY + 5);
+    currentY += 20;
+    
+    const peliculasData = this.stats.peliculasPopulares.slice(0, 5).map((pelicula, index) => [
+      this.getRankIcon(index + 1),
+      pelicula.titulo,
+      pelicula.genero,
+      `${pelicula.vistas}`,
+      `${pelicula.rating.toFixed(1)}`
+    ]);
+    
+    autoTable(doc, {
+      head: [['Pos', 'Título', 'Género', 'Vistas', 'Rating']],
+      body: peliculasData,
+      startY: currentY,
+      theme: 'striped',
+      headStyles: { 
+        fillColor: [52, 152, 219],
+        textColor: [255, 255, 255],
+        fontSize: 10,
+        fontStyle: 'bold'
+      },
+      styles: { 
+        fontSize: 9,
+        cellPadding: { top: 4, right: 6, bottom: 4, left: 6 }
+      },
+      alternateRowStyles: { fillColor: [248, 249, 250] }
+    });
+    
+    // Configurar pie de página
+    this.setupPDFFooter(doc);
+    
+    // Descargar PDF
+    doc.save(`reporte-combinado-${new Date().toISOString().split('T')[0]}.pdf`);
+    
+    this.generatingReport = false;
+    this.toastService.showSuccess('✅ Reporte combinado generado exitosamente');
+    
+  } catch (error) {
+    console.error('Error generando reporte combinado:', error);
+    this.generatingReport = false;
+    this.toastService.showError('Error al generar el reporte combinado');
+  }
+}
   /**
    * Programar tareas de mantenimiento
    */
