@@ -41,6 +41,8 @@ import { BarDetailComponent } from './components/bar-detail/bar-detail.component
 
 // 🍿 SERVICIO DEL BAR
 import { BarService } from './services/bar.service';
+import { FooterComponent } from './components/footer/footer.component';
+import { AdminBarComponent } from './components/admin/admin-bar/admin-bar.component';
 
 @NgModule({
   declarations: [
@@ -67,8 +69,9 @@ import { BarService } from './services/bar.service';
     AdminMoviesComponent, 
     AdminUsersComponent,
     // 🍿 COMPONENTES DEL BAR
+    AdminBarComponent,
     BarListComponent, 
-    BarDetailComponent,   
+    BarDetailComponent, FooterComponent,   
   ],
   imports: [
     BrowserModule,

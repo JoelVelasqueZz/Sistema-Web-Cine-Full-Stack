@@ -6,6 +6,7 @@ import { AdminService } from '../../../services/admin.service';
 import { ToastService } from '../../../services/toast.service';
 import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
+import { BarService } from '../../../services/bar.service';
 
 @Component({
   selector: 'app-admin-layout',
@@ -27,7 +28,8 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
     private router: Router,
     private movieService: MovieService,
     private adminService: AdminService,
-    private toastService: ToastService
+    private toastService: ToastService,
+    private barService: BarService
   ) {}
 
   ngOnInit(): void {
@@ -55,7 +57,21 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
 
     console.log('Panel de administración inicializado');
   }
+  
+  getTotalBarProducts(): number {
+  return this.barService.getProductos().length;
+}
 
+/**
+ * Agregar producto del bar rápido
+ */
+quickAddBarProduct(): void {
+  this.router.navigate(['/admin/bar'], { 
+    queryParams: { action: 'add' } 
+  });
+  
+  this.toastService.showInfo('Redirigiendo a agregar producto del bar...');
+}
   ngOnDestroy(): void {
     if (this.routerSubscription) {
       this.routerSubscription.unsubscribe();
@@ -68,22 +84,24 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
    * Actualizar sección actual basada en la URL
    */
   private updateCurrentSection(url: string): void {
-    if (url.includes('/admin/dashboard')) {
-      this.currentSection = 'Dashboard';
-    } else if (url.includes('/admin/movies')) {
-      this.currentSection = 'Gestión de Películas';
-    } else if (url.includes('/admin/users')) {
-      this.currentSection = 'Gestión de Usuarios';
-    } else if (url.includes('/admin/reports')) {
-      this.currentSection = 'Reportes';
-    } else if (url.includes('/admin/settings')) {
-      this.currentSection = 'Configuración';
-    } else if (url.includes('/admin/logs')) {
-      this.currentSection = 'Logs del Sistema';
-    } else {
-      this.currentSection = 'Dashboard';
-    }
+  if (url.includes('/admin/dashboard')) {
+    this.currentSection = 'Dashboard';
+  } else if (url.includes('/admin/movies')) {
+    this.currentSection = 'Gestión de Películas';
+  } else if (url.includes('/admin/bar')) {  // 🆕 NUEVA SECCIÓN
+    this.currentSection = 'Gestión del Bar';
+  } else if (url.includes('/admin/users')) {
+    this.currentSection = 'Gestión de Usuarios';
+  } else if (url.includes('/admin/reports')) {
+    this.currentSection = 'Reportes';
+  } else if (url.includes('/admin/settings')) {
+    this.currentSection = 'Configuración';
+  } else if (url.includes('/admin/logs')) {
+    this.currentSection = 'Logs del Sistema';
+  } else {
+    this.currentSection = 'Dashboard';
   }
+}
 
   /**
    * Establecer sección actual manualmente
@@ -233,32 +251,35 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
   /**
    * Ver estado del sistema
    */
-  viewSystemStatus(): void {
-    const status = this.getSystemStatus();
-    
-    const mensaje = `Estado del Sistema:\n\n` +
-                   `• Películas: ${status.peliculas} registradas\n` +
-                   `• Usuarios: ${status.usuarios} activos\n` +
-                   `• Última actualización: ${this.lastUpdate}\n` +
-                   `• Estado: ${status.estado}\n` +
-                   `• Memoria: ${status.memoria}% usado`;
-    
-    alert(mensaje);
-    console.log('Estado del sistema:', status);
-  }
+ viewSystemStatus(): void {
+  const status = this.getSystemStatus();
+  
+  const mensaje = `Estado del Sistema:\n\n` +
+                 `• Películas: ${status.peliculas} registradas\n` +
+                 `• Usuarios: ${status.usuarios} activos\n` +
+                 `• Productos del Bar: ${status.productosBar} registrados\n` +  // 🆕 NUEVA LÍNEA
+                 `• Última actualización: ${this.lastUpdate}\n` +
+                 `• Estado: ${status.estado}\n` +
+                 `• Memoria: ${status.memoria}% usado`;
+  
+  alert(mensaje);
+  console.log('Estado del sistema:', status);
+}
 
   /**
    * Obtener estado del sistema
    */
   private getSystemStatus(): any {
-    return {
-      peliculas: this.getTotalMovies(),
-      usuarios: this.getTotalUsers(),
-      estado: 'Operativo',
-      memoria: Math.floor(Math.random() * 40) + 20, // Simular 20-60%
-      ultimaActualizacion: this.lastUpdate
-    };
-  }
+  return {
+    peliculas: this.getTotalMovies(),
+    usuarios: this.getTotalUsers(),
+    productosBar: this.getTotalBarProducts(),  // 🆕 AGREGAR PRODUCTOS DEL BAR
+    estado: 'Operativo',
+    memoria: Math.floor(Math.random() * 40) + 20,
+    ultimaActualizacion: this.lastUpdate
+  };
+}
+
 
   // ==================== UTILIDADES ====================
 

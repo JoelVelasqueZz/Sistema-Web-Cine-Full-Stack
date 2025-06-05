@@ -1,4 +1,4 @@
-<!-- navbar.component.html - RUTAS CORREGIDAS -->
+<!-- navbar.component.html - CON GESTIÓN DEL BAR AGREGADA -->
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
   <div class="container">
     <!-- Logo/Brand -->
@@ -24,12 +24,12 @@
          <i class="fas fa-calendar-alt me-1"></i>Estrenos
         </a>
         </li>
-        <!-- 🆕 NUEVO ENLACE BAR -->
+        <!-- 🍿 ENLACE AL BAR -->
         <li class="nav-item">
-  <a class="nav-link" routerLinkActive="active" [routerLink]="['/bar']">
-    <i class="fas fa-utensils me-1"></i>Bar
-  </a>
-</li>
+          <a class="nav-link" routerLinkActive="active" [routerLink]="['/bar']">
+            <i class="fas fa-utensils me-1"></i>Bar
+          </a>
+        </li>
         
       </ul>
       
@@ -165,6 +165,12 @@
                 <li>
                   <a class="dropdown-item text-danger" [routerLink]="['/admin/movies']">
                     <i class="fas fa-film me-2"></i>Gestionar Películas
+                  </a>
+                </li>
+                <!-- 🆕 NUEVA OPCIÓN: GESTIÓN DEL BAR -->
+                <li>
+                  <a class="dropdown-item text-danger" [routerLink]="['/admin/bar']">
+                    <i class="fas fa-utensils me-2"></i>Gestionar Bar
                   </a>
                 </li>
                 <li>
