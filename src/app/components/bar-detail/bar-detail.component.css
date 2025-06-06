@@ -1,0 +1,781 @@
+/* ==================== HEADER SECTION ==================== */
+.display-4 {
+  background: linear-gradient(45deg, #ffc107, #fd7e14);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: titleFlicker 3s ease-in-out infinite alternate;
+}
+
+@keyframes titleFlicker {
+  from { filter: brightness(1); }
+  to { filter: brightness(1.3); }
+}
+
+.text-muted {
+  transition: all 0.3s ease;
+  animation: categoryPulse 2s ease-in-out infinite;
+}
+
+@keyframes categoryPulse {
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  50% { transform: scale(1.05); opacity: 0.8; }
+}
+
+/* ==================== ADMIN CONTROLS ==================== */
+.admin-actions .btn-group {
+  box-shadow: 0 10px 30px rgba(255, 193, 7, 0.3);
+  border-radius: 1rem;
+  overflow: hidden;
+  animation: adminGroupFloat 4s ease-in-out infinite;
+}
+
+@keyframes adminGroupFloat {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-5px); }
+}
+
+.admin-actions .btn {
+  border-radius: 0;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+  overflow: hidden;
+}
+
+.admin-actions .btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  transition: left 0.6s;
+}
+
+.admin-actions .btn:hover::before {
+  left: 100%;
+}
+
+.admin-actions .btn:first-child {
+  border-top-left-radius: 1rem;
+  border-bottom-left-radius: 1rem;
+}
+
+.admin-actions .btn:last-child {
+  border-top-right-radius: 1rem;
+  border-bottom-right-radius: 1rem;
+}
+
+.admin-actions .btn:hover {
+  transform: translateY(-5px) scale(1.1);
+  z-index: 3;
+  box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+}
+
+.badge.bg-danger {
+  animation: adminBadgeShake 2s ease-in-out infinite;
+}
+
+@keyframes adminBadgeShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+
+/* ==================== MAIN PRODUCT CARD ==================== */
+.card {
+  border-radius: 1.5rem;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+}
+
+.card:hover {
+  transform: translateY(-15px) scale(1.03);
+  box-shadow: 0 30px 60px rgba(255, 193, 7, 0.4) !important;
+}
+
+.admin-highlight {
+  animation: adminProductGlow 3s ease-in-out infinite;
+}
+
+@keyframes adminProductGlow {
+  0%, 100% { 
+    border-color: #ffc107; 
+    box-shadow: 0 0 25px rgba(255, 193, 7, 0.4); 
+  }
+  50% { 
+    border-color: #fd7e14; 
+    box-shadow: 0 0 35px rgba(253, 126, 20, 0.6); 
+  }
+}
+
+.card.border-danger {
+  animation: unavailablePulse 2s ease-in-out infinite;
+}
+
+@keyframes unavailablePulse {
+  0%, 100% { border-color: #dc3545; }
+  50% { border-color: #e91e63; }
+}
+
+/* ==================== PRODUCT IMAGE ==================== */
+.card-img-top {
+  transition: all 0.4s ease;
+  object-fit: cover;
+}
+
+.card:hover .card-img-top {
+  transform: scale(1.1) rotate(1deg);
+  filter: brightness(1.1) saturate(1.3);
+}
+
+.card-img-top.opacity-50 {
+  filter: grayscale(100%) brightness(0.5);
+  animation: unavailableShake 3s ease-in-out infinite;
+}
+
+@keyframes unavailableShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
+}
+
+/* ==================== BADGES AND PRICE TAGS ==================== */
+.badge {
+  backdrop-filter: blur(15px);
+  border: 2px solid rgba(255,255,255,0.3);
+  transition: all 0.3s ease;
+  animation: badgeEntrance 1s ease;
+}
+
+.badge:hover {
+  transform: scale(1.15) rotate(5deg);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+}
+
+.badge.bg-success {
+  animation: priceGlow 2s ease-in-out infinite;
+}
+
+@keyframes priceGlow {
+  0%, 100% { box-shadow: 0 0 15px rgba(40, 167, 69, 0.4); }
+  50% { box-shadow: 0 0 25px rgba(40, 167, 69, 0.7); }
+}
+
+.badge.bg-danger {
+  animation: discountBlink 1.5s ease-in-out infinite;
+}
+
+@keyframes discountBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.text-decoration-line-through {
+  animation: strikeThrough 1s ease;
+}
+
+@keyframes strikeThrough {
+  from { 
+    text-decoration: none;
+    opacity: 1;
+  }
+  to { 
+    text-decoration: line-through;
+    opacity: 0.6;
+  }
+}
+
+@keyframes badgeEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ==================== COMBO SPECIAL EFFECTS ==================== */
+.bg-gradient.bg-danger {
+  animation: comboSpecial 2s ease-in-out infinite;
+}
+
+@keyframes comboSpecial {
+  0%, 100% { 
+    box-shadow: 0 0 20px rgba(220, 53, 69, 0.4);
+    transform: scale(1);
+  }
+  50% { 
+    box-shadow: 0 0 30px rgba(220, 53, 69, 0.7);
+    transform: scale(1.05);
+  }
+}
+
+/* ==================== CUSTOMIZATION SECTIONS ==================== */
+.customization-section {
+  animation: slideInFromRight 1s ease;
+}
+
+@keyframes slideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.size-option, .extra-option {
+  border-radius: 1rem;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.size-option::before, .extra-option::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 100%;
+  background: linear-gradient(90deg, rgba(40, 167, 69, 0.1), rgba(40, 167, 69, 0.2));
+  transition: width 0.3s ease;
+}
+
+.size-option:hover::before, .extra-option:hover::before {
+  width: 100%;
+}
+
+.size-option:hover, .extra-option:hover {
+  transform: translateY(-5px) scale(1.05);
+  box-shadow: 0 10px 25px rgba(40, 167, 69, 0.3);
+}
+
+.size-option.border-success {
+  animation: selectedSize 1s ease;
+  background: linear-gradient(135deg, rgba(40, 167, 69, 0.1), rgba(32, 201, 151, 0.1));
+}
+
+.extra-option.border-warning {
+  animation: selectedExtra 1s ease;
+  background: linear-gradient(135deg, rgba(255, 193, 7, 0.1), rgba(253, 126, 20, 0.1));
+}
+
+@keyframes selectedSize {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+@keyframes selectedExtra {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+/* ==================== QUANTITY CONTROLS ==================== */
+.quantity-selection .card {
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+  border: 2px solid #dee2e6;
+  transition: all 0.3s ease;
+}
+
+.quantity-selection .card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  border-color: #0d6efd;
+}
+
+.quantity-selection .btn {
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.quantity-selection .btn:hover:not(:disabled) {
+  transform: scale(1.2);
+  box-shadow: 0 8px 20px rgba(108, 117, 125, 0.3);
+}
+
+.fs-3.fw-bold {
+  animation: quantityPulse 2s ease-in-out infinite;
+}
+
+@keyframes quantityPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+/* ==================== PRICE SUMMARY ==================== */
+.price-summary .card {
+  background: linear-gradient(135deg, rgba(40, 167, 69, 0.05), rgba(32, 201, 151, 0.05));
+  border: 2px solid #28a745;
+  animation: priceCardFloat 4s ease-in-out infinite;
+}
+
+@keyframes priceCardFloat {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-5px); }
+}
+
+.total-price h4 {
+  animation: totalPriceGlow 2s ease-in-out infinite;
+}
+
+@keyframes totalPriceGlow {
+  0%, 100% { 
+    color: #28a745; 
+    text-shadow: 0 0 10px rgba(40, 167, 69, 0.3); 
+  }
+  50% { 
+    color: #20c997; 
+    text-shadow: 0 0 20px rgba(32, 201, 151, 0.5); 
+  }
+}
+
+/* ==================== ACTION BUTTONS ==================== */
+.action-buttons .btn {
+  border-radius: 1rem;
+  padding: 1rem 2rem;
+  font-weight: 600;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+  overflow: hidden;
+}
+
+.action-buttons .btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  transition: left 0.5s;
+}
+
+.action-buttons .btn:hover::before {
+  left: 100%;
+}
+
+.btn-success {
+  background: linear-gradient(45deg, #28a745, #20c997);
+  border: none;
+  animation: addToCartGlow 3s ease-in-out infinite alternate;
+}
+
+@keyframes addToCartGlow {
+  from { box-shadow: 0 0 20px rgba(40, 167, 69, 0.3); }
+  to { box-shadow: 0 0 30px rgba(32, 201, 151, 0.5); }
+}
+
+.btn-success:hover {
+  background: linear-gradient(45deg, #20c997, #28a745);
+  transform: translateY(-5px) scale(1.05);
+  box-shadow: 0 15px 35px rgba(40, 167, 69, 0.4);
+}
+
+.btn-primary {
+  background: linear-gradient(45deg, #0d6efd, #6610f2);
+  border: none;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(45deg, #6610f2, #0d6efd);
+  transform: translateY(-5px) scale(1.05);
+  box-shadow: 0 15px 35px rgba(13, 110, 253, 0.4);
+}
+
+/* ==================== NOTES SECTION ==================== */
+.notes-section textarea {
+  border-radius: 1rem;
+  border: 2px solid #e9ecef;
+  transition: all 0.3s ease;
+  resize: vertical;
+}
+
+.notes-section textarea:focus {
+  border-color: #ffc107;
+  box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.25);
+  transform: translateY(-2px);
+}
+
+/* ==================== COMBO INFO ==================== */
+.combo-info .card {
+  background: linear-gradient(135deg, rgba(220, 53, 69, 0.05), rgba(233, 30, 99, 0.05));
+  border: 2px solid #dc3545;
+  animation: comboInfoPulse 3s ease-in-out infinite;
+}
+
+@keyframes comboInfoPulse {
+  0%, 100% { border-color: #dc3545; }
+  50% { border-color: #e91e63; }
+}
+
+.combo-info ul li {
+  animation: comboItemSlide 0.6s ease;
+  animation-delay: calc(var(--item-index, 0) * 0.1s);
+}
+
+@keyframes comboItemSlide {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.fa-check-circle {
+  animation: checkBounce 2s ease-in-out infinite;
+}
+
+@keyframes checkBounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
+/* ==================== SELECTION SUMMARY ==================== */
+.selection-summary {
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+  border-radius: 1rem;
+  padding: 1rem;
+  margin-top: 1rem;
+  border-left: 4px solid #ffc107;
+  animation: summaryGlow 2s ease-in-out infinite;
+}
+
+@keyframes summaryGlow {
+  0%, 100% { border-left-color: #ffc107; }
+  50% { border-left-color: #fd7e14; }
+}
+
+/* ==================== UNAVAILABLE MESSAGE ==================== */
+.unavailable-message .alert {
+  border-radius: 1.5rem;
+  border: none;
+  background: linear-gradient(135deg, rgba(220, 53, 69, 0.1), rgba(233, 30, 99, 0.1));
+  animation: unavailableAlert 2s ease-in-out infinite;
+}
+
+@keyframes unavailableAlert {
+  0%, 100% { box-shadow: 0 0 20px rgba(220, 53, 69, 0.2); }
+  50% { box-shadow: 0 0 30px rgba(220, 53, 69, 0.4); }
+}
+
+/* ==================== FORM ELEMENTS ==================== */
+.form-control, .form-select {
+  border-radius: 1rem;
+  border: 2px solid #e9ecef;
+  transition: all 0.3s ease;
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: #ffc107;
+  box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.25);
+  transform: translateY(-2px);
+}
+
+.form-check-input {
+  transition: all 0.3s ease;
+}
+
+.form-check-input:checked {
+  background-color: #ffc107;
+  border-color: #ffc107;
+  animation: checkboxYellow 0.3s ease;
+}
+
+@keyframes checkboxYellow {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
+/* ==================== CATEGORY ICONS ==================== */
+.fa-cocktail { 
+  animation: drinkSwirl 3s ease-in-out infinite; 
+  color: #0d6efd;
+}
+
+.fa-cookie-bite { 
+  animation: crunchBite 2s ease-in-out infinite; 
+  color: #ffc107;
+}
+
+.fa-candy-cane { 
+  animation: sweetTwist 4s linear infinite; 
+  color: #e91e63;
+}
+
+.fa-gift { 
+  animation: giftBounce 2s ease-in-out infinite; 
+  color: #dc3545;
+}
+
+.fa-ice-cream { 
+  animation: meltDrip 3s ease-in-out infinite; 
+  color: #6f42c1;
+}
+
+@keyframes drinkSwirl {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  25% { transform: rotate(10deg) scale(1.1); }
+  75% { transform: rotate(-10deg) scale(1.1); }
+}
+
+@keyframes crunchBite {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  50% { transform: scale(1.2) rotate(5deg); }
+}
+
+@keyframes sweetTwist {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes giftBounce {
+  0%, 100% { transform: translateY(0px) scale(1); }
+  50% { transform: translateY(-5px) scale(1.1); }
+}
+
+@keyframes meltDrip {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(0.8); }
+}
+
+/* ==================== LOADING STATES ==================== */
+.spinner-border {
+  animation: spin 1s linear infinite, rainbowSpin 3s ease-in-out infinite;
+}
+
+@keyframes rainbowSpin {
+  0% { color: #ffc107; }
+  25% { color: #fd7e14; }
+  50% { color: #dc3545; }
+  75% { color: #e91e63; }
+  100% { color: #ffc107; }
+}
+
+/* ==================== MODAL STYLES ==================== */
+.modal-content {
+  border-radius: 1.5rem;
+  border: none;
+  overflow: hidden;
+  animation: modalBounceIn 0.5s ease;
+}
+
+@keyframes modalBounceIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-100px) scale(0.7);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(20px) scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-header {
+  background: linear-gradient(135deg, #ffc107, #fd7e14);
+  border: none;
+}
+
+.modal-body {
+  background: linear-gradient(135deg, #f8f9fa, #ffffff);
+}
+
+/* ==================== ADMIN INFO SECTION ==================== */
+.admin-info .card {
+  animation: adminCardPulse 2s ease-in-out infinite;
+  background: linear-gradient(135deg, rgba(255, 193, 7, 0.1), rgba(253, 126, 20, 0.1));
+}
+
+@keyframes adminCardPulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 15px rgba(255, 193, 7, 0.2); }
+  50% { transform: scale(1.02); box-shadow: 0 0 25px rgba(255, 193, 7, 0.4); }
+}
+
+/* ==================== NAVIGATION BUTTONS ==================== */
+.btn-outline-warning {
+  border: 2px solid #ffc107;
+  color: #ffc107;
+  font-weight: 600;
+}
+
+.btn-outline-warning:hover {
+  background: linear-gradient(45deg, #ffc107, #fd7e14);
+  border-color: #ffc107;
+  color: #212529;
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 10px 25px rgba(255, 193, 7, 0.3);
+}
+
+.btn-outline-danger:hover {
+  background: linear-gradient(45deg, #dc3545, #e91e63);
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 10px 25px rgba(220, 53, 69, 0.3);
+}
+
+/* ==================== PRODUCT CONTENT ANIMATIONS ==================== */
+.product-content {
+  animation: contentSlideIn 1.2s ease;
+}
+
+@keyframes contentSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ==================== RESPONSIVE DESIGN ==================== */
+@media (max-width: 768px) {
+  .display-4 {
+    font-size: 2rem;
+  }
+  
+  .admin-actions .btn-group {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .admin-actions .btn {
+    border-radius: 0.5rem !important;
+    margin-bottom: 0.5rem;
+  }
+  
+  .card:hover {
+    transform: translateY(-8px) scale(1.01);
+  }
+  
+  .action-buttons .btn {
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+  }
+  
+  .size-option, .extra-option {
+    margin-bottom: 0.5rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .card-img-top {
+    height: 250px !important;
+  }
+  
+  .modal-dialog {
+    margin: 0.5rem;
+  }
+  
+  .btn {
+    padding: 0.5rem 1rem;
+  }
+  
+  .quantity-selection .btn {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .fs-3 {
+    font-size: 1.5rem !important;
+  }
+}
+
+/* ==================== SPECIAL HOVER EFFECTS ==================== */
+.fw-semibold {
+  transition: all 0.3s ease;
+}
+
+.fw-semibold:hover {
+  color: #ffc107;
+  text-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
+}
+
+.text-success {
+  transition: all 0.3s ease;
+}
+
+.text-success:hover {
+  text-shadow: 0 0 15px rgba(40, 167, 69, 0.5);
+}
+
+.text-warning {
+  transition: all 0.3s ease;
+}
+
+.text-warning:hover {
+  text-shadow: 0 0 15px rgba(255, 193, 7, 0.5);
+}
+
+/* ==================== BACKGROUND GRADIENTS ==================== */
+.bg-primary { background: linear-gradient(135deg, #0d6efd, #6610f2) !important; }
+.bg-warning { background: linear-gradient(135deg, #ffc107, #fd7e14) !important; }
+.bg-info { background: linear-gradient(135deg, #0dcaf0, #6f42c1) !important; }
+.bg-danger { background: linear-gradient(135deg, #dc3545, #e91e63) !important; }
+.bg-secondary { background: linear-gradient(135deg, #6c757d, #495057) !important; }
+
+/* ==================== ACCESSIBILITY ==================== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ==================== FOOD THEMED SPECIAL EFFECTS ==================== */
+.card-title {
+  transition: all 0.3s ease;
+}
+
+.card:hover .card-title {
+  text-shadow: 0 0 15px rgba(255, 193, 7, 0.6);
+  transform: scale(1.05);
+}
+
+.lead {
+  line-height: 1.8;
+  animation: textReveal 1.5s ease;
+}
+
+@keyframes textReveal {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==================== FLAVOR ENHANCEMENT EFFECTS ==================== */
+.card-body {
+  background: linear-gradient(135deg, rgba(248, 249, 250, 0.9), rgba(233, 236, 239, 0.9));
+}
+
+.card:hover .card-body {
+  background: linear-gradient(135deg, rgba(255, 193, 7, 0.05), rgba(253, 126, 20, 0.05));
+}

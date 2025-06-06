@@ -27,6 +27,9 @@ import { AdminMoviesComponent } from './components/admin/admin-movies/admin-movi
 import { AdminUsersComponent } from './components/admin/admin-users/admin-users.component';
 import { AdminBarComponent } from './components/admin/admin-bar/admin-bar.component';
 
+// 🆕 NUEVOS COMPONENTES DEL SISTEMA DE PUNTOS
+import { RewardsComponent } from './components/rewards/rewards.component';
+
 const routes: Routes = [
   { path: 'home', component: HomeComponent },
   { path: 'movies', component: MovieListComponent },
@@ -56,6 +59,13 @@ const routes: Routes = [
   // 🍿 RUTAS DEL BAR
   { path: 'bar', component: BarListComponent },
   { path: 'bar/:id', component: BarDetailComponent },
+  
+  // 🆕 NUEVA RUTA: SISTEMA DE RECOMPENSAS
+  { 
+    path: 'rewards', 
+    component: RewardsComponent,
+    canActivate: [AuthGuard]
+  },
   
   // RUTAS DE PERFIL (PROTEGIDAS)
   { 

@@ -6,6 +6,7 @@ import { EmailService } from '../../services/email.service';
 import { PaypalSimulationService, PayPalResult } from '../../services/paypal-simulation.service';
 import { AuthService } from '../../services/auth.service'; 
 import { UserService } from '../../services/user.service';
+import { PointsService } from '../../services/points.service'; // 🆕 NUEVO
 
 @Component({
   selector: 'app-checkout',
@@ -40,6 +41,11 @@ export class CheckoutComponent implements OnInit {
   taxes: number = 0;
   total: number = 0;
 
+  // 🆕 NUEVAS PROPIEDADES PARA SISTEMA DE PUNTOS
+  userPoints: number = 0;
+  pointsToEarn: number = 0;
+  userId: number = 0;
+
   constructor(
     private cartService: CartService,
     private router: Router,
@@ -47,11 +53,13 @@ export class CheckoutComponent implements OnInit {
     private emailService: EmailService,
     private paypalService: PaypalSimulationService,
     public authService: AuthService,
-    private userService: UserService
+    private userService: UserService,
+    private pointsService: PointsService // 🆕 NUEVO
   ) {}
 
   ngOnInit(): void {
     this.cargarDatos();
+    this.loadUserPoints(); // 🆕 NUEVO
   }
 
   cargarDatos(): void {
@@ -66,6 +74,18 @@ export class CheckoutComponent implements OnInit {
     this.serviceFee = this.subtotal * 0.05;
     this.taxes = (this.subtotal + this.serviceFee) * 0.08;
     this.total = this.subtotal + this.serviceFee + this.taxes;
+
+    // 🆕 CALCULAR PUNTOS A GANAR
+    this.pointsToEarn = Math.floor(this.total * this.pointsService.getPointsConfig().puntosPorDolar);
+  }
+
+  // 🆕 NUEVO MÉTODO: Cargar puntos del usuario
+  loadUserPoints(): void {
+    const currentUser = this.authService.getCurrentUser();
+    if (currentUser) {
+      this.userId = currentUser.id;
+      this.userPoints = this.pointsService.getUserPoints(this.userId);
+    }
   }
 
   // ==================== MÉTODOS DE VALIDACIÓN ====================
@@ -330,7 +350,7 @@ export class CheckoutComponent implements OnInit {
           .forEach((item, index) => {
             this.userService.addToHistory(currentUser.id, {
               peliculaId: index,
-              titulo: item.pelicula!.titulo, // El ! le dice a TypeScript que sabemos que existe
+              titulo: item.pelicula!.titulo,
               poster: item.pelicula!.poster,
               genero: item.pelicula!.genero,
               anio: item.pelicula!.anio,
@@ -338,6 +358,17 @@ export class CheckoutComponent implements OnInit {
               tipoAccion: 'comprada'
             });
           });
+
+        // 🆕 PROCESAR PUNTOS POR LA COMPRA
+        const puntosGanados = this.pointsService.processPointsForPurchase(
+          currentUser.id,
+          this.total,
+          this.cartItems
+        );
+
+        if (puntosGanados > 0) {
+          this.toastService.showSuccess(`¡Ganaste ${puntosGanados} puntos por tu compra! 🎉`);
+        }
 
         // 🍿 Log de productos del bar comprados (opcional)
         const productosBarComprados = this.cartItems
@@ -350,7 +381,6 @@ export class CheckoutComponent implements OnInit {
 
         if (productosBarComprados.length > 0) {
           console.log('🍿 Productos del bar comprados:', productosBarComprados);
-          // Aquí podrías guardar en un historial de compras del bar si lo implementas
         }
       }
       
@@ -367,6 +397,9 @@ export class CheckoutComponent implements OnInit {
         serviceFee: this.serviceFee.toFixed(2),
         taxes: this.taxes.toFixed(2),
         total: this.total.toFixed(2),
+        
+        // 🆕 AGREGAR INFORMACIÓN DE PUNTOS
+        puntosGanados: this.pointsToEarn,
         
         // Datos adicionales de PayPal
         ...(paypalResult && {
@@ -388,6 +421,16 @@ export class CheckoutComponent implements OnInit {
               
             this.toastService.showSuccess(mensaje, 6000);
             
+            // 🆕 MOSTRAR MENSAJE DE PUNTOS GANADOS
+            if (this.pointsToEarn > 0) {
+              setTimeout(() => {
+                this.toastService.showInfo(
+                  `💰 ¡Has ganado ${this.pointsToEarn} puntos! Úsalos en el centro de recompensas.`,
+                  5000
+                );
+              }, 2000);
+            }
+            
             // Mostrar información de transacción PayPal
             if (paypalResult?.transactionId) {
               setTimeout(() => {
@@ -395,7 +438,7 @@ export class CheckoutComponent implements OnInit {
                   `💳 PayPal ID: ${paypalResult.transactionId}`,
                   4000
                 );
-              }, 2000);
+              }, 4000);
             }
             
           } else {
@@ -406,7 +449,7 @@ export class CheckoutComponent implements OnInit {
           
           setTimeout(() => {
             this.router.navigate(['/home']);
-          }, 5000);
+          }, 7000);
           
         })
         .catch((error: any) => {
@@ -505,5 +548,21 @@ export class CheckoutComponent implements OnInit {
       return description;
     }
     return '';
+  }
+
+  // 🆕 NUEVOS MÉTODOS PARA EL SISTEMA DE PUNTOS
+
+  /**
+   * Obtener configuración de puntos
+   */
+  getPointsConfig() {
+    return this.pointsService.getPointsConfig();
+  }
+
+  /**
+   * Calcular valor en dólares de los puntos del usuario
+   */
+  getUserPointsValue(): number {
+    return this.pointsService.getPointsValue(this.userPoints);
   }
 }

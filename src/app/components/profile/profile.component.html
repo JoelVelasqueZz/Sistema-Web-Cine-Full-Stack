@@ -40,6 +40,150 @@
   <div class="row">
     <!-- Información del Perfil / Formulario de Edición -->
     <div class="col-lg-8">
+      
+      <!-- 🆕 NUEVA SECCIÓN: SISTEMA DE PUNTOS -->
+      <div class="card shadow-sm mb-4" *ngIf="!editMode">
+        <div class="card-header bg-success text-white">
+          <h5 class="mb-0">
+            <i class="fas fa-coins me-2"></i>
+            Sistema de Puntos y Referidos
+          </h5>
+        </div>
+        <div class="card-body">
+          
+          <!-- Puntos actuales -->
+          <div class="row mb-4">
+            <div class="col-md-6">
+              <div class="text-center p-3 bg-light rounded">
+                <h3 class="text-success fw-bold mb-1">
+                  <i class="fas fa-coins me-2"></i>{{ userPoints }}
+                </h3>
+                <p class="text-muted mb-0">Puntos Disponibles</p>
+                <small class="text-success">
+                  Equivalente a ${{ getPointsValue().toFixed(2) }}
+                </small>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="text-center p-3 bg-light rounded">
+                <h3 class="text-primary fw-bold mb-1">
+                  <i class="fas fa-users me-2"></i>{{ pointsStats?.totalReferidos || 0 }}
+                </h3>
+                <p class="text-muted mb-0">Amigos Referidos</p>
+                <small class="text-primary">
+                  +{{ (pointsStats?.totalReferidos || 0) * getPointsConfig().puntosReferido }} puntos ganados
+                </small>
+              </div>
+            </div>
+          </div>
+
+          <!-- Progreso hacia próxima recompensa -->
+          <div class="mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="fw-semibold">Progreso hacia próxima recompensa:</span>
+              <span class="text-muted">{{ getProgressToNextReward() }}%</span>
+            </div>
+            <div class="progress mb-2" style="height: 8px;">
+              <div class="progress-bar bg-success" 
+                   [style.width.%]="getProgressToNextReward()">
+              </div>
+            </div>
+            <small class="text-muted">
+              Te faltan {{ getNextRewardPoints() - userPoints }} puntos para la próxima recompensa
+            </small>
+          </div>
+
+          <!-- Estadísticas de puntos -->
+          <div class="row mb-4" *ngIf="pointsStats">
+            <div class="col-6 col-md-3">
+              <div class="text-center">
+                <div class="fw-bold text-success fs-5">{{ pointsStats.totalGanados }}</div>
+                <small class="text-muted">Total Ganados</small>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="text-center">
+                <div class="fw-bold text-warning fs-5">{{ pointsStats.totalUsados }}</div>
+                <small class="text-muted">Total Usados</small>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="text-center">
+                <div class="fw-bold text-primary fs-5">{{ pointsStats.totalReferidos }}</div>
+                <small class="text-muted">Referidos</small>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="text-center">
+                <div class="fw-bold text-info fs-5">{{ userPoints }}</div>
+                <small class="text-muted">Disponibles</small>
+              </div>
+            </div>
+          </div>
+
+          <!-- Código de referido -->
+          <div class="mb-4">
+            <h6 class="text-primary mb-3">
+              <i class="fas fa-share-alt me-2"></i>
+              Comparte y Gana Puntos
+            </h6>
+            
+            <div class="card border-primary">
+              <div class="card-body">
+                <div class="row align-items-center">
+                  <div class="col-md-6">
+                    <p class="mb-2">
+                      <strong>Tu código de referido:</strong>
+                    </p>
+                    <div class="d-flex align-items-center mb-2">
+                      <code class="bg-light px-3 py-2 rounded me-2 fs-5">{{ referralCode }}</code>
+                      <button class="btn btn-sm btn-outline-primary" 
+                              (click)="copyReferralCode()"
+                              [disabled]="copyingCode">
+                        <i class="fas fa-copy me-1" *ngIf="!copyingCode"></i>
+                        <i class="fas fa-spinner fa-spin me-1" *ngIf="copyingCode"></i>
+                        Copiar
+                      </button>
+                    </div>
+                    <small class="text-muted">
+                      Comparte este código y gana {{ getPointsConfig().puntosReferido }} puntos por cada amigo que se registre.
+                    </small>
+                  </div>
+                  <div class="col-md-6 text-md-end">
+                    <button class="btn btn-primary mb-2" (click)="shareReferralCode()">
+                      <i class="fas fa-share me-2"></i>
+                      Compartir Código
+                    </button>
+                    <br>
+                    <small class="text-primary">
+                      <i class="fas fa-gift me-1"></i>
+                      Tus amigos también reciben {{ getPointsConfig().puntosNuevoUsuario }} puntos
+                    </small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Acciones rápidas -->
+          <div class="d-flex gap-2 flex-wrap">
+            <button class="btn btn-success" (click)="goToRewards()">
+              <i class="fas fa-gift me-2"></i>
+              Ver Recompensas
+            </button>
+            <button class="btn btn-outline-primary" (click)="goToPointsHistory()">
+              <i class="fas fa-history me-2"></i>
+              Historial de Puntos
+            </button>
+            <button class="btn btn-outline-info" (click)="showEarnPointsInfo()">
+              <i class="fas fa-question-circle me-2"></i>
+              ¿Cómo ganar puntos?
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Información del Perfil -->
       <div class="card shadow-sm">
         <div class="card-header">
           <h5 class="mb-0">
@@ -188,12 +332,52 @@
 
     <!-- Estadísticas del Usuario -->
     <div class="col-lg-4">
-      <div class="card shadow-sm">
+      
+      <!-- 🆕 NUEVA TARJETA: RESUMEN DE PUNTOS -->
+      <div class="card shadow-sm mb-3" *ngIf="!editMode">
+        <div class="card-header bg-warning text-dark">
+          <h6 class="mb-0">
+            <i class="fas fa-trophy me-2"></i>
+            Resumen de Actividad
+          </h6>
+        </div>
+        <div class="card-body">
+          <div class="row text-center g-3">
+            <div class="col-6">
+              <div class="border rounded p-2">
+                <h4 class="text-success mb-1">{{ userPoints }}</h4>
+                <small class="text-muted">Puntos</small>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="border rounded p-2">
+                <h4 class="text-primary mb-1">{{ pointsStats?.totalReferidos || 0 }}</h4>
+                <small class="text-muted">Referidos</small>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="border rounded p-2">
+                <h4 class="text-warning mb-1">{{ pointsStats?.totalGanados || 0 }}</h4>
+                <small class="text-muted">Ganados</small>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="border rounded p-2">
+                <h4 class="text-info mb-1">{{ pointsStats?.totalUsados || 0 }}</h4>
+                <small class="text-muted">Usados</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Estadísticas de Películas -->
+      <div class="card shadow-sm mb-3">
         <div class="card-header">
-          <h5 class="mb-0">
+          <h6 class="mb-0">
             <i class="fas fa-chart-pie me-2"></i>
-            Estadísticas
-          </h5>
+            Estadísticas de Películas
+          </h6>
         </div>
         <div class="card-body">
           <div class="text-center mb-3" *ngIf="userStats">
@@ -228,12 +412,12 @@
       </div>
 
       <!-- Enlaces Rápidos -->
-      <div class="card shadow-sm mt-3">
+      <div class="card shadow-sm">
         <div class="card-header">
-          <h5 class="mb-0">
+          <h6 class="mb-0">
             <i class="fas fa-link me-2"></i>
             Enlaces Rápidos
-          </h5>
+          </h6>
         </div>
         <div class="card-body">
           <div class="d-grid gap-2">
@@ -249,6 +433,11 @@
               <i class="fas fa-film me-2"></i>
               Explorar Películas
             </a>
+            <!-- 🆕 NUEVO ENLACE -->
+            <button class="btn btn-outline-info" (click)="goToRewards()">
+              <i class="fas fa-gift me-2"></i>
+              Centro de Recompensas
+            </button>
           </div>
         </div>
       </div>

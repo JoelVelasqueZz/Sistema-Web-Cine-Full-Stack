@@ -1,4 +1,4 @@
-<!-- navbar.component.html - CON GESTIÓN DEL BAR AGREGADA -->
+<!-- navbar.component.html - CON SISTEMA DE RECOMPENSAS AGREGADO -->
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
   <div class="container">
     <!-- Logo/Brand -->
@@ -14,10 +14,14 @@
     <div class="collapse navbar-collapse" id="navbarNav">
       <ul class="navbar-nav me-auto">
         <li class="nav-item">
-          <a class="nav-link" routerLinkActive="active" [routerLink]="['/home']">Home</a>
+          <a class="nav-link" routerLinkActive="active" [routerLink]="['/home']">
+          <i class="fas fa-home me-1"></i>Home
+          </a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" routerLinkActive="active" [routerLink]="['/movies']">Películas</a>
+          <a class="nav-link" routerLinkActive="active" [routerLink]="['/movies']">
+            <i class="fas fa-film me-1"></i>Películas
+          </a>
         </li>
         <li class="nav-item">
           <a class="nav-link" routerLinkActive="active" [routerLink]="['/coming-soon']">
@@ -28,6 +32,12 @@
         <li class="nav-item">
           <a class="nav-link" routerLinkActive="active" [routerLink]="['/bar']">
             <i class="fas fa-utensils me-1"></i>Bar
+          </a>
+        </li>
+        <!-- 🆕 NUEVO: ENLACE A RECOMPENSAS -->
+        <li class="nav-item" *ngIf="authService.isLoggedIn()">
+          <a class="nav-link" routerLinkActive="active" [routerLink]="['/rewards']">
+            <i class="fas fa-gift me-1"></i>Recompensas
           </a>
         </li>
         
@@ -145,6 +155,12 @@
               <li>
                 <a class="dropdown-item" [routerLink]="['/history']">
                   <i class="fas fa-history me-2"></i>Historial
+                </a>
+              </li>
+              <!-- 🆕 NUEVO: ENLACE A RECOMPENSAS EN EL DROPDOWN -->
+              <li>
+                <a class="dropdown-item" [routerLink]="['/rewards']">
+                  <i class="fas fa-gift me-2"></i>Mis Recompensas
                 </a>
               </li>
               

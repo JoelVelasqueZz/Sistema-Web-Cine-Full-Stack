@@ -18,7 +18,7 @@
           </div>
           <div class="header-stats">
             <div class="text-center">
-              <h3 class="fw-bold text-danger mb-1">{{productos?.length || 0}}</h3>
+              <h3 class="fw-bold text-danger mb-1">{{productos.length || 0}}</h3>
               <small class="text-dark">Productos disponibles</small>
             </div>
           </div>
@@ -166,11 +166,11 @@
                   Categoría: <span class="fw-bold text-success">{{ getNombreCategoria() }}</span>
                 </span>
                 <span *ngIf="!mostrandoSoloDisponibles"> • Incluyendo no disponibles</span>
-                • <span class="fw-bold">{{ productos?.length || 0 }} resultados</span>
+                • <span class="fw-bold">{{ productos.length || 0 }} resultados</span>
               </small>
               <small class="text-muted" *ngIf="!hayFiltrosActivos()">
                 <i class="fas fa-list me-1"></i>
-                Mostrando todos los productos ({{ productos?.length || 0 }} total)
+                Mostrando todos los productos ({{ productos.length || 0 }} total)
               </small>
             </div>
             

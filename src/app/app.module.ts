@@ -43,6 +43,7 @@ import { BarDetailComponent } from './components/bar-detail/bar-detail.component
 import { BarService } from './services/bar.service';
 import { FooterComponent } from './components/footer/footer.component';
 import { AdminBarComponent } from './components/admin/admin-bar/admin-bar.component';
+import { RewardsComponent } from './components/rewards/rewards.component';
 
 @NgModule({
   declarations: [
@@ -71,7 +72,9 @@ import { AdminBarComponent } from './components/admin/admin-bar/admin-bar.compon
     // 🍿 COMPONENTES DEL BAR
     AdminBarComponent,
     BarListComponent, 
-    BarDetailComponent, FooterComponent,   
+    BarDetailComponent, 
+    FooterComponent,   
+    RewardsComponent
   ],
   imports: [
     BrowserModule,

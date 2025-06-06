@@ -12,7 +12,7 @@
   </div>
 
   <!-- ========== VISTA LISTA ========== -->
-  <div *ngIf="vistaActual === 'lista' && !cargando">
+  <ng-container *ngIf="vistaActual === 'lista' && !cargando">
     
     <!-- Header con estadísticas -->
     <div class="row mb-4">
@@ -115,15 +115,11 @@
                 Filtros y Herramientas
               </h6>
               <div class="btn-group" role="group">
-                <button class="btn btn-success btn-sm" 
-                        (click)="mostrarFormularioAgregar()">
-                  <i class="fas fa-plus me-1"></i>
-                  Nuevo Producto
+                <button class="btn btn-success btn-sm" (click)="mostrarFormularioAgregar()">
+                  <i class="fas fa-plus me-1"></i>Nuevo Producto
                 </button>
-                <button class="btn btn-outline-secondary btn-sm" 
-                        (click)="exportarProductos()">
-                  <i class="fas fa-download me-1"></i>
-                  Exportar
+                <button class="btn btn-outline-secondary btn-sm" (click)="exportarProductos()">
+                  <i class="fas fa-download me-1"></i>Exportar
                 </button>
               </div>
             </div>
@@ -188,10 +184,8 @@
               <div class="col-lg-2 col-md-6">
                 <label class="form-label small fw-semibold">&nbsp;</label>
                 <div class="d-grid">
-                  <button class="btn btn-outline-danger btn-sm" 
-                          (click)="limpiarFiltros()">
-                    <i class="fas fa-times me-1"></i>
-                    Limpiar
+                  <button class="btn btn-outline-danger btn-sm" (click)="limpiarFiltros()">
+                    <i class="fas fa-times me-1"></i>Limpiar
                   </button>
                 </div>
               </div>
@@ -262,8 +256,7 @@
                     
                     <!-- Categoría -->
                     <td>
-                      <span class="badge fs-6 px-2 py-1"
-                            [class]="getCategoriaClass(producto.categoria)">
+                      <span class="badge fs-6 px-2 py-1" [ngClass]="getCategoriaClass(producto.categoria)">
                         {{ producto.categoria }}
                       </span>
                     </td>
@@ -289,9 +282,7 @@
                                [checked]="producto.disponible"
                                (change)="toggleDisponibilidad(producto)">
                         <label class="form-check-label">
-                          <span class="badge"
-                                [class.bg-success]="producto.disponible"
-                                [class.bg-danger]="!producto.disponible">
+                          <span class="badge" [ngClass]="producto.disponible ? 'bg-success' : 'bg-danger'">
                             {{ producto.disponible ? 'Activo' : 'Inactivo' }}
                           </span>
                         </label>
@@ -304,10 +295,10 @@
                         <span class="badge bg-info" *ngIf="producto.esCombo">
                           <i class="fas fa-gift me-1"></i>Combo
                         </span>
-                        <span class="badge bg-secondary" *ngIf="producto.tamanos && producto.tamanos.length > 0">
+                        <span class="badge bg-secondary" *ngIf="producto.tamanos?.length">
                           <i class="fas fa-arrows-alt me-1"></i>Tamaños
                         </span>
-                        <span class="badge bg-warning" *ngIf="producto.extras && producto.extras.length > 0">
+                        <span class="badge bg-warning" *ngIf="producto.extras?.length">
                           <i class="fas fa-plus me-1"></i>Extras
                         </span>
                       </div>
@@ -335,26 +326,19 @@
             </div>
 
             <!-- Sin resultados -->
-            <div class="text-center p-4" *ngIf="!procesando && getProductosPaginaActual().length === 0">
+            <div class="text-center p-4" *ngIf="!procesando && !getProductosPaginaActual().length">
               <i class="fas fa-utensils fa-3x text-muted mb-3"></i>
               <h5 class="text-muted">No se encontraron productos</h5>
               <p class="text-muted">
-                <span *ngIf="terminoBusqueda || filtroCategoria || filtroDisponibilidad">
-                  Intenta cambiar los filtros de búsqueda.
-                </span>
-                <span *ngIf="!terminoBusqueda && !filtroCategoria && !filtroDisponibilidad">
-                  No hay productos registrados en el bar.
-                </span>
+                {{ (terminoBusqueda || filtroCategoria || filtroDisponibilidad) 
+                   ? 'Intenta cambiar los filtros de búsqueda.' 
+                   : 'No hay productos registrados en el bar.' }}
               </p>
-              <button class="btn btn-outline-primary" 
-                      (click)="limpiarFiltros()"
-                      *ngIf="terminoBusqueda || filtroCategoria || filtroDisponibilidad">
-                <i class="fas fa-times me-2"></i>Limpiar Filtros
-              </button>
-              <button class="btn btn-success" 
-                      (click)="mostrarFormularioAgregar()"
-                      *ngIf="!terminoBusqueda && !filtroCategoria && !filtroDisponibilidad">
-                <i class="fas fa-plus me-2"></i>Agregar Primer Producto
+              <button class="btn" 
+                      [ngClass]="(terminoBusqueda || filtroCategoria || filtroDisponibilidad) ? 'btn-outline-primary' : 'btn-success'"
+                      (click)="(terminoBusqueda || filtroCategoria || filtroDisponibilidad) ? limpiarFiltros() : mostrarFormularioAgregar()">
+                <i [class]="(terminoBusqueda || filtroCategoria || filtroDisponibilidad) ? 'fas fa-times me-2' : 'fas fa-plus me-2'"></i>
+                {{ (terminoBusqueda || filtroCategoria || filtroDisponibilidad) ? 'Limpiar Filtros' : 'Agregar Primer Producto' }}
               </button>
             </div>
 
@@ -384,9 +368,7 @@
                 <li class="page-item" 
                     *ngFor="let pagina of getPaginasArray()"
                     [class.active]="pagina === paginaActual">
-                  <button class="page-link" (click)="cambiarPagina(pagina)">
-                    {{ pagina }}
-                  </button>
+                  <button class="page-link" (click)="cambiarPagina(pagina)">{{ pagina }}</button>
                 </li>
                 
                 <!-- Última página -->
@@ -412,10 +394,10 @@
       </div>
     </div>
 
-  </div>
+  </ng-container>
 
   <!-- ========== VISTA FORMULARIO (AGREGAR/EDITAR) ========== -->
-  <div *ngIf="vistaActual === 'agregar' || vistaActual === 'editar'">
+  <ng-container *ngIf="vistaActual === 'agregar' || vistaActual === 'editar'">
     
     <!-- Header del formulario -->
     <div class="row mb-4">
@@ -427,17 +409,15 @@
                 <i class="fas fa-utensils me-2"></i>
                 {{ vistaActual === 'agregar' ? 'Nuevo Producto del Bar' : 'Editar Producto del Bar' }}
               </h5>
-              <button class="btn btn-outline-light btn-sm" 
-                      (click)="cambiarVista('lista')">
-                <i class="fas fa-arrow-left me-1"></i>
-                Volver a la Lista
+              <button class="btn btn-outline-light btn-sm" (click)="cambiarVista('lista')">
+                <i class="fas fa-arrow-left me-1"></i>Volver a la Lista
               </button>
             </div>
           </div>
           <div class="card-body">
             
             <!-- Errores de validación -->
-            <div class="alert alert-danger" *ngIf="erroresValidacion.length > 0">
+            <div class="alert alert-danger" *ngIf="erroresValidacion.length">
               <h6 class="alert-heading">
                 <i class="fas fa-exclamation-triangle me-2"></i>
                 Errores en el formulario:
@@ -522,7 +502,7 @@
                   </div>
                 </div>
                 
-                <!-- 🔥 URL de la imagen con vista previa mejorada -->
+                <!-- URL de la imagen con vista previa -->
                 <div class="col-12">
                   <label class="form-label fw-semibold">
                     <i class="fas fa-image me-1 text-success"></i>
@@ -546,7 +526,7 @@
                     <!-- Vista previa -->
                     <div class="col-md-4">
                       <div class="image-preview-container text-center">
-                        <div *ngIf="productoForm.imagen && productoForm.imagen.trim(); else noImage" 
+                        <div *ngIf="productoForm.imagen?.trim(); else noImage" 
                              class="border rounded p-2 bg-light">
                           <img [src]="productoForm.imagen" 
                                class="img-fluid rounded" 
@@ -574,11 +554,9 @@
                     </div>
                   </div>
                   
-                  <!-- Ejemplos de URLs para productos del bar -->
+                  <!-- Ejemplos de URLs -->
                   <div class="mt-2">
-                    <small class="text-muted">
-                      <strong>Ejemplos para productos del bar:</strong>
-                    </small>
+                    <small class="text-muted"><strong>Ejemplos para productos del bar:</strong></small>
                     <div class="d-flex flex-wrap gap-2 mt-1">
                       <button type="button" 
                               class="btn btn-outline-secondary btn-sm"
@@ -642,69 +620,70 @@
                 </div>
               </div>
 
-              <!-- Configuración de combo (solo si es combo) -->
-              <div class="row g-3 mb-4" *ngIf="productoForm.esCombo">
-                <div class="col-12">
-                  <h6 class="text-danger border-bottom pb-2">
-                    <i class="fas fa-gift me-2"></i>Configuración del Combo
-                  </h6>
-                </div>
-                
-                <!-- Descuento del combo -->
-                <div class="col-md-6">
-                  <label class="form-label fw-semibold">
-                    <i class="fas fa-percentage me-1 text-danger"></i>
-                    Descuento del Combo
-                  </label>
-                  <div class="input-group">
-                    <span class="input-group-text">$</span>
-                    <input type="number" 
-                           class="form-control" 
-                           [(ngModel)]="productoForm.descuento"
-                           name="descuento"
-                           min="0"
-                           step="0.01"
-                           placeholder="0.00">
+              <!-- Configuración de combo -->
+              <ng-container *ngIf="productoForm.esCombo">
+                <div class="row g-3 mb-4">
+                  <div class="col-12">
+                    <h6 class="text-danger border-bottom pb-2">
+                      <i class="fas fa-gift me-2"></i>Configuración del Combo
+                    </h6>
                   </div>
-                  <small class="form-text text-muted">
-                    Cantidad de dinero que se descuenta del precio total
-                  </small>
-                </div>
-                
-                <!-- Items incluidos en el combo -->
-                <div class="col-12">
-                  <label class="form-label fw-semibold">
-                    <i class="fas fa-list me-1 text-danger"></i>
-                    Items Incluidos en el Combo
-                  </label>
                   
-                  <div class="combo-items">
-                    <div class="row g-2 mb-2" *ngFor="let item of productoForm.incluye; let i = index">
-                      <div class="col-10">
-                        <input type="text" 
-                               class="form-control" 
-                               [(ngModel)]="productoForm.incluye![i]"
-                               [name]="'combo_item_' + i"
-                               placeholder="Ej: Palomitas medianas">
-                      </div>
-                      <div class="col-2">
-                        <button type="button" 
-                                class="btn btn-outline-danger w-100"
-                                (click)="removerItemCombo(i)">
-                          <i class="fas fa-trash"></i>
-                        </button>
-                      </div>
+                  <!-- Descuento del combo -->
+                  <div class="col-md-6">
+                    <label class="form-label fw-semibold">
+                      <i class="fas fa-percentage me-1 text-danger"></i>
+                      Descuento del Combo
+                    </label>
+                    <div class="input-group">
+                      <span class="input-group-text">$</span>
+                      <input type="number" 
+                             class="form-control" 
+                             [(ngModel)]="productoForm.descuento"
+                             name="descuento"
+                             min="0"
+                             step="0.01"
+                             placeholder="0.00">
                     </div>
+                    <small class="form-text text-muted">
+                      Cantidad de dinero que se descuenta del precio total
+                    </small>
+                  </div>
+                  
+                  <!-- Items incluidos en el combo -->
+                  <div class="col-12">
+                    <label class="form-label fw-semibold">
+                      <i class="fas fa-list me-1 text-danger"></i>
+                      Items Incluidos en el Combo
+                    </label>
                     
-                    <button type="button" 
-                            class="btn btn-outline-success btn-sm"
-                            (click)="agregarItemCombo()">
-                      <i class="fas fa-plus me-1"></i>
-                      Agregar Item al Combo
-                    </button>
+                    <div class="combo-items">
+                      <div class="row g-2 mb-2" *ngFor="let item of productoForm.incluye; let i = index">
+                        <div class="col-10">
+                          <input type="text" 
+                                 class="form-control" 
+                                 [(ngModel)]="productoForm.incluye![i]"
+                                 [name]="'combo_item_' + i"
+                                 placeholder="Ej: Palomitas medianas">
+                        </div>
+                        <div class="col-2">
+                          <button type="button" 
+                                  class="btn btn-outline-danger w-100"
+                                  (click)="removerItemCombo(i)">
+                            <i class="fas fa-trash"></i>
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <button type="button" 
+                              class="btn btn-outline-success btn-sm"
+                              (click)="agregarItemCombo()">
+                        <i class="fas fa-plus me-1"></i>Agregar Item al Combo
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </ng-container>
 
               <!-- Tamaños disponibles -->
               <div class="row g-3 mb-4">
@@ -748,8 +727,7 @@
                     <button type="button" 
                             class="btn btn-outline-primary btn-sm"
                             (click)="agregarTamano()">
-                      <i class="fas fa-plus me-1"></i>
-                      Agregar Tamaño
+                      <i class="fas fa-plus me-1"></i>Agregar Tamaño
                     </button>
                   </div>
                 </div>
@@ -797,8 +775,7 @@
                     <button type="button" 
                             class="btn btn-outline-warning btn-sm"
                             (click)="agregarExtra()">
-                      <i class="fas fa-plus me-1"></i>
-                      Agregar Extra
+                      <i class="fas fa-plus me-1"></i>Agregar Extra
                     </button>
                   </div>
                 </div>
@@ -811,8 +788,7 @@
                     <button type="button" 
                             class="btn btn-outline-secondary"
                             (click)="cambiarVista('lista')">
-                      <i class="fas fa-times me-1"></i>
-                      Cancelar
+                      <i class="fas fa-times me-1"></i>Cancelar
                     </button>
                     
                     <button type="submit" 
@@ -832,7 +808,7 @@
       </div>
     </div>
     
-  </div>
+  </ng-container>
 
 </div>
 

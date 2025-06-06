@@ -18,7 +18,7 @@
           </div>
           <div class="header-stats">
             <div class="text-center">
-              <h3 class="fw-bold text-warning mb-1">{{peliculas?.length || 0}}</h3>
+              <h3 class="fw-bold text-warning mb-1">{{peliculas.length || 0}}</h3>
               <small class="text-light">Películas disponibles</small>
             </div>
           </div>
@@ -115,11 +115,11 @@
                 <span *ngIf="generoSeleccionado !== 'todos'">
                   Género: <span class="fw-bold text-success">{{ getNombreGenero() }}</span>
                 </span>
-                • <span class="fw-bold">{{ peliculas?.length || 0 }} resultados</span>
+                • <span class="fw-bold">{{ peliculas.length || 0 }} resultados</span>
               </small>
               <small class="text-muted" *ngIf="!hayFiltrosActivos()">
                 <i class="fas fa-list me-1"></i>
-                Mostrando todas las películas ({{ peliculas?.length || 0 }} total)
+                Mostrando todas las películas ({{ peliculas.length || 0 }} total)
               </small>
             </div>
             

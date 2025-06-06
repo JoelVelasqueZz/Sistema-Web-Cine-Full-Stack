@@ -63,9 +63,7 @@
               <i class="fas fa-tachometer-alt me-1"></i>Dashboard
             </a>
           </li>
-          <li class="breadcrumb-item active" *ngIf="currentSection">
-            {{ currentSection }}
-          </li>
+          <li class="breadcrumb-item active" *ngIf="currentSection">{{ currentSection }}</li>
         </ol>
       </nav>
     </div>
@@ -95,57 +93,26 @@
               </div>
             </div>
 
-           <!-- Navegación principal -->
-<div class="nav-section">
-  <h6 class="text-muted text-uppercase small fw-bold mb-3">
-    <i class="fas fa-bars me-2"></i>Navegación
-  </h6>
-  
-  <div class="list-group list-group-flush">
-    
-    <!-- Dashboard -->
-    <a [routerLink]="['/admin/dashboard']" 
-       routerLinkActive="active"
-       class="list-group-item list-group-item-action border-0 py-3 rounded mb-1"
-       (click)="setCurrentSection('Dashboard')">
-      <i class="fas fa-tachometer-alt me-3 text-primary"></i>
-      Dashboard
-      <span class="badge bg-primary ms-auto">Home</span>
-    </a>
-    
-    <!-- Gestión de Películas -->
-    <a [routerLink]="['/admin/movies']" 
-       routerLinkActive="active"
-       class="list-group-item list-group-item-action border-0 py-3 rounded mb-1"
-       (click)="setCurrentSection('Gestión de Películas')">
-      <i class="fas fa-film me-3 text-success"></i>
-      Gestionar Películas
-      <span class="badge bg-success ms-auto">{{ getTotalMovies() }}</span>
-    </a>
-    
-    <!-- 🆕 NUEVA SECCIÓN: Gestión del Bar -->
-    <a [routerLink]="['/admin/bar']" 
-       routerLinkActive="active"
-       class="list-group-item list-group-item-action border-0 py-3 rounded mb-1"
-       (click)="setCurrentSection('Gestión del Bar')">
-      <i class="fas fa-utensils me-3 text-warning"></i>
-      Gestionar Bar
-      <span class="badge bg-warning text-dark ms-auto">{{ getTotalBarProducts() }}</span>
-    </a>
-    
-    <!-- Gestión de Usuarios -->
-    <a [routerLink]="['/admin/users']" 
-       routerLinkActive="active"
-       class="list-group-item list-group-item-action border-0 py-3 rounded mb-1"
-       (click)="setCurrentSection('Gestión de Usuarios')">
-      <i class="fas fa-users me-3 text-info"></i>
-      Gestionar Usuarios
-      <span class="badge bg-info ms-auto">{{ getTotalUsers() }}</span>
-    </a>
-    
-  </div>
-</div>
-
+            <!-- Navegación principal -->
+            <div class="nav-section">
+              <h6 class="text-muted text-uppercase small fw-bold mb-3">
+                <i class="fas fa-bars me-2"></i>Navegación
+              </h6>
+              
+              <div class="list-group list-group-flush">
+                <a *ngFor="let nav of navItems"
+                   [routerLink]="[nav.route]" 
+                   routerLinkActive="active"
+                   class="list-group-item list-group-item-action border-0 py-3 rounded mb-1"
+                   (click)="setCurrentSection(nav.section)">
+                  <i [class]="nav.icon + ' me-3'"></i>
+                  {{ nav.label }}
+                  <span [class]="'badge ms-auto ' + nav.badgeClass">
+                    {{ typeof nav.badge === 'function' ? nav.badge() : nav.badge }}
+                  </span>
+                </a>
+              </div>
+            </div>
 
             <!-- Reportes y herramientas -->
             <div class="nav-section mt-4">
@@ -154,74 +121,34 @@
               </h6>
               
               <div class="list-group list-group-flush">
-                
-                <!-- Reportes -->
-                <a [routerLink]="['/admin/reports']" 
+                <a *ngFor="let tool of toolItems"
+                   [routerLink]="[tool.route]" 
                    routerLinkActive="active"
                    class="list-group-item list-group-item-action border-0 py-3 rounded mb-1"
-                   (click)="setCurrentSection('Reportes')">
-                  <i class="fas fa-chart-bar me-3 text-warning"></i>
-                  Reportes
-                  <span class="badge bg-warning text-dark ms-auto">
-                    <i class="fas fa-file-alt"></i>
+                   (click)="setCurrentSection(tool.section)">
+                  <i [class]="tool.icon + ' me-3'"></i>
+                  {{ tool.label }}
+                  <span [class]="'badge ms-auto ' + tool.badgeClass">
+                    <i [class]="tool.badge"></i>
                   </span>
                 </a>
-                
-                <!-- Configuración -->
-                <a [routerLink]="['/admin/settings']" 
-                   routerLinkActive="active"
-                   class="list-group-item list-group-item-action border-0 py-3 rounded mb-1"
-                   (click)="setCurrentSection('Configuración')">
-                  <i class="fas fa-cog me-3 text-secondary"></i>
-                  Configuración
-                  <span class="badge bg-secondary ms-auto">
-                    <i class="fas fa-wrench"></i>
-                  </span>
-                </a>
-                
-                <!-- Logs del Sistema -->
-                <a [routerLink]="['/admin/logs']" 
-                   routerLinkActive="active"
-                   class="list-group-item list-group-item-action border-0 py-3 rounded mb-1"
-                   (click)="setCurrentSection('Logs del Sistema')">
-                  <i class="fas fa-list-alt me-3 text-dark"></i>
-                  Logs del Sistema
-                  <span class="badge bg-dark ms-auto">
-                    <i class="fas fa-eye"></i>
-                  </span>
-                </a>
-                
               </div>
             </div>
 
-           <!-- Acciones rápidas -->
-<div class="quick-actions mt-4">
-  <h6 class="text-muted text-uppercase small fw-bold mb-3">
-    <i class="fas fa-bolt me-2"></i>Acciones Rápidas
-  </h6>
-  
-  <div class="d-grid gap-2">
-    <button class="btn btn-outline-primary btn-sm" 
-            (click)="quickAddMovie()">
-      <i class="fas fa-plus me-2"></i>Agregar Película
-    </button>
-    
-    <!-- 🆕 NUEVA ACCIÓN: Agregar Producto del Bar -->
-    <button class="btn btn-outline-warning btn-sm" 
-            (click)="quickAddBarProduct()">
-      <i class="fas fa-utensils me-2"></i>Agregar Producto
-    </button>
-    
-    <button class="btn btn-outline-success btn-sm" 
-            (click)="generateReport()">
-      <i class="fas fa-file-download me-2"></i>Generar Reporte
-    </button>
-    <button class="btn btn-outline-info btn-sm" 
-            (click)="viewSystemStatus()">
-      <i class="fas fa-heartbeat me-2"></i>Estado del Sistema
-    </button>
-  </div>
-</div>
+            <!-- Acciones rápidas -->
+            <div class="quick-actions mt-4">
+              <h6 class="text-muted text-uppercase small fw-bold mb-3">
+                <i class="fas fa-bolt me-2"></i>Acciones Rápidas
+              </h6>
+              
+              <div class="d-grid gap-2">
+                <button *ngFor="let action of quickActions"
+                        [class]="'btn btn-sm ' + action.class" 
+                        (click)="action.action()">
+                  <i [class]="action.icon + ' me-2'"></i>{{ action.label }}
+                </button>
+              </div>
+            </div>
 
           </div>
         </div>
@@ -241,48 +168,22 @@
             </div>
           </div>
 
-          <!-- Contenido dinámico -->
           <router-outlet></router-outlet>
           
         </div>
       </div>
-
     </div>
   </div>
 
   <!-- Mobile bottom navigation -->
   <div class="mobile-nav d-md-none fixed-bottom bg-white border-top shadow">
     <div class="row g-0">
-      <div class="col-3">
-        <a [routerLink]="['/admin/dashboard']" 
+      <div class="col-3" *ngFor="let nav of mobileNav">
+        <a [routerLink]="[nav.route]" 
            routerLinkActive="active"
            class="d-block text-center py-2 text-decoration-none">
-          <i class="fas fa-tachometer-alt d-block"></i>
-          <small>Dashboard</small>
-        </a>
-      </div>
-      <div class="col-3">
-        <a [routerLink]="['/admin/movies']" 
-           routerLinkActive="active"
-           class="d-block text-center py-2 text-decoration-none">
-          <i class="fas fa-film d-block"></i>
-          <small>Películas</small>
-        </a>
-      </div>
-      <div class="col-3">
-        <a [routerLink]="['/admin/users']" 
-           routerLinkActive="active"
-           class="d-block text-center py-2 text-decoration-none">
-          <i class="fas fa-users d-block"></i>
-          <small>Usuarios</small>
-        </a>
-      </div>
-      <div class="col-3">
-        <a [routerLink]="['/admin/reports']" 
-           routerLinkActive="active"
-           class="d-block text-center py-2 text-decoration-none">
-          <i class="fas fa-chart-bar d-block"></i>
-          <small>Reportes</small>
+          <i [class]="nav.icon + ' d-block'"></i>
+          <small>{{ nav.label }}</small>
         </a>
       </div>
     </div>

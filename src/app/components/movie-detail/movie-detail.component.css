@@ -1,0 +1,502 @@
+/* ==================== HEADER SECTION ==================== */
+.display-4 {
+  background: linear-gradient(45deg, #0d6efd, #6610f2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: titleShine 3s ease-in-out infinite alternate;
+}
+
+@keyframes titleShine {
+  from { filter: brightness(1); }
+  to { filter: brightness(1.2); }
+}
+
+.text-muted {
+  transition: all 0.3s ease;
+}
+
+.text-muted:hover {
+  color: #6c757d !important;
+  transform: scale(1.05);
+}
+
+/* ==================== ADMIN CONTROLS ==================== */
+.admin-actions .btn-group {
+  box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+.admin-actions .btn {
+  border-radius: 0;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+}
+
+.admin-actions .btn:first-child {
+  border-top-left-radius: 1rem;
+  border-bottom-left-radius: 1rem;
+}
+
+.admin-actions .btn:last-child {
+  border-top-right-radius: 1rem;
+  border-bottom-right-radius: 1rem;
+}
+
+.admin-actions .btn:hover {
+  transform: translateY(-3px) scale(1.05);
+  z-index: 2;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.badge.bg-danger {
+  animation: adminBadgePulse 2s ease-in-out infinite;
+}
+
+@keyframes adminBadgePulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(220, 53, 69, 0.3); }
+  50% { box-shadow: 0 0 20px rgba(220, 53, 69, 0.6); }
+}
+
+/* ==================== MAIN CARD ==================== */
+.card {
+  border-radius: 1.5rem;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+}
+
+.card:hover {
+  transform: translateY(-10px) scale(1.02);
+  box-shadow: 0 25px 50px rgba(13, 110, 253, 0.3) !important;
+}
+
+.admin-highlight {
+  animation: adminGlow 3s ease-in-out infinite;
+}
+
+@keyframes adminGlow {
+  0%, 100% { border-color: #ffc107; box-shadow: 0 0 20px rgba(255, 193, 7, 0.3); }
+  50% { border-color: #fd7e14; box-shadow: 0 0 30px rgba(253, 126, 20, 0.5); }
+}
+
+.card-img-top {
+  transition: all 0.4s ease;
+  object-fit: cover;
+}
+
+.card:hover .card-img-top {
+  transform: scale(1.05);
+  filter: brightness(1.1) saturate(1.2);
+}
+
+/* ==================== BADGES ==================== */
+.badge {
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.2);
+  transition: all 0.3s ease;
+  animation: badgeSlideIn 0.8s ease;
+}
+
+.badge:hover {
+  transform: scale(1.1);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+.badge.bg-warning {
+  animation: starShine 2s ease-in-out infinite;
+}
+
+@keyframes starShine {
+  0%, 100% { box-shadow: 0 0 15px rgba(255, 193, 7, 0.4); }
+  50% { box-shadow: 0 0 25px rgba(255, 193, 7, 0.7); }
+}
+
+@keyframes badgeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px) scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+/* ==================== MOVIE CONTENT CARDS ==================== */
+.movie-content .card {
+  border-radius: 1rem;
+  transition: all 0.3s ease;
+  border: none;
+}
+
+.movie-content .card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 35px rgba(13, 110, 253, 0.2);
+}
+
+.card-subtitle {
+  animation: iconFloat 3s ease-in-out infinite;
+}
+
+@keyframes iconFloat {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-3px); }
+}
+
+/* ==================== TRAILER SECTION ==================== */
+.trailer-section {
+  animation: fadeInUp 1s ease;
+}
+
+.ratio {
+  border-radius: 1.5rem;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.ratio:hover {
+  transform: scale(1.02);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+}
+
+.ratio iframe {
+  border-radius: 1.5rem;
+}
+
+/* ==================== PURCHASE SECTION ==================== */
+.purchase-section .card {
+  background: linear-gradient(135deg, #28a745, #20c997);
+  border: none;
+  animation: purchaseGlow 3s ease-in-out infinite alternate;
+}
+
+@keyframes purchaseGlow {
+  from { box-shadow: 0 0 30px rgba(40, 167, 69, 0.3); }
+  to { box-shadow: 0 0 40px rgba(32, 201, 151, 0.5); }
+}
+
+.purchase-section .card-body {
+  color: white;
+}
+
+.purchase-section .btn-success {
+  background: linear-gradient(45deg, #20c997, #28a745);
+  border: none;
+  color: white;
+  font-weight: 600;
+  padding: 1rem 3rem;
+  font-size: 1.1rem;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.purchase-section .btn-success:hover {
+  background: linear-gradient(45deg, #28a745, #20c997);
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 15px 35px rgba(40, 167, 69, 0.4);
+}
+
+/* ==================== STUDIO SECTION ==================== */
+.studio-section {
+  animation: slideInFromBottom 1s ease;
+}
+
+.studio-logo-container {
+  transition: all 0.3s ease;
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+}
+
+.studio-logo-container:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+}
+
+.estudio-img {
+  transition: all 0.3s ease;
+}
+
+.estudio-img:hover {
+  transform: scale(1.1) rotate(2deg);
+  filter: brightness(1.1);
+}
+
+/* ==================== BUTTONS ==================== */
+.btn {
+  border-radius: 1rem;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  transition: left 0.6s;
+}
+
+.btn:hover::before {
+  left: 100%;
+}
+
+.btn-outline-primary:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px rgba(13, 110, 253, 0.3);
+}
+
+.btn-outline-warning:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px rgba(255, 193, 7, 0.3);
+}
+
+.btn-warning:hover {
+  background: linear-gradient(45deg, #fd7e14, #ffc107);
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px rgba(255, 193, 7, 0.4);
+}
+
+.btn-info:hover {
+  background: linear-gradient(45deg, #6f42c1, #0dcaf0);
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px rgba(13, 202, 240, 0.4);
+}
+
+.btn-danger:hover {
+  background: linear-gradient(45deg, #e91e63, #dc3545);
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px rgba(220, 53, 69, 0.4);
+}
+
+/* ==================== MODAL STYLES ==================== */
+.modal-content {
+  border-radius: 1.5rem;
+  border: none;
+  overflow: hidden;
+  animation: modalSlideIn 0.4s ease;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-50px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-header {
+  background: linear-gradient(135deg, #ffc107, #fd7e14);
+  border: none;
+}
+
+.modal-body {
+  background: #f8f9fa;
+}
+
+/* ==================== FORM ELEMENTS ==================== */
+.form-control, .form-select {
+  border-radius: 0.75rem;
+  border: 2px solid #e9ecef;
+  transition: all 0.3s ease;
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+  transform: translateY(-2px);
+}
+
+.form-label {
+  font-weight: 600;
+  color: #495057;
+  transition: all 0.3s ease;
+}
+
+.form-control:focus + .form-label,
+.form-select:focus + .form-label {
+  color: #0d6efd;
+}
+
+/* ==================== ADMIN INFO CARD ==================== */
+.admin-info .card {
+  animation: adminInfoPulse 2s ease-in-out infinite;
+}
+
+@keyframes adminInfoPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+
+/* ==================== IMAGE PREVIEW ==================== */
+.img-thumbnail {
+  transition: all 0.3s ease;
+  border-radius: 0.5rem;
+}
+
+.img-thumbnail:hover {
+  transform: scale(1.2);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+
+/* ==================== ANIMATIONS ==================== */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInFromBottom {
+  from {
+    opacity: 0;
+    transform: translateY(50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animated.fadeIn {
+  animation: fadeInUp 0.8s ease;
+}
+
+/* ==================== LOADING STATES ==================== */
+.spinner-border {
+  animation: spin 1s linear infinite, colorPulse 2s ease-in-out infinite;
+}
+
+@keyframes colorPulse {
+  0%, 100% { color: #ffc107; }
+  33% { color: #fd7e14; }
+  66% { color: #dc3545; }
+}
+
+/* ==================== HOVER EFFECTS ==================== */
+.text-primary {
+  transition: all 0.3s ease;
+}
+
+.text-primary:hover {
+  text-shadow: 0 0 15px rgba(13, 110, 253, 0.5);
+}
+
+.fw-bold {
+  transition: all 0.3s ease;
+}
+
+.fw-bold:hover {
+  transform: scale(1.05);
+}
+
+/* ==================== RESPONSIVE DESIGN ==================== */
+@media (max-width: 768px) {
+  .display-4 {
+    font-size: 2rem;
+  }
+  
+  .admin-actions .btn-group {
+    flex-direction: column;
+  }
+  
+  .admin-actions .btn {
+    border-radius: 0.5rem !important;
+    margin-bottom: 0.5rem;
+  }
+  
+  .card:hover {
+    transform: translateY(-5px) scale(1.01);
+  }
+  
+  .purchase-section .btn-success {
+    padding: 0.75rem 2rem;
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .card-img-top {
+    height: 300px !important;
+  }
+  
+  .modal-dialog {
+    margin: 1rem;
+  }
+  
+  .btn {
+    padding: 0.5rem 1rem;
+  }
+}
+
+/* ==================== SPECIAL EFFECTS ==================== */
+.h2.text-primary {
+  background: linear-gradient(45deg, #0d6efd, #6610f2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.lead {
+  line-height: 1.8;
+  font-weight: 400;
+}
+
+.text-muted.lh-lg {
+  line-height: 2;
+}
+
+/* ==================== ACCESSIBILITY ==================== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ==================== ADDITIONAL MOVIE-SPECIFIC EFFECTS ==================== */
+.movie-content {
+  animation: contentReveal 1.2s ease;
+}
+
+@keyframes contentReveal {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.card-subtitle i {
+  animation: iconBounce 2s ease-in-out infinite;
+}
+
+@keyframes iconBounce {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-2px) rotate(5deg); }
+  75% { transform: translateY(-1px) rotate(-3deg); }
+}
+
+/* ==================== GLOW EFFECTS ==================== */
+.text-success {
+  animation: successGlow 2s ease-in-out infinite alternate;
+}
+
+@keyframes successGlow {
+  from { color: #28a745; text-shadow: 0 0 5px rgba(40, 167, 69, 0.3); }
+  to { color: #20c997; text-shadow: 0 0 15px rgba(32, 201, 151, 0.6); }
+}

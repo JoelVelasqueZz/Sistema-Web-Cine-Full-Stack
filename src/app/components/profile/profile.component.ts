@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { AuthService, Usuario } from '../../services/auth.service';
 import { UserService, UpdateProfileData, UserStats } from '../../services/user.service';
+import { PointsService, PointsStats } from '../../services/points.service'; // 🆕 NUEVO
 import { ToastService } from '../../services/toast.service';
 
 @Component({
@@ -13,6 +14,7 @@ export class ProfileComponent implements OnInit {
   
   currentUser: Usuario | null = null;
   userStats: UserStats | null = null;
+  pointsStats: PointsStats | null = null; // 🆕 NUEVO
   editMode: boolean = false;
   
   // Datos del formulario de edición
@@ -25,6 +27,12 @@ export class ProfileComponent implements OnInit {
   // Control de estados
   loading: boolean = false;
   showAvatarOptions: boolean = false;
+  
+  // 🆕 NUEVAS PROPIEDADES PARA PUNTOS Y REFERIDOS
+  userPoints: number = 0;
+  referralCode: string = '';
+  showReferralCode: boolean = false;
+  copyingCode: boolean = false;
   
   // Opciones de avatares predefinidos
   avatarOptions: string[] = [
@@ -39,6 +47,7 @@ export class ProfileComponent implements OnInit {
   constructor(
     public  authService: AuthService,
     private userService: UserService,
+    private pointsService: PointsService, // 🆕 NUEVO
     private toastService: ToastService
   ) {}
 
@@ -52,6 +61,16 @@ export class ProfileComponent implements OnInit {
     if (this.currentUser) {
       // Cargar estadísticas del usuario
       this.userStats = this.userService.getUserStats(this.currentUser.id);
+      
+      // 🆕 CARGAR ESTADÍSTICAS DE PUNTOS
+      this.pointsStats = this.pointsService.getUserPointsStats(this.currentUser.id);
+      this.userPoints = this.pointsService.getUserPoints(this.currentUser.id);
+      
+      // 🆕 OBTENER CÓDIGO DE REFERIDO
+      this.referralCode = this.pointsService.getUserReferralCode(this.currentUser.id);
+      
+      // 🆕 DAR PUNTOS DE BIENVENIDA SI ES NUEVO USUARIO
+      this.pointsService.giveWelcomePoints(this.currentUser.id);
       
       // Inicializar formulario con datos actuales
       this.profileForm = {
@@ -140,5 +159,149 @@ export class ProfileComponent implements OnInit {
       const years = Math.floor(diffDays / 365);
       return `${years} ${years === 1 ? 'año' : 'años'}`;
     }
+  }
+
+  // 🆕 NUEVOS MÉTODOS PARA SISTEMA DE PUNTOS Y REFERIDOS
+
+  /**
+   * Mostrar/ocultar código de referido
+   */
+  toggleReferralCode(): void {
+    this.showReferralCode = !this.showReferralCode;
+  }
+
+  /**
+   * Copiar código de referido al portapapeles
+   */
+  copyReferralCode(): void {
+    this.copyingCode = true;
+    
+    navigator.clipboard.writeText(this.referralCode).then(() => {
+      this.toastService.showSuccess('¡Código copiado al portapapeles!');
+      this.copyingCode = false;
+    }).catch(() => {
+      // Fallback para navegadores que no soportan clipboard API
+      const textArea = document.createElement('textarea');
+      textArea.value = this.referralCode;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      
+      this.toastService.showSuccess('¡Código copiado al portapapeles!');
+      this.copyingCode = false;
+    });
+  }
+
+  /**
+   * Compartir código de referido
+   */
+  shareReferralCode(): void {
+    const shareText = `¡Únete a CinemaApp con mi código de referido y obtén puntos gratis! 🎬🍿\n\nCódigo: ${this.referralCode}\n\n¡Disfruta del mejor cine!`;
+    
+    if (navigator.share) {
+      navigator.share({
+        title: 'Código de Referido - CinemaApp',
+        text: shareText,
+        url: window.location.origin
+      }).then(() => {
+        this.toastService.showSuccess('Código compartido exitosamente');
+      }).catch(() => {
+        this.fallbackShare(shareText);
+      });
+    } else {
+      this.fallbackShare(shareText);
+    }
+  }
+
+  /**
+   * Fallback para compartir en navegadores sin Web Share API
+   */
+  private fallbackShare(text: string): void {
+    navigator.clipboard.writeText(text).then(() => {
+      this.toastService.showSuccess('Mensaje de referido copiado al portapapeles');
+    }).catch(() => {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      
+      this.toastService.showSuccess('Mensaje de referido copiado al portapapeles');
+    });
+  }
+
+  /**
+   * Obtener valor en dólares de los puntos
+   */
+  getPointsValue(): number {
+    return this.pointsService.getPointsValue(this.userPoints);
+  }
+
+  /**
+   * Obtener configuración de puntos para mostrar información
+   */
+  getPointsConfig() {
+    return this.pointsService.getPointsConfig();
+  }
+
+  /**
+   * Formatear fecha para mostrar
+   */
+  formatDate(dateString: string): string {
+    return new Date(dateString).toLocaleDateString('es-ES', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  }
+
+  /**
+   * Obtener puntos necesarios para la próxima recompensa
+   */
+  getNextRewardPoints(): number {
+    // Esto podría integrarse con RewardsService en el futuro
+    const commonRewards = [200, 300, 450, 650, 850];
+    const nextReward = commonRewards.find(points => points > this.userPoints);
+    return nextReward || 1000;
+  }
+
+  /**
+   * Obtener progreso hacia la próxima recompensa
+   */
+  getProgressToNextReward(): number {
+    const nextReward = this.getNextRewardPoints();
+    return Math.round((this.userPoints / nextReward) * 100);
+  }
+
+  /**
+   * Navegar a la página de recompensas
+   */
+  goToRewards(): void {
+    // Aquí navegarías a la página de recompensas cuando la implementes
+    this.toastService.showInfo('Próximamente: Centro de Recompensas');
+  }
+
+  /**
+   * Navegar al historial de puntos
+   */
+  goToPointsHistory(): void {
+    // Aquí navegarías al historial de puntos cuando lo implementes
+    this.toastService.showInfo('Próximamente: Historial de Puntos');
+  }
+
+  /**
+   * Obtener información sobre cómo ganar más puntos
+   */
+  showEarnPointsInfo(): void {
+    const config = this.getPointsConfig();
+    const message = `💰 ¿Cómo ganar puntos?\n\n` +
+                   `🎬 Por cada dólar que gastes: ${config.puntosPorDolar} punto\n` +
+                   `👥 Por cada amigo que refiera: ${config.puntosReferido} puntos\n` +
+                   `🎁 Puntos de bienvenida: ${config.puntosBienvenida} puntos\n\n` +
+                   `¡Compra entradas y productos del bar para acumular puntos!`;
+    
+    alert(message);
   }
 }
