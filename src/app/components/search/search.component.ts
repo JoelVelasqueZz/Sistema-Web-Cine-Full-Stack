@@ -38,32 +38,49 @@ export class SearchComponent implements OnInit {
    * Buscar películas usando MovieService (que ya maneja la API)
    */
   buscarPeliculas(): void {
-    if (!this.termino.trim()) {
-      this.peliculas = [];
-      return;
-    }
-
-    this.buscando = true;
-    this.errorBusqueda = false;
-
-    // Usar el método actualizado de MovieService que ya maneja la API
-    this.movieService.buscarPeliculas(this.termino).subscribe({
-      next: (peliculas) => {
-        console.log('✅ Búsqueda exitosa:', peliculas.length);
-        this.peliculas = peliculas;
-        this.buscando = false;
-        this.usingApi = true;
-        this.errorBusqueda = false;
-      },
-      error: (error) => {
-        console.error('❌ Error en búsqueda:', error);
-        this.peliculas = [];
-        this.buscando = false;
-        this.usingApi = false;
-        this.errorBusqueda = true;
-      }
-    });
+  if (!this.termino.trim()) {
+    this.peliculas = [];
+    return;
   }
+
+  this.buscando = true;
+  this.errorBusqueda = false;
+  
+  console.log('🔍 Buscando películas para:', this.termino);
+
+  // Usar el método actualizado de MovieService que ya maneja la API
+  this.movieService.buscarPeliculas(this.termino).subscribe({
+    next: (peliculas) => {
+      console.log('✅ Búsqueda exitosa desde BD:', peliculas.length, 'resultados');
+      this.peliculas = peliculas;
+      this.buscando = false;
+      this.usingApi = true;
+      this.errorBusqueda = false;
+      
+      // Log para debugging
+      if (peliculas.length > 0) {
+        console.log('🎬 Primera película encontrada:', peliculas[0].titulo);
+      }
+    },
+    error: (error) => {
+      console.error('❌ Error en búsqueda desde BD:', error);
+      
+      // Manejar diferentes tipos de errores
+      if (error.status === 0) {
+        console.error('🚫 Error de conexión - servidor no disponible');
+      } else if (error.status >= 500) {
+        console.error('💥 Error del servidor');
+      } else {
+        console.error('⚠️ Error de búsqueda:', error.message);
+      }
+      
+      this.peliculas = [];
+      this.buscando = false;
+      this.usingApi = false;
+      this.errorBusqueda = true;
+    }
+  });
+}
 
   /**
    * Reintentar búsqueda
@@ -76,10 +93,11 @@ export class SearchComponent implements OnInit {
    * Ver película usando el ID correcto
    */
   verPelicula(pelicula: Pelicula) {
-    // Usar el ID de la base de datos si existe, sino usar idx
-    const movieId = pelicula.id || pelicula.idx;
-    this.router.navigate(['/movie', movieId]);
-  }
+  // Usar el ID de la base de datos si existe, sino usar idx
+  const movieId = pelicula.id || pelicula.idx;
+  console.log('🎬 Viendo película:', pelicula.titulo, 'con ID:', movieId);
+  this.router.navigate(['/movie', movieId]);
+}
 
   /**
    * Volver a buscar - enfocar input de búsqueda

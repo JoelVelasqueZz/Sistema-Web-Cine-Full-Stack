@@ -25,27 +25,39 @@ export class NavbarComponent {
   ) {}
 
   onBuscarInput(event: any) {
-    this.terminoBusqueda = event.target.value;
-    
-    if (this.terminoBusqueda.trim().length === 0) {
-      this.sugerencias = [];
-      this.mostrarSugerencias = false;
-      return;
-    }
+  this.terminoBusqueda = event.target.value;
+  
+  if (this.terminoBusqueda.trim().length === 0) {
+    this.sugerencias = [];
+    this.mostrarSugerencias = false;
+    return;
+  }
 
-    if (this.terminoBusqueda.trim().length >= 2) {
-      this.movieService.buscarPeliculas(this.terminoBusqueda).subscribe((peliculas: Pelicula[]) => {
+  if (this.terminoBusqueda.trim().length >= 2) {
+    // ✅ USAR EL MÉTODO QUE YA MANEJA LA API
+    this.movieService.buscarPeliculas(this.terminoBusqueda).subscribe({
+      next: (peliculas: Pelicula[]) => {
+        console.log('📡 Sugerencias de API:', peliculas.length);
         this.sugerencias = peliculas.slice(0, 5);
         this.mostrarSugerencias = this.sugerencias.length > 0;
         this.sugerenciaSeleccionada = -1;
-      });
-    }
+      },
+      error: (error) => {
+        console.error('❌ Error en sugerencias:', error);
+        this.sugerencias = [];
+        this.mostrarSugerencias = false;
+      }
+    });
   }
+}
 
   seleccionarSugerencia(pelicula: Pelicula) {
-    this.cerrarSugerencias();
-    this.router.navigate(['/movie', pelicula.idx]);
-  }
+  this.cerrarSugerencias();
+  // Usar el ID de la base de datos si existe, sino idx como fallback
+  const movieId = pelicula.id || pelicula.idx;
+  console.log('🎬 Navegando a película con ID:', movieId);
+  this.router.navigate(['/movie', movieId]);
+}
 
   cerrarSugerencias() {
     this.mostrarSugerencias = false;
@@ -53,23 +65,27 @@ export class NavbarComponent {
   }
 
   buscarPelicula(termino: string) {
-    console.log('Término de búsqueda:', termino);
-    
-    if (!termino || termino.trim().length === 0) {
-      console.log('Búsqueda vacía');
-      return;
-    }
-    
-    this.cerrarSugerencias();
-    const terminoLimpio = termino.trim();
-    console.log('Navegando a /buscar/' + terminoLimpio);
-    
-    this.router.navigate(['/buscar', terminoLimpio]).then(success => {
-      console.log('Navegación exitosa:', success);
-    }).catch(error => {
-      console.error('Error en navegación:', error);
-    });
+  console.log('🔍 Término de búsqueda:', termino);
+  
+  if (!termino || termino.trim().length === 0) {
+    console.log('⚠️ Búsqueda vacía');
+    return;
   }
+  
+  this.cerrarSugerencias();
+  const terminoLimpio = termino.trim();
+  console.log('🧭 Navegando a /buscar/' + terminoLimpio);
+  
+  this.router.navigate(['/buscar', terminoLimpio]).then(success => {
+    if (success) {
+      console.log('✅ Navegación exitosa');
+      // Limpiar el input después de buscar
+      this.terminoBusqueda = '';
+    }
+  }).catch(error => {
+    console.error('❌ Error en navegación:', error);
+  });
+}
 
   // MÉTODO PARA LOGOUT
   logout() {

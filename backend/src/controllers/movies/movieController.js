@@ -210,6 +210,42 @@ const getPopularMovies = async (req, res) => {
   }
 };
 
+const searchMovies = async (req, res) => {
+  try {
+    const { q } = req.query;
+
+    // Validar que hay término de búsqueda
+    if (!q || q.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Término de búsqueda requerido'
+      });
+    }
+
+    const searchTerm = q.trim();
+    console.log('🔍 Buscando películas con término:', searchTerm);
+
+    // Buscar en la base de datos
+    const movies = await Movie.search(searchTerm);
+
+    console.log('✅ Películas encontradas:', movies.length);
+
+    res.json({
+      success: true,
+      data: movies,
+      total: movies.length,
+      searchTerm: searchTerm
+    });
+
+  } catch (error) {
+    console.error('❌ Error en búsqueda de películas:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error interno del servidor'
+    });
+  }
+};
+
 // Obtener estadísticas de una película
 const getMovieStats = async (req, res) => {
   try {
@@ -242,5 +278,6 @@ module.exports = {
   deleteMovie,
   getGenres,
   getPopularMovies,
-  getMovieStats
+  getMovieStats,
+  searchMovies
 };

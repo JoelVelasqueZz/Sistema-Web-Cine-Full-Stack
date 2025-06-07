@@ -102,6 +102,27 @@ class Movie {
     return result.rows[0];
   }
 
+     static async search(searchTerm) {
+  const sql = `
+    SELECT id, titulo, sinopsis, poster, fecha_estreno, estudio, genero, 
+           anio, duracion, rating, director, trailer, activo,
+           fecha_creacion, fecha_actualizacion
+    FROM peliculas 
+    WHERE activo = true 
+    AND (
+      titulo ILIKE $1 
+      OR sinopsis ILIKE $1 
+      OR director ILIKE $1 
+      OR genero ILIKE $1
+    )
+    ORDER BY titulo
+  `;
+
+  const searchPattern = `%${searchTerm}%`;
+  const result = await query(sql, [searchPattern]);
+  return result.rows;
+}
+
   // Eliminar película (soft delete)
   static async delete(id) {
     const sql = `

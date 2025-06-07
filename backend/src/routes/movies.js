@@ -8,24 +8,27 @@ const {
   deleteMovie,
   getGenres,
   getPopularMovies,
-  getMovieStats
+  getMovieStats,
+  searchMovies  // ✅ AGREGAR AQUÍ
 } = require('../controllers/movies/movieController');
 
 // Rutas públicas (no necesitan autenticación)
 
-// GET /api/movies - Obtener todas las películas (con filtros opcionales)
-// Ejemplos: 
-// /api/movies
-// /api/movies?genero=Acción
-// /api/movies?anio=2024
-// /api/movies?search=avengers
-router.get('/', getAllMovies);
+// ✅ RUTAS ESPECÍFICAS PRIMERO (antes de /:id)
+
+// GET /api/movies/search?q=termino - Buscar películas
+router.get('/search', searchMovies);
 
 // GET /api/movies/genres - Obtener todos los géneros disponibles
 router.get('/genres', getGenres);
 
 // GET /api/movies/popular - Obtener películas más populares
 router.get('/popular', getPopularMovies);
+
+// ✅ RUTAS GENERALES DESPUÉS
+
+// GET /api/movies - Obtener todas las películas (con filtros opcionales)
+router.get('/', getAllMovies);
 
 // GET /api/movies/:id - Obtener película por ID
 router.get('/:id', getMovieById);

@@ -194,7 +194,30 @@ verifyToken(): Observable<boolean> {
   getToken(): string | null {
     return this.authToken || localStorage.getItem('auth_token');
   }
+  getCurrentUserName(): string {
+  return this.currentUser?.nombre || 'Usuario';
+}
 
+/**
+ * Obtener email del usuario actual
+ */
+getCurrentUserEmail(): string {
+  return this.currentUser?.email || '';
+}
+
+/**
+ * Obtener avatar del usuario actual
+ */
+getCurrentUserAvatar(): string {
+  return this.currentUser?.avatar || 'https://ui-avatars.com/api/?name=User&background=6c757d&color=fff&size=128';
+}
+
+/**
+ * Verificar si el usuario es cliente
+ */
+isCliente(): boolean {
+  return this.isLoggedIn() && this.currentUser?.role === 'cliente';
+}
   // ==================== MÉTODOS PRIVADOS ====================
 
   /**
@@ -202,7 +225,7 @@ verifyToken(): Observable<boolean> {
    */
   private handleAuthSuccess(authData: AuthData): void {
     this.currentUser = this.convertApiUser(authData.user);
-    this.authToken = authData.accessToken || authData.token || null; // ✅ CORREGIDO
+    this.authToken = authData.token || null; // ✅ CORREGIDO
     this.isAuthenticated = true;
 
     // Guardar en localStorage

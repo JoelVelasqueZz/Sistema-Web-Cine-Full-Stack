@@ -87,58 +87,74 @@ export class RegisterComponent {
 
   // MÉTODO onRegister MEJORADO
   onRegister() {
-    this.cargando = true;
-    this.mensajeError = '';
+  this.cargando = true;
+  this.mensajeError = '';
 
-    // Validar nombre
-    const nombreValidation = this.validarNombre(this.registerData.nombre);
-    if (!nombreValidation.valid) {
-      this.toastService.showWarning(nombreValidation.message);
-      this.cargando = false;
-      return;
-    }
-
-    // Validar email
-    const emailValidation = this.validarEmailAvanzado(this.registerData.email);
-    if (!emailValidation.valid) {
-      this.toastService.showWarning(emailValidation.message);
-      this.cargando = false;
-      return;
-    }
-
-    // Validar contraseña
-    const passwordValidation = this.validarPasswordSegura(this.registerData.password);
-    if (!passwordValidation.valid) {
-      this.toastService.showWarning(passwordValidation.message);
-      this.cargando = false;
-      return;
-    }
-
-    // Validar que las contraseñas coincidan
-    if (this.passwordsNoCoinciden()) {
-      this.toastService.showWarning('Las contraseñas no coinciden');
-      this.cargando = false;
-      return;
-    }
-
-    // Validar términos
-    if (!this.aceptarTerminos) {
-      this.toastService.showWarning('Debes aceptar los términos y condiciones');
-      this.cargando = false;
-      return;
-    }
-
-    // Procesar registro
-    if (this.authService.register(this.registerData)) {
-      this.toastService.showSuccess('¡Cuenta creada exitosamente! 🎉');
-      setTimeout(() => {
-        this.router.navigate(['/login']);
-      }, 2000);
-    } else {
-      this.toastService.showError('El email ya está registrado. Intenta con otro email.');
-      this.cargando = false;
-    }
+  // Validar nombre
+  const nombreValidation = this.validarNombre(this.registerData.nombre);
+  if (!nombreValidation.valid) {
+    this.toastService.showWarning(nombreValidation.message);
+    this.cargando = false;
+    return;
   }
+
+  // Validar email
+  const emailValidation = this.validarEmailAvanzado(this.registerData.email);
+  if (!emailValidation.valid) {
+    this.toastService.showWarning(emailValidation.message);
+    this.cargando = false;
+    return;
+  }
+
+  // Validar contraseña
+  const passwordValidation = this.validarPasswordSegura(this.registerData.password);
+  if (!passwordValidation.valid) {
+    this.toastService.showWarning(passwordValidation.message);
+    this.cargando = false;
+    return;
+  }
+
+  // Validar que las contraseñas coincidan
+  if (this.passwordsNoCoinciden()) {
+    this.toastService.showWarning('Las contraseñas no coinciden');
+    this.cargando = false;
+    return;
+  }
+
+  // Validar términos
+  if (!this.aceptarTerminos) {
+    this.toastService.showWarning('Debes aceptar los términos y condiciones');
+    this.cargando = false;
+    return;
+  }
+
+  // ✅ PROCESAR REGISTRO - MÉTODO CORREGIDO PARA USAR OBSERVABLE
+  this.authService.register(this.registerData).subscribe({
+    next: (response) => {
+      console.log('🔍 Respuesta de registro:', response);
+      
+      if (response.success) {
+        this.toastService.showSuccess(response.message || '¡Cuenta creada exitosamente! 🎉');
+        this.mensajeExito = response.message || '¡Cuenta creada exitosamente!';
+        
+        setTimeout(() => {
+          this.router.navigate(['/login']);
+        }, 2000);
+      } else {
+        this.toastService.showError(response.message || 'Error al crear la cuenta');
+        this.mensajeError = response.message || 'Error al crear la cuenta';
+      }
+      
+      this.cargando = false;
+    },
+    error: (error) => {
+      console.error('❌ Error en registro:', error);
+      this.toastService.showError('Error de conexión. Intenta de nuevo.');
+      this.mensajeError = 'Error de conexión. Intenta de nuevo.';
+      this.cargando = false;
+    }
+  });
+}
 
   // MÉTODO PARA MOSTRAR FORTALEZA DE CONTRASEÑA EN TIEMPO REAL
   getPasswordStrength(password: string): { strength: string, color: string, percentage: number } {
