@@ -122,7 +122,7 @@
               </select>
             </div>
             
-            <!-- Filtro por estado -->
+            <!-- Filtro por estado - COMENTADO
             <div class="col-lg-2 col-md-3">
               <label class="form-label fw-semibold">
                 <i class="fas fa-toggle-on me-1"></i>Estado
@@ -135,6 +135,7 @@
                 <option value="false">Inactivos</option>
               </select>
             </div>
+            -->
             
             <!-- Ordenamiento -->
             <div class="col-lg-2 col-md-6">
@@ -185,16 +186,7 @@
                     [disabled]="processing">
               <i class="fas fa-user me-1"></i>Hacer Cliente
             </button>
-            <button class="btn btn-success btn-sm" 
-                    (click)="bulkActivate(true)"
-                    [disabled]="processing">
-              <i class="fas fa-check me-1"></i>Activar
-            </button>
-            <button class="btn btn-danger btn-sm" 
-                    (click)="bulkActivate(false)"
-                    [disabled]="processing">
-              <i class="fas fa-ban me-1"></i>Desactivar
-            </button>
+            <!-- Botones de activar/desactivar eliminados -->
             <button class="btn btn-outline-secondary btn-sm" 
                     (click)="clearSelection()">
               <i class="fas fa-times me-1"></i>Cancelar
@@ -307,22 +299,16 @@
                     </div>
                   </td>
                   
-                  <!-- Estado -->
+                  <!-- Estado (sin toggle - solo mostrar) -->
                   <td>
-                    <div class="form-check form-switch">
-                      <input class="form-check-input" 
-                             type="checkbox" 
-                             [checked]="user.isActive"
-                             (change)="toggleUserStatus(user)"
-                             [disabled]="user.id === currentUserId || processing">
-                      <label class="form-check-label">
-                        <span class="badge"
-                              [class.bg-success]="user.isActive"
-                              [class.bg-danger]="!user.isActive">
-                          {{ user.isActive ? 'Activo' : 'Inactivo' }}
-                        </span>
-                      </label>
-                    </div>
+                    <span class="badge bg-success">
+                      <i class="fas fa-check-circle me-1"></i>
+                      Activo
+                    </span>
+                    <!-- Opcional: Mostrar tooltip explicando que solo se puede eliminar -->
+                    <small class="d-block text-muted mt-1">
+                      Solo eliminación disponible
+                    </small>
                   </td>
                   
                   <!-- Fecha Registro -->
@@ -450,10 +436,9 @@
               <tr>
                 <td class="fw-semibold">Estado:</td>
                 <td>
-                  <span class="badge"
-                        [class.bg-success]="selectedUserDetails.isActive"
-                        [class.bg-danger]="!selectedUserDetails.isActive">
-                    {{ selectedUserDetails.isActive ? 'Activo' : 'Inactivo' }}
+                  <span class="badge bg-success">
+                    <i class="fas fa-check-circle me-1"></i>
+                    Activo
                   </span>
                 </td>
               </tr>

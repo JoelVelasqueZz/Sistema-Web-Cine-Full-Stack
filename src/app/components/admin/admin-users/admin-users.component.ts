@@ -66,22 +66,25 @@ export class AdminUsersComponent implements OnInit {
    * Cargar lista de usuarios
    */
   loadUsers(): void {
-    this.loading = true;
-    
-    setTimeout(() => {
-      try {
-        this.allUsers = this.adminService.getAllUsers();
-        this.applyFilters();
-        this.loading = false;
-        
-        console.log('Usuarios cargados:', this.allUsers.length);
-      } catch (error) {
-        console.error('Error al cargar usuarios:', error);
-        this.toastService.showError('Error al cargar la lista de usuarios');
-        this.loading = false;
-      }
-    }, 1000);
-  }
+  this.loading = true;
+  
+  // ✅ USAR API EN LUGAR DE DATOS LOCALES
+  this.userService.getAllUsers().subscribe({
+    next: (users) => {
+      console.log('📡 Usuarios cargados desde BD:', users.length);
+      this.allUsers = users;
+      this.applyFilters();
+      this.loading = false;
+    },
+    error: (error) => {
+      console.error('❌ Error al cargar usuarios:', error);
+      this.toastService.showError('Error al cargar la lista de usuarios');
+      this.allUsers = [];
+      this.filteredUsers = [];
+      this.loading = false;
+    }
+  });
+}
 
   /**
    * Refrescar datos
@@ -214,72 +217,80 @@ export class AdminUsersComponent implements OnInit {
   /**
    * Cambiar rol de usuario
    */
-  toggleUserRole(user: Usuario): void {
-    if (user.id === this.currentUserId) {
-      this.toastService.showWarning('No puedes cambiar tu propio rol');
-      return;
-    }
+ toggleUserRole(user: Usuario): void {
+  if (user.id === this.currentUserId) {
+    this.toastService.showWarning('No puedes cambiar tu propio rol');
+    return;
+  }
+  if (this.processing) return;
 
-    if (this.processing) return;
+  const nuevoRol = user.role === 'admin' ? 'cliente' : 'admin';
+  const confirmar = confirm(
+    `¿Estás seguro de cambiar el rol de "${user.nombre}" a ${nuevoRol}?`
+  );
 
-    const nuevoRol = user.role === 'admin' ? 'cliente' : 'admin';
-    const confirmar = confirm(
-      `¿Estás seguro de cambiar el rol de "${user.nombre}" a ${nuevoRol}?`
-    );
-
-    if (confirmar) {
-      this.processing = true;
-      
-      setTimeout(() => {
-        const exito = this.adminService.changeUserRole(user.id, nuevoRol);
-        
-        if (exito) {
+  if (confirmar) {
+    this.processing = true;
+    
+    // ✅ USAR API
+    this.userService.changeUserRole(user.id, nuevoRol).subscribe({
+      next: (success) => {
+        if (success) {
           user.role = nuevoRol;
           this.toastService.showSuccess(`Rol de ${user.nombre} cambiado a ${nuevoRol}`);
         } else {
           this.toastService.showError('Error al cambiar el rol del usuario');
         }
-        
         this.processing = false;
-      }, 1000);
-    }
+      },
+      error: (error) => {
+        console.error('❌ Error al cambiar rol:', error);
+        this.toastService.showError('Error al cambiar el rol del usuario');
+        this.processing = false;
+      }
+    });
   }
+}
 
   /**
    * Cambiar estado de usuario (activo/inactivo)
    */
   toggleUserStatus(user: Usuario): void {
-    if (user.id === this.currentUserId) {
-      this.toastService.showWarning('No puedes desactivar tu propia cuenta');
-      return;
-    }
+  if (user.id === this.currentUserId) {
+    this.toastService.showWarning('No puedes desactivar tu propia cuenta');
+    return;
+  }
+  if (this.processing) return;
 
-    if (this.processing) return;
+  const nuevoEstado = !user.isActive;
+  const accion = nuevoEstado ? 'activar' : 'desactivar';
+  
+  const confirmar = confirm(
+    `¿Estás seguro de ${accion} la cuenta de "${user.nombre}"?`
+  );
 
-    const nuevoEstado = !user.isActive;
-    const accion = nuevoEstado ? 'activar' : 'desactivar';
+  if (confirmar) {
+    this.processing = true;
     
-    const confirmar = confirm(
-      `¿Estás seguro de ${accion} la cuenta de "${user.nombre}"?`
-    );
-
-    if (confirmar) {
-      this.processing = true;
-      
-      setTimeout(() => {
-        const exito = this.adminService.toggleUserStatus(user.id);
-        
-        if (exito) {
+    // ✅ USAR API
+    this.userService.toggleUserStatus(user.id).subscribe({
+      next: (success) => {
+        if (success) {
           user.isActive = nuevoEstado;
           this.toastService.showSuccess(`Usuario ${user.nombre} ${nuevoEstado ? 'activado' : 'desactivado'}`);
         } else {
           this.toastService.showError(`Error al ${accion} el usuario`);
         }
-        
         this.processing = false;
-      }, 1000);
-    }
+      },
+      error: (error) => {
+        console.error(`❌ Error al ${accion} usuario:`, error);
+        this.toastService.showError(`Error al ${accion} el usuario`);
+        this.processing = false;
+      }
+    });
   }
+}
 
   /**
    * Ver detalles del usuario
@@ -348,24 +359,33 @@ export class AdminUsersComponent implements OnInit {
   /**
    * Eliminar usuario
    */
-  private deleteUser(user: Usuario): void {
-    this.processing = true;
-    this.toastService.showInfo(`Eliminando usuario ${user.nombre}...`);
-    
-    setTimeout(() => {
-      // Simular eliminación
-      const index = this.allUsers.findIndex(u => u.id === user.id);
-      if (index !== -1) {
-        this.allUsers.splice(index, 1);
-        this.applyFilters();
+ private deleteUser(user: Usuario): void {
+  this.processing = true;
+  this.toastService.showInfo(`Eliminando usuario ${user.nombre}...`);
+  
+  // ✅ USAR API
+  this.userService.deleteUser(user.id).subscribe({
+    next: (success) => {
+      if (success) {
+        // Remover de la lista local
+        const index = this.allUsers.findIndex(u => u.id === user.id);
+        if (index !== -1) {
+          this.allUsers.splice(index, 1);
+          this.applyFilters();
+        }
         this.toastService.showSuccess(`Usuario ${user.nombre} eliminado exitosamente`);
       } else {
         this.toastService.showError('Error al eliminar el usuario');
       }
-      
       this.processing = false;
-    }, 2000);
-  }
+    },
+    error: (error) => {
+      console.error('❌ Error al eliminar usuario:', error);
+      this.toastService.showError('Error al eliminar el usuario');
+      this.processing = false;
+    }
+  });
+}
 
   // ==================== SELECCIÓN MÚLTIPLE ====================
 
@@ -428,65 +448,110 @@ export class AdminUsersComponent implements OnInit {
   /**
    * Cambio masivo de rol
    */
-  bulkChangeRole(newRole: 'admin' | 'cliente'): void {
-    if (this.selectedUsers.length === 0) return;
+bulkChangeRole(newRole: 'admin' | 'cliente'): void {
+  if (this.selectedUsers.length === 0) return;
 
-    const confirmar = confirm(
-      `¿Estás seguro de cambiar el rol de ${this.selectedUsers.length} usuario(s) a ${newRole}?`
-    );
+  const confirmar = confirm(
+    `¿Estás seguro de cambiar el rol de ${this.selectedUsers.length} usuario(s) a ${newRole}?`
+  );
 
-    if (confirmar) {
-      this.processing = true;
-      let successCount = 0;
+  if (confirmar) {
+    this.processing = true;
+    let successCount = 0;
+    let completedCount = 0;
 
-      this.selectedUsers.forEach(userId => {
-        const success = this.adminService.changeUserRole(userId, newRole);
-        if (success) {
-          const user = this.allUsers.find(u => u.id === userId);
-          if (user) {
-            user.role = newRole;
-            successCount++;
+    this.selectedUsers.forEach(userId => {
+      this.userService.changeUserRole(userId, newRole).subscribe({
+        next: (success) => {
+          completedCount++;
+          if (success) {
+            const user = this.allUsers.find(u => u.id === userId);
+            if (user) {
+              user.role = newRole;
+              successCount++;
+            }
+          }
+
+          // Cuando todas las peticiones terminen
+          if (completedCount === this.selectedUsers.length) {
+            this.toastService.showSuccess(`${successCount} usuario(s) cambiados a ${newRole}`);
+            this.clearSelection();
+            this.processing = false;
+          }
+        },
+        error: (error) => {
+          completedCount++;
+          console.error('❌ Error en cambio masivo:', error);
+          
+          if (completedCount === this.selectedUsers.length) {
+            this.toastService.showSuccess(`${successCount} usuario(s) cambiados a ${newRole}`);
+            this.clearSelection();
+            this.processing = false;
           }
         }
       });
-
-      this.toastService.showSuccess(`${successCount} usuario(s) cambiados a ${newRole}`);
-      this.clearSelection();
-      this.processing = false;
-    }
+    });
   }
+}
 
   /**
    * Activación/desactivación masiva
    */
-  bulkActivate(activate: boolean): void {
-    if (this.selectedUsers.length === 0) return;
+bulkActivate(activate: boolean): void {
+  if (this.selectedUsers.length === 0) return;
 
-    const action = activate ? 'activar' : 'desactivar';
-    const confirmar = confirm(
-      `¿Estás seguro de ${action} ${this.selectedUsers.length} usuario(s)?`
-    );
+  const action = activate ? 'activar' : 'desactivar';
+  const confirmar = confirm(
+    `¿Estás seguro de ${action} ${this.selectedUsers.length} usuario(s)?`
+  );
 
-    if (confirmar) {
-      this.processing = true;
-      let successCount = 0;
+  if (confirmar) {
+    this.processing = true;
+    let successCount = 0;
+    let completedCount = 0;
 
-      this.selectedUsers.forEach(userId => {
-        const user = this.allUsers.find(u => u.id === userId);
-        if (user && user.isActive !== activate) {
-          const success = this.adminService.toggleUserStatus(userId);
-          if (success) {
-            user.isActive = activate;
-            successCount++;
+    this.selectedUsers.forEach(userId => {
+      const user = this.allUsers.find(u => u.id === userId);
+      
+      // Solo procesar si el estado actual es diferente al deseado
+      if (user && user.isActive !== activate) {
+        this.userService.toggleUserStatus(userId).subscribe({
+          next: (success) => {
+            completedCount++;
+            if (success) {
+              user.isActive = activate;
+              successCount++;
+            }
+
+            if (completedCount === this.selectedUsers.length) {
+              this.toastService.showSuccess(`${successCount} usuario(s) ${activate ? 'activados' : 'desactivados'}`);
+              this.clearSelection();
+              this.processing = false;
+            }
+          },
+          error: (error) => {
+            completedCount++;
+            console.error('❌ Error en acción masiva:', error);
+            
+            if (completedCount === this.selectedUsers.length) {
+              this.toastService.showSuccess(`${successCount} usuario(s) ${activate ? 'activados' : 'desactivados'}`);
+              this.clearSelection();
+              this.processing = false;
+            }
           }
+        });
+      } else {
+        // Si no necesita cambio, contar como completado
+        completedCount++;
+        if (completedCount === this.selectedUsers.length) {
+          this.toastService.showSuccess(`${successCount} usuario(s) ${activate ? 'activados' : 'desactivados'}`);
+          this.clearSelection();
+          this.processing = false;
         }
-      });
-
-      this.toastService.showSuccess(`${successCount} usuario(s) ${activate ? 'activados' : 'desactivados'}`);
-      this.clearSelection();
-      this.processing = false;
-    }
+      }
+    });
   }
+}
 
   // ==================== REPORTES Y EXPORTACIÓN ====================
 

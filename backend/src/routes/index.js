@@ -35,6 +35,7 @@ router.get('/test-db', async (req, res, next) => {
 // Rutas de módulos
 router.use('/movies', require('./movies'));
 router.use('/auth', require('./auth'));
+router.use('/users', require('./users')); // 🆕 NUEVA RUTA DE USUARIOS
 
 // Aquí iremos agregando las otras rutas
 // router.use('/bar', require('./bar'));

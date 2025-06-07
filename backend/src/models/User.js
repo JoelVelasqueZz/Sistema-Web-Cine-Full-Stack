@@ -32,16 +32,16 @@ class User {
 
   // Obtener todos los usuarios activos
   static async findAll() {
-    const sql = `
-      SELECT id, nombre, email, role, avatar, is_active, fecha_registro, fecha_actualizacion
-      FROM usuarios 
-      WHERE is_active = true
-      ORDER BY fecha_registro DESC
-    `;
+  const sql = `
+    SELECT id, nombre, email, role, avatar, is_active, fecha_registro, fecha_actualizacion
+    FROM usuarios 
+    WHERE is_active = true
+    ORDER BY fecha_registro DESC
+  `;
 
-    const result = await query(sql);
-    return result.rows;
-  }
+  const result = await query(sql);
+  return result.rows;
+}
 
   // Buscar usuario por email (para login)
   static async findByEmail(email) {
@@ -57,15 +57,15 @@ class User {
 
   // Buscar usuario por ID
   static async findById(id) {
-    const sql = `
-      SELECT id, nombre, email, role, avatar, is_active, fecha_registro, fecha_actualizacion
-      FROM usuarios 
-      WHERE id = $1 AND is_active = true
-    `;
+  const sql = `
+    SELECT id, nombre, email, role, avatar, is_active, fecha_registro, fecha_actualizacion
+    FROM usuarios 
+    WHERE id = $1 AND is_active = true
+  `;
 
-    const result = await query(sql, [id]);
-    return result.rows[0];
-  }
+  const result = await query(sql, [id]);
+  return result.rows[0];
+}
 
   // Verificar contraseña
   static async verifyPassword(plainPassword, hashedPassword) {
@@ -154,20 +154,33 @@ class User {
     return result.rows[0];
   }
 
-  // Búsqueda de usuarios
-  static async search(searchTerm) {
-    const sql = `
-      SELECT id, nombre, email, role, avatar, is_active, fecha_registro
-      FROM usuarios 
-      WHERE is_active = true 
-      AND (nombre ILIKE $1 OR email ILIKE $1)
-      ORDER BY nombre
-    `;
+  // Cambiar solo el estado del usuario
+static async updateStatus(id, isActive) {
+  const sql = `
+    UPDATE usuarios 
+    SET is_active = $1, fecha_actualizacion = CURRENT_TIMESTAMP
+    WHERE id = $2 AND is_active IS NOT NULL
+    RETURNING id, nombre, email, role, avatar, is_active, fecha_registro, fecha_actualizacion
+  `;
 
-    const searchPattern = `%${searchTerm}%`;
-    const result = await query(sql, [searchPattern]);
-    return result.rows;
-  }
+  const result = await query(sql, [isActive, id]);
+  return result.rows[0];
+}
+
+  // Búsqueda de usuarios
+ static async search(searchTerm) {
+  const sql = `
+    SELECT id, nombre, email, role, avatar, is_active, fecha_registro
+    FROM usuarios 
+    WHERE is_active = true 
+    AND (nombre ILIKE $1 OR email ILIKE $1)
+    ORDER BY nombre
+  `;
+
+  const searchPattern = `%${searchTerm}%`;
+  const result = await query(sql, [searchPattern]);
+  return result.rows;
+}
 }
 
 module.exports = User;
