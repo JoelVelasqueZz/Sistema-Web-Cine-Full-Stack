@@ -187,12 +187,120 @@ export class UserService {
     );
   }
 
-  // ==================== MÉTODOS LOCALES (FAVORITAS/HISTORIAL) ====================
+  // ==================== MÉTODOS DE FAVORITAS (API) ====================
 
   /**
-   * Obtener favoritas del usuario (local por ahora)
+   * Obtener favoritas del usuario desde la API
    */
-  getUserFavorites(userId: number): PeliculaFavorita[] {
+  getUserFavorites(userId: number): Observable<PeliculaFavorita[]> {
+    const headers = this.getAuthHeaders();
+    
+    return this.http.get<any>(`${this.API_URL}/favorites`, { headers }).pipe(
+      map(response => {
+        console.log('📡 Favoritas obtenidas de BD:', response.data?.length || 0);
+        return (response.data || []).map((fav: any) => this.convertApiFavoriteToLocal(fav));
+      }),
+      catchError(error => {
+        console.error('❌ Error al obtener favoritas:', error);
+        // Fallback a localStorage si falla la API
+        return of(this.getUserFavoritesLocal(userId));
+      })
+    );
+  }
+
+  /**
+   * Agregar a favoritas usando API
+   */
+  addToFavorites(userId: number, pelicula: PeliculaFavorita): Observable<boolean> {
+    const headers = this.getAuthHeaders();
+    const body = { peliculaId: pelicula.peliculaId };
+
+    return this.http.post<any>(`${this.API_URL}/favorites`, body, { headers }).pipe(
+      map(response => {
+        if (response.success) {
+          console.log('✅ Película agregada a favoritas en BD:', pelicula.titulo);
+          return true;
+        }
+        return false;
+      }),
+      catchError(error => {
+        console.error('❌ Error al agregar a favoritas:', error);
+        // Fallback a localStorage si falla la API
+        return of(this.addToFavoritesLocal(userId, pelicula));
+      })
+    );
+  }
+
+  /**
+   * Remover de favoritas usando API
+   */
+  removeFromFavorites(userId: number, peliculaId: number): Observable<boolean> {
+    const headers = this.getAuthHeaders();
+
+    return this.http.delete<any>(`${this.API_URL}/favorites/${peliculaId}`, { headers }).pipe(
+      map(response => {
+        if (response.success) {
+          console.log('✅ Película removida de favoritas en BD');
+          return true;
+        }
+        return false;
+      }),
+      catchError(error => {
+        console.error('❌ Error al remover de favoritas:', error);
+        // Fallback a localStorage si falla la API
+        return of(this.removeFromFavoritesLocal(userId, peliculaId));
+      })
+    );
+  }
+
+  /**
+   * Verificar si está en favoritas
+   */
+  isInFavorites(userId: number, peliculaId: number): Observable<boolean> {
+    const headers = this.getAuthHeaders();
+
+    return this.http.get<any>(`${this.API_URL}/favorites/check/${peliculaId}`, { headers }).pipe(
+      map(response => {
+        if (response.success) {
+          return response.data.isFavorite;
+        }
+        return false;
+      }),
+      catchError(error => {
+        console.error('❌ Error al verificar favorita:', error);
+        // Fallback a localStorage
+        return of(this.isInFavoritesLocal(userId, peliculaId));
+      })
+    );
+  }
+
+  /**
+   * Limpiar todas las favoritas
+   */
+  clearAllFavorites(userId: number): Observable<boolean> {
+    const headers = this.getAuthHeaders();
+
+    return this.http.delete<any>(`${this.API_URL}/favorites/clear`, { headers }).pipe(
+      map(response => {
+        if (response.success) {
+          console.log('✅ Todas las favoritas limpiadas en BD');
+          return true;
+        }
+        return false;
+      }),
+      catchError(error => {
+        console.error('❌ Error al limpiar favoritas:', error);
+        return of(false);
+      })
+    );
+  }
+
+  // ==================== MÉTODOS LOCALES (FALLBACK) ====================
+
+  /**
+   * Obtener favoritas del localStorage (fallback)
+   */
+  private getUserFavoritesLocal(userId: number): PeliculaFavorita[] {
     const favoritesKey = `favorites_${userId}`;
     const favorites = localStorage.getItem(favoritesKey);
     
@@ -200,7 +308,7 @@ export class UserService {
       try {
         return JSON.parse(favorites);
       } catch (error) {
-        console.error('Error al obtener favoritas:', error);
+        console.error('Error al obtener favoritas locales:', error);
         return [];
       }
     }
@@ -208,15 +316,15 @@ export class UserService {
   }
 
   /**
-   * Agregar a favoritas (local por ahora)
+   * Agregar a favoritas local (fallback)
    */
-  addToFavorites(userId: number, pelicula: PeliculaFavorita): boolean {
+  private addToFavoritesLocal(userId: number, pelicula: PeliculaFavorita): boolean {
     try {
-      const favorites = this.getUserFavorites(userId);
+      const favorites = this.getUserFavoritesLocal(userId);
       
       const yaExiste = favorites.some(fav => fav.peliculaId === pelicula.peliculaId);
       if (yaExiste) {
-        console.log('La película ya está en favoritas');
+        console.log('La película ya está en favoritas locales');
         return false;
       }
 
@@ -228,40 +336,57 @@ export class UserService {
       const favoritesKey = `favorites_${userId}`;
       localStorage.setItem(favoritesKey, JSON.stringify(favorites));
       
-      console.log('Película agregada a favoritas:', pelicula.titulo);
+      console.log('Película agregada a favoritas locales:', pelicula.titulo);
       return true;
     } catch (error) {
-      console.error('Error al agregar a favoritas:', error);
+      console.error('Error al agregar a favoritas locales:', error);
       return false;
     }
   }
 
   /**
-   * Remover de favoritas (local por ahora)
+   * Remover de favoritas local (fallback)
    */
-  removeFromFavorites(userId: number, peliculaId: number): boolean {
+  private removeFromFavoritesLocal(userId: number, peliculaId: number): boolean {
     try {
-      const favorites = this.getUserFavorites(userId);
+      const favorites = this.getUserFavoritesLocal(userId);
       const nuevasFavoritas = favorites.filter(fav => fav.peliculaId !== peliculaId);
       
       const favoritesKey = `favorites_${userId}`;
       localStorage.setItem(favoritesKey, JSON.stringify(nuevasFavoritas));
       
-      console.log('Película removida de favoritas');
+      console.log('Película removida de favoritas locales');
       return true;
     } catch (error) {
-      console.error('Error al remover de favoritas:', error);
+      console.error('Error al remover de favoritas locales:', error);
       return false;
     }
   }
 
   /**
-   * Verificar si está en favoritas
+   * Verificar favoritas local (fallback)
    */
-  isInFavorites(userId: number, peliculaId: number): boolean {
-    const favorites = this.getUserFavorites(userId);
+  private isInFavoritesLocal(userId: number, peliculaId: number): boolean {
+    const favorites = this.getUserFavoritesLocal(userId);
     return favorites.some(fav => fav.peliculaId === peliculaId);
   }
+
+  /**
+   * Convertir favorita de API a formato local
+   */
+  private convertApiFavoriteToLocal(apiFav: any): PeliculaFavorita {
+    return {
+      peliculaId: apiFav.pelicula_id,
+      titulo: apiFav.titulo,
+      poster: apiFav.poster,
+      genero: apiFav.genero,
+      anio: apiFav.anio,
+      rating: parseFloat(apiFav.rating?.toString() || '0'),
+      fechaAgregada: apiFav.fecha_agregada
+    };
+  }
+
+  // ==================== MÉTODOS LOCALES (HISTORIAL) ====================
 
   /**
    * Obtener historial del usuario (local por ahora)
@@ -335,7 +460,7 @@ export class UserService {
    * Obtener estadísticas del usuario
    */
   getUserStats(userId: number): UserStats {
-    const favorites = this.getUserFavorites(userId);
+    const favorites = this.getUserFavoritesLocal(userId); // Usar método local para stats
     const history = this.getUserHistory(userId);
     
     // Contar géneros favoritos
