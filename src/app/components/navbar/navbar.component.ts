@@ -34,9 +34,11 @@ export class NavbarComponent {
     }
 
     if (this.terminoBusqueda.trim().length >= 2) {
-      this.sugerencias = this.movieService.buscarPeliculas(this.terminoBusqueda).slice(0, 5);
-      this.mostrarSugerencias = this.sugerencias.length > 0;
-      this.sugerenciaSeleccionada = -1;
+      this.movieService.buscarPeliculas(this.terminoBusqueda).subscribe((peliculas: Pelicula[]) => {
+        this.sugerencias = peliculas.slice(0, 5);
+        this.mostrarSugerencias = this.sugerencias.length > 0;
+        this.sugerenciaSeleccionada = -1;
+      });
     }
   }
 

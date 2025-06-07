@@ -124,12 +124,12 @@
                    class="rounded-circle me-2" 
                    style="width: 24px; height: 24px; object-fit: cover;"
                    alt="Avatar">
-              <span>{{ authService.getCurrentUserName() }}</span>
+              <span>{{ authService.getCurrentUser()?.nombre }}</span>
               <!-- 🆕 BADGE DE ROL -->
               <span class="badge ms-2" 
                     [class.bg-danger]="authService.isAdmin()" 
-                    [class.bg-primary]="authService.isCliente()">
-                {{ authService.getCurrentUserRole() }}
+                    [class.bg-primary]="authService.getCurrentUser()?.role === 'cliente'">
+                {{ authService.getCurrentUser()?.role }}
               </span>
             </button>
             <ul class="dropdown-menu dropdown-menu-end">

@@ -1,11 +1,16 @@
 import { Injectable } from '@angular/core';
+import { Observable, BehaviorSubject, of } from 'rxjs';
+import { map, catchError } from 'rxjs/operators';
 import { MovieService, Pelicula, FuncionCine } from './movie.service';
 import { UserService, PeliculaFavorita, HistorialItem } from './user.service';
 import { AuthService, Usuario } from './auth.service';
-// AGREGAR ESTA IMPORTACIÓN PARA EL BAR SERVICE
 import { BarService, ProductoBar } from './bar.service';
 
-// ==================== INTERFACES EXISTENTES ====================
+// 🆕 IMPORTACIONES PARA PDF
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
+
+// ==================== INTERFACES ====================
 export interface AdminStats {
   totalPeliculas: number;
   totalUsuarios: number;
@@ -49,7 +54,6 @@ export interface ActividadReciente {
   color: string;
 }
 
-// ==================== NUEVAS INTERFACES PARA EL BAR ====================
 export interface BarStats {
   totalProductos: number;
   productosDisponibles: number;
@@ -116,6 +120,10 @@ export interface TendenciasBar {
   providedIn: 'root'
 })
 export class AdminService {
+  
+  // 🆕 SUBJECT PARA NOTIFICAR CAMBIOS
+  private peliculasSubject = new BehaviorSubject<Pelicula[]>([]);
+  public peliculas$ = this.peliculasSubject.asObservable();
   
   // Datos simulados para el dashboard
   private ventasSimuladas: VentaReciente[] = [
@@ -194,25 +202,52 @@ export class AdminService {
     private movieService: MovieService,
     private userService: UserService,
     private authService: AuthService,
-    // AGREGAR LA INYECCIÓN DEL BAR SERVICE
     private barService: BarService
-  ) { }
+  ) {
+    console.log('🔧 AdminService inicializado');
+  }
 
   // ==================== DASHBOARD STATS ====================
   
-  getAdminStats(): AdminStats {
-    const peliculas = this.movieService.getPeliculas();
+  getAdminStats(): Observable<AdminStats> {
+    // Usar películas de la API a través de MovieService
+    return this.movieService.getPeliculas().pipe(
+      map(peliculas => {
+        const usuarios = this.getAllUsersFromAuth();
+        
+        return {
+          totalPeliculas: peliculas.length,
+          totalUsuarios: usuarios.length,
+          totalVentas: this.ventasSimuladas.length,
+          ingresosMes: this.calculateIngresosMes(),
+          usuariosActivos: usuarios.filter(u => u.isActive !== false).length,
+          peliculasPopulares: this.getPeliculasPopulares(peliculas),
+          ventasRecientes: this.ventasSimuladas.slice(-5),
+          generosMasPopulares: this.getGeneroStats(peliculas),
+          actividadReciente: this.actividadSimulada.slice(-10)
+        };
+      }),
+      catchError(error => {
+        console.error('❌ Error al obtener estadísticas:', error);
+        // Fallback a datos locales
+        return of(this.getAdminStatsLocal());
+      })
+    );
+  }
+
+  // Método fallback usando datos locales
+  private getAdminStatsLocal(): AdminStats {
     const usuarios = this.getAllUsersFromAuth();
     
     return {
-      totalPeliculas: peliculas.length,
+      totalPeliculas: 0,
       totalUsuarios: usuarios.length,
       totalVentas: this.ventasSimuladas.length,
       ingresosMes: this.calculateIngresosMes(),
       usuariosActivos: usuarios.filter(u => u.isActive !== false).length,
-      peliculasPopulares: this.getPeliculasPopulares(),
+      peliculasPopulares: [],
       ventasRecientes: this.ventasSimuladas.slice(-5),
-      generosMasPopulares: this.getGeneroStats(),
+      generosMasPopulares: [],
       actividadReciente: this.actividadSimulada.slice(-10)
     };
   }
@@ -232,9 +267,7 @@ export class AdminService {
       .reduce((sum, v) => sum + v.total, 0);
   }
 
-  private getPeliculasPopulares(): PeliculaPopular[] {
-    const peliculas = this.movieService.getPeliculas();
-    
+  private getPeliculasPopulares(peliculas: Pelicula[]): PeliculaPopular[] {
     return peliculas
       .map(p => ({
         titulo: p.titulo,
@@ -246,8 +279,7 @@ export class AdminService {
       .slice(0, 5);
   }
 
-  private getGeneroStats(): GeneroStats[] {
-    const peliculas = this.movieService.getPeliculas();
+  private getGeneroStats(peliculas: Pelicula[]): GeneroStats[] {
     const generos: { [key: string]: number } = {};
     
     peliculas.forEach(p => {
@@ -262,172 +294,135 @@ export class AdminService {
     }));
   }
 
-  // ==================== GESTIÓN DE PELÍCULAS ====================
+  // ==================== GESTIÓN DE PELÍCULAS (USANDO MOVIESERVICE) ====================
   
-  createPelicula(peliculaData: Omit<Pelicula, 'idx'>): boolean {
+  /**
+   * Crear película usando MovieService (que ya conecta con API)
+   */
+  createPelicula(peliculaData: Omit<Pelicula, 'idx' | 'id'>): Observable<boolean> {
+    console.log('🎬 Creando película:', peliculaData);
+    
     try {
-      const validacion = this.movieService.validatePeliculaData(peliculaData);
+      const validacion = this.validatePeliculaData(peliculaData);
       if (!validacion.valid) {
-        console.error('Datos de película inválidos:', validacion.errors);
-        return false;
+        console.error('❌ Datos de película inválidos:', validacion.errors);
+        return of(false);
       }
 
-      const resultado = this.movieService.addPelicula(peliculaData);
-      
-      if (resultado) {
-        this.addActividad({
-          tipo: 'pelicula_agregada',
-          descripcion: `Nueva película agregada: ${peliculaData.titulo}`,
-          fecha: new Date().toISOString(),
-          icono: 'fas fa-film',
-          color: 'info'
-        });
-        
-        console.log('✅ Película creada exitosamente:', peliculaData.titulo);
-      } else {
-        console.error('❌ Error al crear película en MovieService');
-      }
-      
-      return resultado;
+      return this.movieService.addPelicula(peliculaData).pipe(
+        map(success => {
+          if (success) {
+            this.addActividad({
+              tipo: 'pelicula_agregada',
+              descripcion: `Nueva película agregada: ${peliculaData.titulo}`,
+              fecha: new Date().toISOString(),
+              icono: 'fas fa-film',
+              color: 'info'
+            });
+            
+            console.log('✅ Película creada exitosamente:', peliculaData.titulo);
+          }
+          return success;
+        }),
+        catchError(error => {
+          console.error('❌ Error al crear película:', error);
+          return of(false);
+        })
+      );
       
     } catch (error) {
       console.error('❌ Error al crear película:', error);
-      return false;
+      return of(false);
     }
   }
 
-  updatePelicula(peliculaIndex: number, peliculaData: Partial<Pelicula>): boolean {
+  /**
+   * Actualizar película usando MovieService
+   */
+  updatePelicula(peliculaId: number, peliculaData: Partial<Pelicula>): Observable<boolean> {
+    console.log('🎬 Actualizando película:', peliculaId, peliculaData);
+    
     try {
-      if (peliculaData.titulo || peliculaData.sinopsis || peliculaData.genero) {
-        const validacion = this.movieService.validatePeliculaData(peliculaData);
-        if (!validacion.valid) {
-          console.error('Datos de película inválidos:', validacion.errors);
-          return false;
-        }
-      }
-
-      const resultado = this.movieService.updatePelicula(peliculaIndex, peliculaData);
-      
-      if (resultado) {
-        this.addActividad({
-          tipo: 'pelicula_agregada',
-          descripcion: `Película actualizada: ${peliculaData.titulo || 'Sin título'}`,
-          fecha: new Date().toISOString(),
-          icono: 'fas fa-edit',
-          color: 'warning'
-        });
-        
-        console.log('✅ Película actualizada exitosamente');
-      } else {
-        console.error('❌ Error al actualizar película en MovieService');
-      }
-      
-      return resultado;
+      return this.movieService.updatePelicula(peliculaId, peliculaData).pipe(
+        map(success => {
+          if (success) {
+            this.addActividad({
+              tipo: 'pelicula_agregada',
+              descripcion: `Película actualizada: ${peliculaData.titulo || 'Sin título'}`,
+              fecha: new Date().toISOString(),
+              icono: 'fas fa-edit',
+              color: 'warning'
+            });
+            
+            console.log('✅ Película actualizada exitosamente');
+          }
+          return success;
+        }),
+        catchError(error => {
+          console.error('❌ Error al actualizar película:', error);
+          return of(false);
+        })
+      );
       
     } catch (error) {
       console.error('❌ Error al actualizar película:', error);
-      return false;
+      return of(false);
     }
   }
 
-  deletePelicula(peliculaIndex: number): boolean {
+  /**
+   * Eliminar película usando MovieService
+   */
+  deletePelicula(peliculaId: number): Observable<boolean> {
+    console.log('🎬 Eliminando película:', peliculaId);
+    
     try {
-      const pelicula = this.movieService.getPelicula(peliculaIndex);
-      
-      if (!pelicula) {
-        console.error('❌ Película no encontrada en el índice:', peliculaIndex);
-        return false;
-      }
-      
-      const resultado = this.movieService.deletePelicula(peliculaIndex);
-      
-      if (resultado) {
-        this.addActividad({
-          tipo: 'pelicula_agregada',
-          descripcion: `Película eliminada: ${pelicula.titulo}`,
-          fecha: new Date().toISOString(),
-          icono: 'fas fa-trash',
-          color: 'danger'
-        });
-        
-        console.log('✅ Película eliminada exitosamente:', pelicula.titulo);
-      } else {
-        console.error('❌ Error al eliminar película en MovieService');
-      }
-      
-      return resultado;
+      return this.movieService.deletePelicula(peliculaId).pipe(
+        map(success => {
+          if (success) {
+            this.addActividad({
+              tipo: 'pelicula_agregada',
+              descripcion: `Película eliminada`,
+              fecha: new Date().toISOString(),
+              icono: 'fas fa-trash',
+              color: 'danger'
+            });
+            
+            console.log('✅ Película eliminada exitosamente');
+          }
+          return success;
+        }),
+        catchError(error => {
+          console.error('❌ Error al eliminar película:', error);
+          return of(false);
+        })
+      );
       
     } catch (error) {
       console.error('❌ Error al eliminar película:', error);
-      return false;
+      return of(false);
     }
   }
 
-  validatePeliculaData(pelicula: Partial<Pelicula>): { valid: boolean; errors: string[] } {
-    return this.movieService.validatePeliculaData(pelicula);
-  }
-
-  getAllPeliculas(): Pelicula[] {
+  /**
+   * Obtener todas las películas
+   */
+  getAllPeliculas(): Observable<Pelicula[]> {
     return this.movieService.getPeliculas();
   }
 
-  buscarPeliculas(termino: string): Pelicula[] {
+  /**
+   * Buscar películas
+   */
+  buscarPeliculas(termino: string): Observable<Pelicula[]> {
     return this.movieService.buscarPeliculas(termino);
   }
 
-  // ==================== GESTIÓN DE FUNCIONES ====================
-
-  addFuncionToPelicula(peliculaIndex: number, funcion: Omit<FuncionCine, 'id'>): boolean {
-    try {
-      const resultado = this.movieService.addFuncionToPelicula(peliculaIndex, funcion);
-      
-      if (resultado) {
-        const pelicula = this.movieService.getPelicula(peliculaIndex);
-        this.addActividad({
-          tipo: 'pelicula_agregada',
-          descripcion: `Nueva función agregada para: ${pelicula?.titulo || 'Película'}`,
-          fecha: new Date().toISOString(),
-          icono: 'fas fa-calendar-plus',
-          color: 'success'
-        });
-        
-        console.log('✅ Función agregada exitosamente');
-      }
-      
-      return resultado;
-      
-    } catch (error) {
-      console.error('❌ Error al agregar función:', error);
-      return false;
-    }
-  }
-
-  deleteFuncion(funcionId: string): boolean {
-    try {
-      const resultado = this.movieService.deleteFuncion(funcionId);
-      
-      if (resultado) {
-        this.addActividad({
-          tipo: 'pelicula_agregada',
-          descripcion: `Función eliminada: ${funcionId}`,
-          fecha: new Date().toISOString(),
-          icono: 'fas fa-calendar-times',
-          color: 'warning'
-        });
-        
-        console.log('✅ Función eliminada exitosamente');
-      }
-      
-      return resultado;
-      
-    } catch (error) {
-      console.error('❌ Error al eliminar función:', error);
-      return false;
-    }
-  }
-
-  getFuncionesPelicula(peliculaIndex: number): FuncionCine[] {
-    return this.movieService.getFuncionesPelicula(peliculaIndex);
+  /**
+   * Validar datos de película
+   */
+  validatePeliculaData(pelicula: Partial<Pelicula>): { valid: boolean; errors: string[] } {
+    return this.movieService.validatePeliculaData(pelicula);
   }
 
   // ==================== GESTIÓN DE USUARIOS ====================
@@ -488,23 +483,16 @@ export class AdminService {
 
   // ==================== REPORTES DEL BAR ====================
   
-  /**
-   * Obtener estadísticas completas del bar
-   */
   getBarStats(): BarStats {
     const productos = this.barService.getProductos();
     
-    // Estadísticas por categoría
     const categoriaStats: { [key: string]: number } = {};
     productos.forEach(p => {
       categoriaStats[p.categoria] = (categoriaStats[p.categoria] || 0) + 1;
     });
 
-    // Productos más caros y más baratos
     const precios = productos.map(p => p.precio).sort((a, b) => a - b);
     const precioPromedio = precios.length > 0 ? precios.reduce((sum, p) => sum + p, 0) / precios.length : 0;
-
-    // Análisis de combos
     const combos = productos.filter(p => p.esCombo);
     const ahorroTotalCombos = combos.reduce((sum, c) => sum + (c.descuento || 0), 0);
 
@@ -526,9 +514,190 @@ export class AdminService {
     };
   }
 
+  // ==================== GENERACIÓN DE REPORTES PDF ====================
+
   /**
-   * Obtener productos por categoría con estadísticas
+   * Generar reporte del bar en PDF
    */
+  generateBarReport(): void {
+    try {
+      const doc = new jsPDF();
+      const barStats = this.getBarStats();
+      
+      // Configurar encabezado
+      this.setupPDFHeader(doc, 'REPORTE DEL BAR PARKYFILMS', 'Análisis de productos y ventas');
+      
+      let currentY = 110;
+      
+      // Estadísticas generales
+      doc.setFillColor(240, 240, 240);
+      doc.rect(20, currentY - 5, 170, 15, 'F');
+      doc.setFontSize(14);
+      doc.setTextColor(52, 73, 94);
+      doc.text('ESTADÍSTICAS GENERALES', 25, currentY + 5);
+      currentY += 20;
+      
+      const generalStats = [
+        ['Total de Productos', barStats.totalProductos.toString()],
+        ['Productos Disponibles', barStats.productosDisponibles.toString()],
+        ['Combos Especiales', barStats.totalCombos.toString()],
+        ['Categorías', barStats.totalCategorias.toString()],
+        ['Precio Promedio', `$${barStats.precioPromedio.toFixed(2)}`],
+        ['Productos Top', barStats.productosPopularesBar.length.toString()]
+      ];
+      
+      autoTable(doc, {
+        body: generalStats,
+        startY: currentY,
+        theme: 'plain',
+        styles: { 
+          fontSize: 11,
+          cellPadding: { top: 5, right: 10, bottom: 5, left: 10 }
+        },
+        columnStyles: {
+          0: { fontStyle: 'bold', cellWidth: 100, fillColor: [248, 249, 250] },
+          1: { cellWidth: 70, halign: 'center', fillColor: [255, 255, 255] }
+        }
+      });
+      
+      currentY = (doc as any).lastAutoTable.finalY + 20;
+      
+      // Productos más populares
+      doc.setFillColor(230, 126, 34);
+      doc.rect(20, currentY - 5, 170, 15, 'F');
+      doc.setFontSize(14);
+      doc.setTextColor(255, 255, 255);
+      doc.text('PRODUCTOS MÁS POPULARES', 25, currentY + 5);
+      currentY += 15;
+      
+      const productsData = barStats.productosPopularesBar.slice(0, 10).map((producto: any, index: number) => [
+        (index + 1).toString(),
+        producto.nombre,
+        producto.categoria,
+        producto.ventasSimuladas.toString(),
+        `$${producto.ingresoSimulado.toFixed(2)}`,
+        producto.esCombo ? 'Sí' : 'No'
+      ]);
+      
+      autoTable(doc, {
+        head: [['#', 'Producto', 'Categoría', 'Ventas', 'Ingresos', 'Combo']],
+        body: productsData,
+        startY: currentY,
+        theme: 'striped',
+        headStyles: { 
+          fillColor: [230, 126, 34],
+          textColor: [255, 255, 255],
+          fontSize: 10,
+          fontStyle: 'bold'
+        },
+        styles: { 
+          fontSize: 9,
+          cellPadding: { top: 4, right: 6, bottom: 4, left: 6 }
+        },
+        alternateRowStyles: { fillColor: [255, 248, 220] }
+      });
+      
+      // Configurar pie de página
+      this.setupPDFFooter(doc);
+      
+      // Descargar PDF
+      doc.save(`reporte-bar-${new Date().toISOString().split('T')[0]}.pdf`);
+      
+      console.log('✅ Reporte del bar generado exitosamente');
+      
+    } catch (error) {
+      console.error('❌ Error generando reporte del bar:', error);
+    }
+  }
+
+  /**
+   * Obtener reporte de ventas
+   */
+  getVentasReport(fechaInicio: string, fechaFin: string): any {
+    return {
+      totalVentas: this.ventasSimuladas.length,
+      entradasVendidas: this.ventasSimuladas.reduce((sum, v) => sum + v.entradas, 0),
+      ingresoTotal: this.ventasSimuladas.reduce((sum, v) => sum + v.total, 0),
+      fechaInicio,
+      fechaFin
+    };
+  }
+
+  /**
+   * Configurar encabezado del PDF
+   */
+  private setupPDFHeader(doc: jsPDF, titulo: string, subtitulo?: string): void {
+    // Fondo del encabezado
+    doc.setFillColor(41, 128, 185);
+    doc.rect(0, 0, 210, 45, 'F');
+    
+    // Logo y título principal en blanco
+    doc.setFontSize(24);
+    doc.setTextColor(255, 255, 255);
+    doc.text('ParkyFilms', 20, 25);
+    
+    doc.setFontSize(12);
+    doc.text('Panel de Administración', 20, 35);
+    
+    // Título del reporte
+    doc.setFontSize(18);
+    doc.setTextColor(0, 0, 0);
+    doc.text(titulo, 20, 60);
+    
+    if (subtitulo) {
+      doc.setFontSize(12);
+      doc.setTextColor(100, 100, 100);
+      doc.text(subtitulo, 20, 72);
+    }
+    
+    // Información de generación
+    doc.setFontSize(10);
+    doc.setTextColor(150, 150, 150);
+    const fechaGeneracion = new Date().toLocaleString('es-ES');
+    doc.text(`Generado el: ${fechaGeneracion}`, 20, 85);
+    doc.text(`Por: ${this.authService.getCurrentUser()?.nombre || 'Admin'}`, 20, 95);
+    
+    // Línea separadora
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.5);
+    doc.line(20, 100, 190, 100);
+  }
+
+  /**
+   * Configurar pie de página del PDF
+   */
+  private setupPDFFooter(doc: jsPDF): void {
+    const pageCount = (doc as any).internal.getNumberOfPages();
+    
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      
+      // Línea superior del pie
+      doc.setDrawColor(41, 128, 185);
+      doc.setLineWidth(1);
+      doc.line(20, 275, 190, 275);
+      
+      // Información del pie
+      doc.setFontSize(8);
+      doc.setTextColor(100, 100, 100);
+      doc.text('ParkyFilms - Sistema de Gestión Integral', 20, 282);
+      doc.text('Reporte Confidencial - Solo para uso interno', 20, 287);
+      
+      // Página actual
+      doc.setTextColor(41, 128, 185);
+      doc.text(`Página ${i} de ${pageCount}`, 150, 282);
+      
+      // Timestamp
+      const timestamp = new Date().toLocaleTimeString('es-ES', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
+      doc.text(`Hora: ${timestamp}`, 150, 287);
+    }
+  }
+
+  // ==================== MÉTODOS AUXILIARES ====================
+  
   private getProductosPorCategoria(): CategoriaBarStats[] {
     const productos = this.barService.getProductos();
     const categorias: { [key: string]: ProductoBar[] } = {};
@@ -552,9 +721,6 @@ export class AdminService {
     })).sort((a, b) => b.cantidad - a.cantidad);
   }
 
-  /**
-   * Simular ventas del bar para reportes
-   */
   private getVentasSimuladasBar(): VentaBarSimulada[] {
     const productos = this.barService.getProductos();
     const ventas: VentaBarSimulada[] = [];
@@ -582,9 +748,6 @@ export class AdminService {
     return ventas.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
   }
 
-  /**
-   * Obtener productos más populares del bar (simulado)
-   */
   private getProductosPopularesBar(): ProductoPopularBar[] {
     const productos = this.barService.getProductos();
     
@@ -599,9 +762,6 @@ export class AdminService {
     })).sort((a, b) => b.ventasSimuladas - a.ventasSimuladas).slice(0, 10);
   }
 
-  /**
-   * Obtener tendencias del bar
-   */
   private getTendenciasBar(): TendenciasBar {
     const ventasBar = this.getVentasSimuladasBar();
     const hoy = new Date();
@@ -623,138 +783,6 @@ export class AdminService {
     };
   }
 
-  // ==================== GESTIÓN DE PRODUCTOS DEL BAR ====================
-  
-  /**
-   * Crear nuevo producto del bar
-   */
-  createProductoBar(productoData: Omit<ProductoBar, 'id'>): boolean {
-    try {
-      const resultado = this.barService.addProducto(productoData);
-      
-      if (resultado) {
-        this.addActividad({
-          tipo: 'pelicula_agregada', // Usar el mismo tipo o crear uno nuevo si es necesario
-          descripcion: `Nuevo producto del bar agregado: ${productoData.nombre}`,
-          fecha: new Date().toISOString(),
-          icono: 'fas fa-cocktail',
-          color: 'info'
-        });
-        
-        console.log('✅ Producto del bar creado exitosamente:', productoData.nombre);
-      }
-      
-      return resultado;
-      
-    } catch (error) {
-      console.error('❌ Error al crear producto del bar:', error);
-      return false;
-    }
-  }
-
-  /**
-   * Actualizar producto del bar
-   */
-  updateProductoBar(productoId: string, productoData: Partial<ProductoBar>): boolean {
-    try {
-      const resultado = this.barService.updateProducto(Number(productoId), productoData);
-      
-      if (resultado) {
-        this.addActividad({
-          tipo: 'pelicula_agregada',
-          descripcion: `Producto del bar actualizado: ${productoData.nombre || 'Sin nombre'}`,
-          fecha: new Date().toISOString(),
-          icono: 'fas fa-edit',
-          color: 'warning'
-        });
-        
-        console.log('✅ Producto del bar actualizado exitosamente');
-      }
-      
-      return resultado;
-      
-    } catch (error) {
-      console.error('❌ Error al actualizar producto del bar:', error);
-      return false;
-    }
-  }
-
-  /**
-   * Eliminar producto del bar
-   */
-  deleteProductoBar(productoId: string): boolean {
-    try {
-      const producto = this.barService.getProducto(Number(productoId));
-      const resultado = this.barService.deleteProducto(Number(productoId));
-      
-      if (resultado) {
-        this.addActividad({
-          tipo: 'pelicula_agregada',
-          descripcion: `Producto del bar eliminado: ${producto?.nombre || 'Producto'}`,
-          fecha: new Date().toISOString(),
-          icono: 'fas fa-trash',
-          color: 'danger'
-        });
-        
-        console.log('✅ Producto del bar eliminado exitosamente');
-      }
-      
-      return resultado;
-      
-    } catch (error) {
-      console.error('❌ Error al eliminar producto del bar:', error);
-      return false;
-    }
-  }
-
-  /**
-   * Obtener todos los productos del bar
-   */
-  getAllProductosBar(): ProductoBar[] {
-    return this.barService.getProductos();
-  }
-
-  /**
-   * Buscar productos del bar
-   */
-  buscarProductosBar(termino: string): ProductoBar[] {
-    return this.barService.buscarProductos(termino);
-  }
-
-  // ==================== REPORTES Y ANALYTICS ====================
-  
-  getVentasReport(fechaInicio: string, fechaFin: string): any {
-    const ventasFiltradas = this.ventasSimuladas.filter(v => 
-      v.fecha >= fechaInicio && v.fecha <= fechaFin
-    );
-    return {
-      totalVentas: ventasFiltradas.length,
-      ingresoTotal: ventasFiltradas
-        .filter(v => v.estado === 'completada')
-        .reduce((sum, v) => sum + v.total, 0),
-      entradasVendidas: ventasFiltradas
-        .reduce((sum, v) => sum + v.entradas, 0),
-      ventasPorDia: this.groupVentasByDate(ventasFiltradas)
-    };
-  }
-
-  private groupVentasByDate(ventas: VentaReciente[]): any[] {
-    const grouped = ventas.reduce((acc, venta) => {
-      const fecha = venta.fecha;
-      if (!acc[fecha]) {
-        acc[fecha] = { fecha, ventas: 0, ingresos: 0 };
-      }
-      acc[fecha].ventas++;
-      if (venta.estado === 'completada') {
-        acc[fecha].ingresos += venta.total;
-      }
-      return acc;
-    }, {} as any);
-    return Object.values(grouped);
-  }
-
-  // ==================== MÉTODOS AUXILIARES PARA EL BAR ====================
-  
   private getRandomCliente(): string {
     const clientes = ['Juan Pérez', 'María García', 'Carlos López', 'Ana Martínez', 'Pedro Rodríguez', 'Laura Sánchez'];
     return clientes[Math.floor(Math.random() * clientes.length)];
@@ -787,8 +815,6 @@ export class AdminService {
     );
   }
 
-  // ==================== UTILIDADES ====================
-  
   private addActividad(actividad: ActividadReciente): void {
     this.actividadSimulada.unshift(actividad);
     if (this.actividadSimulada.length > 20) {
@@ -800,7 +826,6 @@ export class AdminService {
     return this.authService.isAdmin();
   }
 
-  // Simular nueva venta (para testing)
   addVentaSimulada(venta: Omit<VentaReciente, 'id'>): void {
     const nuevaVenta: VentaReciente = {
       ...venta,
@@ -816,425 +841,5 @@ export class AdminService {
       icono: 'fas fa-shopping-cart',
       color: 'primary'
     });
-  }
-
-  // Simular nueva venta del bar (para testing)
-  addVentaBarSimulada(venta: Omit<VentaBarSimulada, 'id'>): void {
-    const nuevaVenta: VentaBarSimulada = {
-      ...venta,
-      id: 'VB' + (this.getVentasSimuladasBar().length + 1).toString().padStart(3, '0')
-    };
-    
-    this.addActividad({
-      tipo: 'compra',
-      descripcion: `${venta.cliente} compró ${venta.cantidad} ${venta.producto} del bar`,
-      fecha: new Date().toISOString(),
-      icono: 'fas fa-cocktail',
-      color: 'primary'
-    });
-  }
-
-  // ==================== REPORTES PDF DEL BAR ====================
-  
-  /**
-   * Generar reporte completo del bar en PDF
-   * NOTA: Para usar este método necesitarás instalar jsPDF y jspdf-autotable:
-   * npm install jspdf jspdf-autotable
-   * npm install @types/jspdf --save-dev
-   */
-  generateBarReport(): void {
-    // Importar jsPDF dinámicamente para evitar errores si no está instalado
-    import('jspdf').then((jsPDFModule) => {
-      import('jspdf-autotable').then(({ default: autoTable }) => {
-        this.generatingReport = true;
-        console.log('Generando reporte completo del bar...');
-        
-        setTimeout(() => {
-          try {
-            const doc = new jsPDFModule.default();
-            const barStats = this.getBarStats();
-            
-            // === PÁGINA 1: RESUMEN EJECUTIVO ===
-            this.setupPDFHeader(doc, 'REPORTE COMPLETO DEL BAR', 
-              'Análisis detallado de productos y ventas del bar');
-            
-            let currentY = 110;
-            
-            // Resumen ejecutivo del bar
-            currentY = this.addBarExecutiveSummary(doc, currentY, barStats, autoTable);
-            
-            // === PÁGINA 2: ANÁLISIS POR CATEGORÍAS ===
-            doc.addPage();
-            this.setupPDFHeader(doc, 'ANÁLISIS POR CATEGORÍAS', 'Desglose detallado por tipo de producto');
-            
-            currentY = 110;
-            currentY = this.addCategoryAnalysis(doc, currentY, barStats, autoTable);
-            
-            // === PÁGINA 3: PRODUCTOS POPULARES Y VENTAS ===
-            doc.addPage();
-            this.setupPDFHeader(doc, 'PRODUCTOS POPULARES Y VENTAS', 'Análisis de rendimiento por producto');
-            
-            currentY = 110;
-            currentY = this.addPopularProductsAnalysis(doc, currentY, barStats, autoTable);
-            
-            // === PÁGINA 4: RECOMENDACIONES ===
-            doc.addPage();
-            this.setupPDFHeader(doc, 'RECOMENDACIONES Y ESTRATEGIAS', 'Plan de acción para optimizar el bar');
-            
-            currentY = 110;
-            this.addBarRecommendations(doc, currentY, barStats);
-            
-            // Configurar pie de página
-            this.setupPDFFooter(doc);
-            
-            // Descargar PDF
-            doc.save(`reporte-bar-completo-${new Date().toISOString().split('T')[0]}.pdf`);
-            
-            this.generatingReport = false;
-            console.log('Reporte completo del bar generado exitosamente');
-            
-          } catch (error) {
-            console.error('Error generando reporte del bar:', error);
-            this.generatingReport = false;
-            console.error('Error al generar el reporte del bar');
-          }
-        }, 2000);
-      }).catch(error => {
-        console.error('Error: jspdf-autotable no está instalado', error);
-      });
-    }).catch(error => {
-      console.error('Error: jsPDF no está instalado', error);
-    });
-  }
-
-  // Variable para controlar el estado de generación de reportes
-  private generatingReport = false;
-
-  // ==================== MÉTODOS PDF AUXILIARES ====================
-  
-  /**
-   * Configurar encabezado del PDF
-   */
-  private setupPDFHeader(doc: any, title: string, subtitle: string): void {
-    // Fondo del encabezado
-    doc.setFillColor(255, 193, 7);
-    doc.rect(0, 0, 210, 50, 'F');
-    
-    // Título principal
-    doc.setFontSize(20);
-    doc.setTextColor(0, 0, 0);
-    doc.setFont('helvetica', 'bold');
-    doc.text(title, 105, 25, { align: 'center' });
-    
-    // Subtítulo
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'normal');
-    doc.text(subtitle, 105, 35, { align: 'center' });
-    
-    // Fecha
-    doc.setFontSize(10);
-    doc.text(`Generado el: ${new Date().toLocaleDateString()}`, 105, 45, { align: 'center' });
-    
-    // Línea separadora
-    doc.setDrawColor(0, 0, 0);
-    doc.line(20, 60, 190, 60);
-  }
-
-  /**
-   * Configurar pie de página del PDF
-   */
-  private setupPDFFooter(doc: any): void {
-    const pageCount = doc.internal.getNumberOfPages();
-    
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      
-      // Línea separadora
-      doc.setDrawColor(200, 200, 200);
-      doc.line(20, 280, 190, 280);
-      
-      // Información del pie
-      doc.setFontSize(8);
-      doc.setTextColor(100, 100, 100);
-      doc.text('Sistema de Gestión Cinematográfica - Reporte Automatizado', 20, 285);
-      doc.text(`Página ${i} de ${pageCount}`, 190, 285, { align: 'right' });
-      doc.text(`Generado: ${new Date().toLocaleString()}`, 105, 290, { align: 'center' });
-    }
-  }
-
-  /**
-   * Agregar resumen ejecutivo del bar al PDF
-   */
-  private addBarExecutiveSummary(doc: any, startY: number, stats: BarStats, autoTable: any): number {
-    let currentY = startY;
-    
-    // Título de sección
-    doc.setFillColor(255, 193, 7);
-    doc.rect(20, currentY - 5, 170, 15, 'F');
-    doc.setFontSize(14);
-    doc.setTextColor(0, 0, 0);
-    doc.text('RESUMEN EJECUTIVO DEL BAR', 25, currentY + 5);
-    currentY += 20;
-    
-    // Métricas principales en tabla
-    const executiveData = [
-      ['Total de Productos', stats.totalProductos.toString()],
-      ['Productos Disponibles', `${stats.productosDisponibles} (${Math.round((stats.productosDisponibles/stats.totalProductos)*100)}%)`],
-      ['Combos Especiales', `${stats.totalCombos} combos`],
-      ['Categorías Diferentes', `${stats.totalCategorias} categorías`],
-      ['Precio Promedio', `${stats.precioPromedio}`],
-      ['Rango de Precios', `${stats.precioMinimo} - ${stats.precioMaximo}`],
-      ['Ahorro Total en Combos', `${stats.ahorroTotalCombos.toFixed(2)}`],
-      ['Ventas Simuladas (30d)', `${stats.ventasSimuladasBar.length} transacciones`]
-    ];
-    
-    autoTable(doc, {
-      body: executiveData,
-      startY: currentY,
-      theme: 'plain',
-      styles: { 
-        fontSize: 11,
-        cellPadding: { top: 5, right: 10, bottom: 5, left: 10 }
-      },
-      columnStyles: {
-        0: { fontStyle: 'bold', cellWidth: 100, fillColor: [255, 248, 220] },
-        1: { cellWidth: 70, halign: 'center', fillColor: [255, 255, 255] }
-      }
-    });
-    
-    return (doc as any).lastAutoTable.finalY + 20;
-  }
-
-  /**
-   * Agregar análisis por categorías al PDF
-   */
-  private addCategoryAnalysis(doc: any, startY: number, stats: BarStats, autoTable: any): number {
-    let currentY = startY;
-    
-    // Título de sección
-    doc.setFillColor(255, 193, 7);
-    doc.rect(20, currentY - 5, 170, 15, 'F');
-    doc.setFontSize(14);
-    doc.setTextColor(0, 0, 0);
-    doc.text('ANÁLISIS POR CATEGORÍAS', 25, currentY + 5);
-    currentY += 15;
-    
-    const categoryData = stats.productosPorCategoria.map((cat, index) => [
-      (index + 1).toString(),
-      cat.categoria,
-      cat.cantidad.toString(),
-      `${cat.disponibles}/${cat.cantidad}`,
-      cat.combos.toString(),
-      `${cat.precioPromedio}`,
-      `${cat.porcentaje}%`
-    ]);
-    
-    autoTable(doc, {
-      head: [['#', 'Categoría', 'Total', 'Disponibles', 'Combos', 'Precio Prom.', '% Total']],
-      body: categoryData,
-      startY: currentY,
-      theme: 'striped',
-      headStyles: { 
-        fillColor: [255, 193, 7],
-        textColor: [0, 0, 0],
-        fontSize: 10,
-        fontStyle: 'bold'
-      },
-      styles: { 
-        fontSize: 9,
-        cellPadding: { top: 4, right: 6, bottom: 4, left: 6 }
-      },
-      columnStyles: {
-        0: { cellWidth: 15, halign: 'center' },
-        1: { cellWidth: 40 },
-        2: { cellWidth: 20, halign: 'center' },
-        3: { cellWidth: 25, halign: 'center' },
-        4: { cellWidth: 20, halign: 'center' },
-        5: { cellWidth: 30, halign: 'center' },
-        6: { cellWidth: 20, halign: 'center' }
-      },
-      alternateRowStyles: { fillColor: [255, 248, 220] }
-    });
-    
-    return (doc as any).lastAutoTable.finalY + 20;
-  }
-
-  /**
-   * Agregar análisis de productos populares al PDF
-   */
-  private addPopularProductsAnalysis(doc: any, startY: number, stats: BarStats, autoTable: any): number {
-    let currentY = startY;
-    
-    // Título de sección
-    doc.setFillColor(255, 193, 7);
-    doc.rect(20, currentY - 5, 170, 15, 'F');
-    doc.setFontSize(14);
-    doc.setTextColor(0, 0, 0);
-    doc.text('TOP 10 PRODUCTOS MÁS POPULARES', 25, currentY + 5);
-    currentY += 15;
-    
-    const popularData = stats.productosPopularesBar.slice(0, 10).map((prod, index) => [
-      this.getRankIcon(index + 1),
-      prod.nombre,
-      prod.categoria,
-      prod.ventasSimuladas.toString(),
-      `${prod.ingresoSimulado.toFixed(2)}`,
-      `${prod.precio.toFixed(2)}`,
-      prod.esCombo ? 'Sí' : 'No'
-    ]);
-    
-    autoTable(doc, {
-      head: [['Pos', 'Producto', 'Categoría', 'Ventas', 'Ingresos', 'Precio', 'Combo']],
-      body: popularData,
-      startY: currentY,
-      theme: 'striped',
-      headStyles: { 
-        fillColor: [255, 193, 7],
-        textColor: [0, 0, 0],
-        fontSize: 10,
-        fontStyle: 'bold'
-      },
-      styles: { 
-        fontSize: 9,
-        cellPadding: { top: 4, right: 6, bottom: 4, left: 6 }
-      },
-      columnStyles: {
-        0: { cellWidth: 15, halign: 'center' },
-        1: { cellWidth: 50 },
-        2: { cellWidth: 25, halign: 'center' },
-        3: { cellWidth: 20, halign: 'center' },
-        4: { cellWidth: 25, halign: 'center' },
-        5: { cellWidth: 20, halign: 'center' },
-        6: { cellWidth: 15, halign: 'center' }
-      },
-      alternateRowStyles: { fillColor: [255, 248, 220] }
-    });
-    
-    return (doc as any).lastAutoTable.finalY + 20;
-  }
-
-  /**
-   * Agregar recomendaciones del bar al PDF
-   */
-  private addBarRecommendations(doc: any, startY: number, stats: BarStats): void {
-    let currentY = startY;
-    
-    // Título de sección
-    doc.setFillColor(255, 193, 7);
-    doc.rect(20, currentY - 5, 170, 15, 'F');
-    doc.setFontSize(14);
-    doc.setTextColor(0, 0, 0);
-    doc.text('RECOMENDACIONES ESTRATÉGICAS', 25, currentY + 5);
-    currentY += 20;
-    
-    const recomendaciones = [
-      {
-        categoria: 'Optimización de Productos',
-        acciones: [
-          'Promocionar más los combos especiales para aumentar ticket promedio',
-          'Revisar precios de productos con baja rotación',
-          'Crear nuevos combos basados en productos populares',
-          'Implementar descuentos por volumen en categorías menos vendidas'
-        ]
-      },
-      {
-        categoria: 'Gestión de Inventario',
-        acciones: [
-          'Aumentar stock de productos más vendidos',
-          'Evaluar eliminar productos con ventas muy bajas',
-          'Implementar alertas automáticas de stock bajo',
-          'Negociar mejores precios con proveedores de productos populares'
-        ]
-      },
-      {
-        categoria: 'Experiencia del Cliente',
-        acciones: [
-          'Crear menús visuales atractivos para el bar',
-          'Implementar sistema de pedidos online',
-          'Ofrecer muestras gratuitas de nuevos productos',
-          'Desarrollar programa de puntos para clientes frecuentes'
-        ]
-      }
-    ];
-    
-    recomendaciones.forEach(seccion => {
-      doc.setFontSize(12);
-      doc.setTextColor(255, 140, 0);
-      doc.text(`${seccion.categoria.toUpperCase()}`, 25, currentY);
-      currentY += 15;
-      
-      seccion.acciones.forEach(accion => {
-        doc.setFontSize(10);
-        doc.setTextColor(0, 0, 0);
-        doc.text(`• ${accion}`, 30, currentY);
-        currentY += 8;
-      });
-      currentY += 5;
-    });
-  }
-
-  /**
-   * Obtener icono de ranking para el PDF
-   */
-  private getRankIcon(position: number): string {
-    if (position === 1) return '🥇';
-    if (position === 2) return '🥈';
-    if (position === 3) return '🥉';
-    return `${position}°`;
-  }
-
-  // ==================== MÉTODOS PARA EXTENDER TUS SERVICIOS ====================
-  
-  // Estos métodos los puedes agregar a tu MovieService cuando tengas backend
-  addPeliculaToService(pelicula: Pelicula): boolean {
-    console.log('Agregando película al servicio:', pelicula);
-    return true;
-  }
-
-  updatePeliculaInService(index: number, pelicula: Partial<Pelicula>): boolean {
-    console.log('Actualizando película en servicio:', index, pelicula);
-    return true;
-  }
-
-  deletePeliculaFromService(index: number): boolean {
-    console.log('Eliminando película del servicio:', index);
-    return true;
-  }
-
-  // ==================== GETTERS PARA ESTADO ====================
-  
-  /**
-   * Verificar si se está generando un reporte
-   */
-  isGeneratingReport(): boolean {
-    return this.generatingReport;
-  }
-
-  /**
-   * Obtener estadísticas combinadas (películas + bar)
-   */
-  getCombinedStats(): { 
-    peliculas: AdminStats, 
-    bar: BarStats,
-    resumen: {
-      totalProductosCine: number;
-      totalProductosBar: number;
-      ingresosTotales: number;
-      actividadReciente: ActividadReciente[];
-    }
-  } {
-    const peliculasStats = this.getAdminStats();
-    const barStats = this.getBarStats();
-    
-    return {
-      peliculas: peliculasStats,
-      bar: barStats,
-      resumen: {
-        totalProductosCine: peliculasStats.totalPeliculas,
-        totalProductosBar: barStats.totalProductos,
-        ingresosTotales: peliculasStats.ingresosMes + barStats.tendenciasBar.ingresoUltimos30Dias,
-        actividadReciente: peliculasStats.actividadReciente
-      }
-    };
   }
 }

@@ -14,12 +14,13 @@
             <div class="col">
               <h2 class="mb-1">{{ currentUser?.nombre }}</h2>
               <p class="mb-1 opacity-75">{{ currentUser?.email }}</p>
+              <!-- ✅ CORREGIDO: Usar métodos del componente, no del AuthService -->
               <span class="badge" 
-                    [class.bg-danger]="authService.isAdmin()" 
-                    [class.bg-light]="authService.isCliente()"
-                    [class.text-dark]="authService.isCliente()">
-                <i class="fas fa-crown me-1" *ngIf="authService.isAdmin()"></i>
-                <i class="fas fa-user me-1" *ngIf="authService.isCliente()"></i>
+                    [class.bg-danger]="isAdmin()" 
+                    [class.bg-light]="isCliente()"
+                    [class.text-dark]="isCliente()">
+                <i class="fas fa-crown me-1" *ngIf="isAdmin()"></i>
+                <i class="fas fa-user me-1" *ngIf="isCliente()"></i>
                 {{ currentUser?.role }}
               </span>
             </div>

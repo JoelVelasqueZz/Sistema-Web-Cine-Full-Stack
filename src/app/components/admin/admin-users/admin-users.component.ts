@@ -128,7 +128,7 @@ export class AdminUsersComponent implements OnInit {
         case 'email':
           return a.email.localeCompare(b.email);
         case 'fechaRegistro':
-          return new Date(b.fechaRegistro).getTime() - new Date(a.fechaRegistro).getTime();
+          return new Date(b.fechaRegistro ?? '').getTime() - new Date(a.fechaRegistro ?? '').getTime();
         case 'role':
           return a.role.localeCompare(b.role);
         default:
@@ -191,7 +191,7 @@ export class AdminUsersComponent implements OnInit {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     
     return this.allUsers.filter(user => 
-      new Date(user.fechaRegistro) >= thirtyDaysAgo
+      new Date(user.fechaRegistro ?? '') >= thirtyDaysAgo
     ).length;
   }
 
@@ -537,7 +537,7 @@ export class AdminUsersComponent implements OnInit {
           usuario.email.length > 30 ? usuario.email.substring(0, 30) + '...' : usuario.email,
           usuario.role === 'admin' ? 'Admin' : 'Cliente',
           usuario.isActive ? 'Activo' : 'Inactivo',
-          this.formatDate(usuario.fechaRegistro),
+          this.formatDate(usuario.fechaRegistro ?? ''),
           this.getUserFavorites(usuario.id).toString(),
           this.getUserHistory(usuario.id).toString()
         ]);
@@ -904,7 +904,7 @@ export class AdminUsersComponent implements OnInit {
    const meses: { [key: string]: number } = {};
    
    this.allUsers.forEach(user => {
-     const fecha = new Date(user.fechaRegistro);
+     const fecha = new Date(user.fechaRegistro ?? '');
      const mesAño = `${fecha.getFullYear()}-${(fecha.getMonth() + 1).toString().padStart(2, '0')}`;
      meses[mesAño] = (meses[mesAño] || 0) + 1;
    });

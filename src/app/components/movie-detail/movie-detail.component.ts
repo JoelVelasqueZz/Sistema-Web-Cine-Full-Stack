@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MovieService, Pelicula } from '../../services/movie.service';
 import { AuthService } from '../../services/auth.service';
@@ -11,13 +11,18 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
   templateUrl: './movie-detail.component.html',
   styleUrl: './movie-detail.component.css'
 })
-export class MovieDetailComponent {
+export class MovieDetailComponent implements OnInit {
   pelicula: any = {};
-  peliculaIndex: number = -1;
+  peliculaId: number = -1;
   mostrarModal: boolean = false;
   trailerUrl: SafeResourceUrl = '';
-
-  // 🔥 PROPIEDADES PARA EDICIÓN DE PELÍCULAS (ADMIN)
+  
+  // Estados de carga
+  cargando = true;
+  errorConexion = false;
+  peliculaNoEncontrada = false;
+  
+  // PROPIEDADES PARA EDICIÓN DE PELÍCULAS (ADMIN)
   peliculaEditando: Pelicula | null = null;
   guardandoEdicion: boolean = false;
   errorEdicion: string = '';
@@ -25,79 +30,117 @@ export class MovieDetailComponent {
 
   constructor(
     private activatedRoute: ActivatedRoute, 
-    private _movieService: MovieService,
+    private movieService: MovieService, // 🔧 Solo MovieService
     private router: Router,
     private sanitizer: DomSanitizer,
-    public authService: AuthService,    // 🔥 AGREGAR (público para template)
-    private toastService: ToastService  // 🔥 AGREGAR
-  ) {
-    this.activatedRoute.params.subscribe(params => {
-      this.peliculaIndex = +params['id']; // Convertir a número
-      this.pelicula = this._movieService.getPelicula(this.peliculaIndex);
-      console.log('Película cargada:', this.pelicula);
-      console.log('Índice de película:', this.peliculaIndex);
+    public authService: AuthService,
+    private toastService: ToastService
+  ) {}
 
-      // Obtener URL del trailer si existe
-      if (this.pelicula && this.pelicula.trailer) {
-        const url = this._movieService.getTrailerUrl(this.peliculaIndex);
-        this.trailerUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
-      }
-      
-      // cuando no existe la película, redirigir a la lista de películas
-      if (!this.pelicula) {
-        this.router.navigate(['/movies']);
-      }
+  ngOnInit(): void {
+    this.activatedRoute.params.subscribe(params => {
+      this.peliculaId = +params['id']; // Convertir a número
+      console.log('ID de película recibido:', this.peliculaId);
+      this.cargarPelicula();
     });
+  }
+
+  // 🔧 MÉTODO ACTUALIZADO: Usar solo MovieService
+  cargarPelicula(): void {
+    this.cargando = true;
+    this.errorConexion = false;
+    this.peliculaNoEncontrada = false;
+
+    // Usar MovieService (que ya conecta con la API internamente)
+    this.movieService.getPeliculaById(this.peliculaId).subscribe(
+      (pelicula) => {
+        if (pelicula) {
+          console.log('✅ Película cargada:', pelicula.titulo);
+          this.pelicula = pelicula;
+          this.configurarTrailer();
+          this.cargando = false;
+          this.errorConexion = false;
+          this.peliculaNoEncontrada = false;
+        } else {
+          console.log('⚠️ Película no encontrada');
+          this.peliculaNoEncontrada = true;
+          this.cargando = false;
+          
+          // Redirigir a la lista de películas después de un delay
+          setTimeout(() => {
+            this.router.navigate(['/movies']);
+            this.toastService.showError('Película no encontrada');
+          }, 3000);
+        }
+      },
+      error => {
+        console.error('❌ Error al cargar película:', error);
+        this.errorConexion = true;
+        this.cargando = false;
+        this.toastService.showError('Error al cargar la película');
+        
+        // Redirigir después de un delay
+        setTimeout(() => {
+          this.router.navigate(['/movies']);
+        }, 3000);
+      }
+    );
+  }
+
+  // MÉTODO: Configurar URL del trailer
+  private configurarTrailer(): void {
+    if (this.pelicula && this.pelicula.trailer) {
+      const url = `https://www.youtube.com/embed/${this.pelicula.trailer}`;
+      this.trailerUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
+    } else {
+      this.trailerUrl = '';
+    }
+  }
+
+  // MÉTODO: Reintentar conexión
+  reintentarConexion(): void {
+    this.toastService.showInfo('Reintentando conexión...');
+    this.cargarPelicula();
   }
   
   // ==================== MÉTODOS EXISTENTES ====================
   
-  // Método para verificar si la película tiene trailer
   tieneTrailer(): boolean {
     return this.pelicula && this.pelicula.trailer;
   }
 
   comprarEntradas() {
     if (this.pelicula) {
-      console.log('Navegando a ticket-purchase con índice:', this.peliculaIndex);
-      this.router.navigate(['/ticket-purchase', this.peliculaIndex]);
+      console.log('Navegando a ticket-purchase con ID:', this.peliculaId);
+      this.router.navigate(['/ticket-purchase', this.peliculaId]);
     }
   }
 
   // ==================== MÉTODOS DE ADMINISTRACIÓN ====================
 
-  /**
-   * Editar película (solo admin)
-   */
   editarPelicula(): void {
     if (!this.authService.isAdmin()) {
       this.toastService.showError('No tienes permisos para realizar esta acción');
       return;
     }
-
     if (!this.pelicula) {
       this.toastService.showError('Película no encontrada');
       return;
     }
 
-    // Preparar datos para edición
-    this.peliculaEditando = { ...this.pelicula }; // Clonar objeto
+    this.peliculaEditando = { ...this.pelicula };
     this.errorEdicion = '';
     this.exitoEdicion = '';
     this.guardandoEdicion = false;
-
     console.log('Editando película:', this.peliculaEditando);
   }
 
-  /**
-   * Guardar cambios de edición
-   */
+  // 🔧 ACTUALIZADO: Guardar usando MovieService
   guardarEdicionPelicula(formulario: any): void {
     if (!this.authService.isAdmin()) {
       this.toastService.showError('No tienes permisos para realizar esta acción');
       return;
     }
-
     if (!formulario.valid || !this.peliculaEditando) {
       this.errorEdicion = 'Por favor completa todos los campos requeridos';
       return;
@@ -108,48 +151,48 @@ export class MovieDetailComponent {
     this.exitoEdicion = '';
 
     // Validar datos
-    const validacion = this._movieService.validatePeliculaData(this.peliculaEditando);
+    const validacion = this.movieService.validatePeliculaData(this.peliculaEditando);
     if (!validacion.valid) {
       this.errorEdicion = validacion.errors.join(', ');
       this.guardandoEdicion = false;
       return;
     }
 
-    // Simular delay de guardado
-    setTimeout(() => {
-      const exito = this._movieService.updatePelicula(this.peliculaIndex, this.peliculaEditando!);
-      
-      if (exito) {
-        this.exitoEdicion = `Película "${this.peliculaEditando!.titulo}" actualizada exitosamente`;
-        this.toastService.showSuccess(`Película actualizada exitosamente`);
-        
-        // Recargar datos de la película
-        this.recargarPelicula();
-        
-        // Cerrar modal después de 2 segundos
-        setTimeout(() => {
-          this.cerrarModalEdicion();
-          this.resetearEdicion();
-        }, 2000);
-        
-      } else {
-        this.errorEdicion = 'Error al actualizar la película. Por favor intenta de nuevo.';
-        this.toastService.showError('Error al actualizar la película');
+    // Usar MovieService para actualizar
+    this.movieService.updatePelicula(this.peliculaId, this.peliculaEditando).subscribe(
+      success => {
+        if (success) {
+          this.exitoEdicion = `Película "${this.peliculaEditando!.titulo}" actualizada exitosamente`;
+          this.toastService.showSuccess('Película actualizada exitosamente');
+          
+          // Recargar datos de la película
+          this.cargarPelicula();
+          
+          setTimeout(() => {
+            this.cerrarModalEdicion();
+            this.resetearEdicion();
+          }, 2000);
+        } else {
+          this.errorEdicion = 'Error al actualizar la película.';
+          this.toastService.showError('Error al actualizar la película');
+        }
+        this.guardandoEdicion = false;
+      },
+      error => {
+        console.error('Error al actualizar película:', error);
+        this.errorEdicion = 'Error de conexión al actualizar la película.';
+        this.toastService.showError('Error de conexión');
+        this.guardandoEdicion = false;
       }
-      
-      this.guardandoEdicion = false;
-    }, 1500);
+    );
   }
 
-  /**
-   * Confirmar eliminación de película
-   */
+  // 🔧 ACTUALIZADO: Eliminar usando MovieService
   confirmarEliminarPelicula(): void {
     if (!this.authService.isAdmin()) {
       this.toastService.showError('No tienes permisos para realizar esta acción');
       return;
     }
-
     if (!this.pelicula) {
       this.toastService.showError('Película no encontrada');
       return;
@@ -160,135 +203,114 @@ export class MovieDetailComponent {
       `Esta acción no se puede deshacer y también eliminará todas las funciones asociadas.\n` +
       `Serás redirigido a la lista de películas.`
     );
-
+    
     if (confirmar) {
       this.eliminarPelicula();
     }
   }
 
-  /**
-   * Eliminar película
-   */
   private eliminarPelicula(): void {
     const tituloPelicula = this.pelicula.titulo;
     
-    const exito = this._movieService.deletePelicula(this.peliculaIndex);
-    
-    if (exito) {
-      this.toastService.showSuccess(`Película "${tituloPelicula}" eliminada exitosamente`);
-      
-      // Redirigir a la lista de películas después de eliminar
-      setTimeout(() => {
-        this.router.navigate(['/movies']);
-      }, 1500);
-      
-    } else {
-      this.toastService.showError('Error al eliminar la película');
-    }
+    // Usar MovieService para eliminar
+    this.movieService.deletePelicula(this.peliculaId).subscribe(
+      success => {
+        if (success) {
+          this.toastService.showSuccess(`Película "${tituloPelicula}" eliminada exitosamente`);
+        } else {
+          this.toastService.showError('Error al eliminar la película');
+        }
+        
+        setTimeout(() => {
+          this.router.navigate(['/movies']);
+        }, 1500);
+      },
+      error => {
+        console.error('Error al eliminar película:', error);
+        this.toastService.showError('Error de conexión al eliminar película');
+        
+        setTimeout(() => {
+          this.router.navigate(['/movies']);
+        }, 1500);
+      }
+    );
   }
 
-  /**
-   * Gestionar funciones de la película
-   */
   gestionarFunciones(): void {
     if (!this.authService.isAdmin()) {
       this.toastService.showError('No tienes permisos para realizar esta acción');
       return;
     }
-
-    // TODO: Implementar gestión de funciones
     this.toastService.showInfo('Gestión de funciones próximamente disponible');
     console.log('Gestionar funciones para película:', this.pelicula.titulo);
   }
 
-  /**
-   * Agregar nueva función
-   */
   agregarFuncion(): void {
     if (!this.authService.isAdmin()) {
       this.toastService.showError('No tienes permisos para realizar esta acción');
       return;
     }
-
-    // TODO: Implementar modal para agregar función
     this.toastService.showInfo('Función para agregar horarios próximamente disponible');
     console.log('Agregar función para película:', this.pelicula.titulo);
   }
 
-  /**
-   * Ver todas las funciones
-   */
   verTodasLasFunciones(): void {
     if (!this.authService.isAdmin()) {
       this.toastService.showError('No tienes permisos para realizar esta acción');
       return;
     }
-
-    const funciones = this._movieService.getFuncionesPelicula(this.peliculaIndex);
-    console.log('Funciones de la película:', funciones);
     
-    if (funciones.length > 0) {
-      this.toastService.showInfo(`Esta película tiene ${funciones.length} funciones programadas`);
-    } else {
-      this.toastService.showWarning('Esta película no tiene funciones programadas');
+    // 🔧 CORREGIDO: Usar MovieService según tu implementación
+    try {
+      const funciones = this.movieService.getFuncionesPelicula(this.peliculaId);
+      console.log('Funciones de la película:', funciones);
+      
+      if (funciones.length > 0) {
+        this.toastService.showInfo(`Esta película tiene ${funciones.length} funciones programadas`);
+      } else {
+        this.toastService.showWarning('Esta película no tiene funciones programadas');
+      }
+    } catch (error) {
+      console.error('Error al cargar funciones:', error);
+      this.toastService.showError('Error al cargar funciones');
     }
   }
 
-  /**
-   * Ver estadísticas de la película
-   */
   verEstadisticas(): void {
     if (!this.authService.isAdmin()) {
       this.toastService.showError('No tienes permisos para realizar esta acción');
       return;
     }
-
-    // Simular estadísticas
+    
     const stats = {
       vistas: Math.floor(Math.random() * 1000) + 100,
       favoritas: Math.floor(Math.random() * 200) + 10,
       funciones: this.getFuncionesCount(),
       rating: this.pelicula.rating
     };
-
+    
     const mensaje = `Estadísticas de "${this.pelicula.titulo}":\n\n` +
                    `• Vistas: ${stats.vistas}\n` +
                    `• En favoritas: ${stats.favoritas} usuarios\n` +
                    `• Funciones programadas: ${stats.funciones}\n` +
                    `• Rating promedio: ${stats.rating}/10`;
-
+    
     alert(mensaje);
     console.log('Estadísticas:', stats);
   }
 
-  /**
-   * Obtener cantidad de funciones
-   */
   getFuncionesCount(): number {
-    const funciones = this._movieService.getFuncionesPelicula(this.peliculaIndex);
-    return funciones.length;
+    try {
+      const funciones = this.movieService.getFuncionesPelicula(this.peliculaId);
+      return funciones.length;
+    } catch (error) {
+      console.error('Error al obtener funciones:', error);
+      return 0;
+    }
   }
 
   // ==================== MÉTODOS AUXILIARES ====================
 
-  /**
-   * Recargar datos de la película desde el servicio
-   */
-  private recargarPelicula(): void {
-    this.pelicula = this._movieService.getPelicula(this.peliculaIndex);
-    
-    // Actualizar trailer URL si cambió
-    if (this.pelicula && this.pelicula.trailer) {
-      const url = this._movieService.getTrailerUrl(this.peliculaIndex);
-      this.trailerUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
-    } else {
-      this.trailerUrl = '';
-    }
-  }
-
-  /**
-   * Resetear datos de edición
-   */
   private resetearEdicion(): void {
     this.peliculaEditando = null;
     this.errorEdicion = '';
@@ -296,16 +318,27 @@ export class MovieDetailComponent {
     this.guardandoEdicion = false;
   }
 
-  /**
-   * Cerrar modal de edición programáticamente
-   */
   private cerrarModalEdicion(): void {
     const modalElement = document.getElementById('modalEditarPelicula');
     if (modalElement) {
       const modal = (window as any).bootstrap.Modal.getInstance(modalElement);
-            if (modal) {
-              modal.hide();
-            }
-          }
-        }
+      if (modal) {
+        modal.hide();
       }
+    }
+  }
+
+  // MÉTODOS PARA LA INTERFAZ
+  getConnectionStatusClass(): string {
+    if (this.cargando) return 'text-info';
+    if (this.peliculaNoEncontrada || this.errorConexion) return 'text-danger';
+    return 'text-success';
+  }
+
+  getConnectionStatusText(): string {
+    if (this.cargando) return 'Cargando...';
+    if (this.peliculaNoEncontrada) return 'Película no encontrada';
+    if (this.errorConexion) return 'Error de conexión';
+    return 'Conectado al servidor';
+  }
+}

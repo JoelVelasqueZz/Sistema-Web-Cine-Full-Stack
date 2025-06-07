@@ -141,11 +141,27 @@ export class ProfileComponent implements OnInit {
       localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
     }
   }
+isLoggedIn(): boolean {
+  return this.authService.isLoggedIn();
+}
 
+/**
+ * Verificar si el usuario es cliente
+ */
+isCliente(): boolean {
+  return this.isLoggedIn() && this.currentUser?.role === 'cliente';
+}
+
+/**
+ * Verificar si el usuario es admin  
+ */
+isAdmin(): boolean {
+  return this.authService.isAdmin();
+}
   getAccountAge(): string {
-    if (!this.currentUser) return '0 días';
+    if (!this.currentUser || !this.currentUser.fechaRegistro) return '0 días';
     
-    const registroDate = new Date(this.currentUser.fechaRegistro);
+    const registroDate = new Date(this.currentUser.fechaRegistro as string);
     const today = new Date();
     const diffTime = Math.abs(today.getTime() - registroDate.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));

@@ -2,6 +2,7 @@ import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import { HttpClientModule } from '@angular/common/http'; // 🆕 AGREGAR ESTA LÍNEA
 
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
@@ -13,7 +14,6 @@ import { SearchComponent } from './components/search/search.component';
 import { LoginComponent } from './components/login/login.component';
 import { RegisterComponent } from './components/register/register.component';
 import { CartService } from './services/cart.service';
-
 // Importar servicios
 import { AuthService } from './services/auth.service';
 import { TicketPurchaseComponent } from './components/ticket-purchase/ticket-purchase.component';
@@ -32,13 +32,10 @@ import { AdminLayoutComponent } from './components/admin/admin-layout/admin-layo
 import { AdminDashboardComponent } from './components/admin/admin-dashboard/admin-dashboard.component';
 import { AdminMoviesComponent } from './components/admin/admin-movies/admin-movies.component';
 import { AdminUsersComponent } from './components/admin/admin-users/admin-users.component';
-
 import { AdminService } from './services/admin.service';
-
 // 🍿 COMPONENTES DEL BAR
 import { BarListComponent } from './components/bar-list/bar-list.component';
 import { BarDetailComponent } from './components/bar-detail/bar-detail.component';
-
 // 🍿 SERVICIO DEL BAR
 import { BarService } from './services/bar.service';
 import { FooterComponent } from './components/footer/footer.component';
@@ -81,7 +78,8 @@ import { RewardsComponent } from './components/rewards/rewards.component';
     ReactiveFormsModule,
     FormsModule,
     AppRoutingModule,
-    BrowserAnimationsModule
+    BrowserAnimationsModule,
+    HttpClientModule // 🆕 AGREGAR ESTA LÍNEA
   ],
   providers: [
     AuthService,

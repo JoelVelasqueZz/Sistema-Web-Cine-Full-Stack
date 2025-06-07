@@ -15,11 +15,16 @@ import { BarService } from '../../../services/bar.service';
   styleUrls: ['./admin-layout.component.css']
 })
 export class AdminLayoutComponent implements OnInit, OnDestroy {
-
+  
   currentSection: string = 'Dashboard';
   loading: boolean = false;
   refreshing: boolean = false;
   lastUpdate: string = '';
+  
+  // 🆕 AGREGAR ESTAS PROPIEDADES PARA CACHE
+  private totalMovies: number = 0;
+  private totalUsers: number = 0;
+  private totalBarProducts: number = 0;
   
   private routerSubscription: Subscription = new Subscription();
 
@@ -40,6 +45,9 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // 🆕 CARGAR DATOS INICIALES
+    this.loadInitialData();
+
     // Escuchar cambios de ruta para actualizar breadcrumbs
     this.routerSubscription = this.router.events.pipe(
       filter(event => event instanceof NavigationEnd)
@@ -57,51 +65,176 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
 
     console.log('Panel de administración inicializado');
   }
-  
-  getTotalBarProducts(): number {
-  return this.barService.getProductos().length;
-}
 
-/**
- * Agregar producto del bar rápido
- */
-quickAddBarProduct(): void {
-  this.router.navigate(['/admin/bar'], { 
-    queryParams: { action: 'add' } 
-  });
-  
-  this.toastService.showInfo('Redirigiendo a agregar producto del bar...');
-}
+  // 🆕 MÉTODO PARA CARGAR DATOS INICIALES
+  private loadInitialData(): void {
+    // Cargar total de películas
+    this.movieService.getPeliculas().subscribe(
+      peliculas => {
+        this.totalMovies = peliculas.length;
+      },
+      error => {
+        console.error('Error al cargar películas:', error);
+        this.totalMovies = 0;
+      }
+    );
+
+    // Cargar total de usuarios
+    try {
+      this.totalUsers = this.adminService.getAllUsers().length;
+    } catch (error) {
+      console.error('Error al cargar usuarios:', error);
+      this.totalUsers = 0;
+    }
+
+    // Cargar total de productos del bar
+    try {
+      this.totalBarProducts = this.barService.getProductos().length;
+    } catch (error) {
+      console.error('Error al cargar productos del bar:', error);
+      this.totalBarProducts = 0;
+    }
+  }
+
   ngOnDestroy(): void {
     if (this.routerSubscription) {
       this.routerSubscription.unsubscribe();
     }
   }
 
-  // ==================== NAVEGACIÓN Y BREADCRUMBS ====================
+  // ==================== MÉTODOS CORREGIDOS ====================
+
+  /**
+   * Obtener total de películas (CORREGIDO)
+   */
+  getTotalMovies(): number {
+    return this.totalMovies;
+  }
+
+  /**
+   * Obtener total de usuarios (YA ESTABA BIEN)
+   */
+  getTotalUsers(): number {
+    return this.totalUsers;
+  }
+
+  /**
+   * Obtener total de productos del bar (CORREGIDO)
+   */
+  getTotalBarProducts(): number {
+    return this.totalBarProducts;
+  }
+
+  // ==================== MÉTODO REFRESH CORREGIDO ====================
+
+  /**
+   * Refrescar datos del sistema (CORREGIDO)
+   */
+  refreshData(): void {
+    this.refreshing = true;
+    
+    // Recargar datos reales
+    this.loadInitialData();
+    
+    setTimeout(() => {
+      this.refreshing = false;
+      this.updateLastUpdate();
+      this.toastService.showSuccess('Datos actualizados correctamente');
+      
+      // Recargar datos de la sección actual
+      this.reloadCurrentSectionData();
+    }, 1500);
+  }
+
+  /**
+   * Generar reporte rápido (CORREGIDO)
+   */
+  generateReport(): void {
+    this.loading = true;
+    
+    this.adminService.getAdminStats().subscribe(
+      stats => {
+        setTimeout(() => {
+          this.loading = false;
+          
+          const reportData = {
+            fechaGeneracion: new Date().toLocaleString('es-ES'),
+            totalPeliculas: stats.totalPeliculas,
+            totalUsuarios: stats.totalUsuarios,
+            totalProductosBar: this.totalBarProducts, // 🆕 AGREGAR BAR
+            ingresosMes: stats.ingresosMes,
+            ventasRecientes: stats.ventasRecientes.length
+          };
+          
+          console.log('Reporte generado:', reportData);
+          this.toastService.showSuccess('Reporte generado exitosamente (ver consola)');
+          
+        }, 2000);
+      },
+      error => {
+        console.error('Error al generar reporte:', error);
+        this.loading = false;
+        this.toastService.showError('Error al generar el reporte');
+      }
+    );
+  }
+
+  /**
+   * Ver estado del sistema (CORREGIDO)
+   */
+  viewSystemStatus(): void {
+    const status = this.getSystemStatus();
+    
+    const mensaje = `Estado del Sistema:\n\n` +
+                   `• Películas: ${status.peliculas} registradas\n` +
+                   `• Usuarios: ${status.usuarios} activos\n` +
+                   `• Productos del Bar: ${status.productosBar} registrados\n` +
+                   `• Última actualización: ${this.lastUpdate}\n` +
+                   `• Estado: ${status.estado}\n` +
+                   `• Memoria: ${status.memoria}% usado`;
+    
+    alert(mensaje);
+    console.log('Estado del sistema:', status);
+  }
+
+  /**
+   * Obtener estado del sistema (CORREGIDO)
+   */
+  private getSystemStatus(): any {
+    return {
+      peliculas: this.totalMovies,
+      usuarios: this.totalUsers,
+      productosBar: this.totalBarProducts,
+      estado: 'Operativo',
+      memoria: Math.floor(Math.random() * 40) + 20,
+      ultimaActualizacion: this.lastUpdate
+    };
+  }
+
+  // ==================== RESTO DE MÉTODOS (SIN CAMBIOS) ====================
 
   /**
    * Actualizar sección actual basada en la URL
    */
   private updateCurrentSection(url: string): void {
-  if (url.includes('/admin/dashboard')) {
-    this.currentSection = 'Dashboard';
-  } else if (url.includes('/admin/movies')) {
-    this.currentSection = 'Gestión de Películas';
-  } else if (url.includes('/admin/bar')) {  // 🆕 NUEVA SECCIÓN
-    this.currentSection = 'Gestión del Bar';
-  } else if (url.includes('/admin/users')) {
-    this.currentSection = 'Gestión de Usuarios';
-  } else if (url.includes('/admin/reports')) {
-    this.currentSection = 'Reportes';
-  } else if (url.includes('/admin/settings')) {
-    this.currentSection = 'Configuración';
-  } else if (url.includes('/admin/logs')) {
-    this.currentSection = 'Logs del Sistema';
-  } else {
-    this.currentSection = 'Dashboard';
+    if (url.includes('/admin/dashboard')) {
+      this.currentSection = 'Dashboard';
+    } else if (url.includes('/admin/movies')) {
+      this.currentSection = 'Gestión de Películas';
+    } else if (url.includes('/admin/bar')) {
+      this.currentSection = 'Gestión del Bar';
+    } else if (url.includes('/admin/users')) {
+      this.currentSection = 'Gestión de Usuarios';
+    } else if (url.includes('/admin/reports')) {
+      this.currentSection = 'Reportes';
+    } else if (url.includes('/admin/settings')) {
+      this.currentSection = 'Configuración';
+    } else if (url.includes('/admin/logs')) {
+      this.currentSection = 'Logs del Sistema';
+    } else {
+      this.currentSection = 'Dashboard';
+    }
   }
-}
 
   /**
    * Establecer sección actual manualmente
@@ -109,8 +242,6 @@ quickAddBarProduct(): void {
   setCurrentSection(section: string): void {
     this.currentSection = section;
   }
-
-  // ==================== INFORMACIÓN DEL SISTEMA ====================
 
   /**
    * Obtener fecha y hora actual
@@ -144,52 +275,16 @@ quickAddBarProduct(): void {
   }
 
   /**
-   * Obtener total de películas
-   */
-  getTotalMovies(): number {
-    return this.movieService.getPeliculas().length;
-  }
-
-  /**
-   * Obtener total de usuarios
-   */
-  getTotalUsers(): number {
-    // Esto debería venir del adminService cuando lo implementes
-    return this.adminService.getAllUsers().length;
-  }
-
-  /**
    * Obtener avatar por defecto
    */
   getDefaultAvatar(): string {
     return 'https://ui-avatars.com/api/?name=Admin&background=dc3545&color=fff&size=128';
   }
 
-  // ==================== ACCIONES DEL HEADER ====================
-
-  /**
-   * Refrescar datos del sistema
-   */
-  refreshData(): void {
-    this.refreshing = true;
-    
-    // Simular carga de datos
-    setTimeout(() => {
-      this.refreshing = false;
-      this.updateLastUpdate();
-      this.toastService.showSuccess('Datos actualizados correctamente');
-      
-      // Aquí podrías recargar datos específicos según la sección actual
-      this.reloadCurrentSectionData();
-    }, 1500);
-  }
-
   /**
    * Recargar datos de la sección actual
    */
   private reloadCurrentSectionData(): void {
-    // Emit evento para que los componentes hijos se actualicen
-    // En una implementación real, usarías un servicio de eventos
     window.dispatchEvent(new CustomEvent('adminDataRefresh', {
       detail: { section: this.currentSection }
     }));
@@ -208,13 +303,10 @@ quickAddBarProduct(): void {
     }
   }
 
-  // ==================== ACCIONES RÁPIDAS ====================
-
   /**
    * Agregar película rápido
    */
   quickAddMovie(): void {
-    // Redirigir al componente de gestión de películas con modo "agregar"
     this.router.navigate(['/admin/movies'], { 
       queryParams: { action: 'add' } 
     });
@@ -223,65 +315,15 @@ quickAddBarProduct(): void {
   }
 
   /**
-   * Generar reporte rápido
+   * Agregar producto del bar rápido
    */
-  generateReport(): void {
-    this.loading = true;
+  quickAddBarProduct(): void {
+    this.router.navigate(['/admin/bar'], { 
+      queryParams: { action: 'add' } 
+    });
     
-    // Simular generación de reporte
-    setTimeout(() => {
-      this.loading = false;
-      
-      const stats = this.adminService.getAdminStats();
-      const reportData = {
-        fechaGeneracion: new Date().toLocaleString('es-ES'),
-        totalPeliculas: stats.totalPeliculas,
-        totalUsuarios: stats.totalUsuarios,
-        ingresosMes: stats.ingresosMes,
-        ventasRecientes: stats.ventasRecientes.length
-      };
-      
-      console.log('Reporte generado:', reportData);
-      this.toastService.showSuccess('Reporte generado exitosamente (ver consola)');
-      
-      // En una implementación real, aquí se descargaría un PDF o Excel
-    }, 2000);
+    this.toastService.showInfo('Redirigiendo a agregar producto del bar...');
   }
-
-  /**
-   * Ver estado del sistema
-   */
- viewSystemStatus(): void {
-  const status = this.getSystemStatus();
-  
-  const mensaje = `Estado del Sistema:\n\n` +
-                 `• Películas: ${status.peliculas} registradas\n` +
-                 `• Usuarios: ${status.usuarios} activos\n` +
-                 `• Productos del Bar: ${status.productosBar} registrados\n` +  // 🆕 NUEVA LÍNEA
-                 `• Última actualización: ${this.lastUpdate}\n` +
-                 `• Estado: ${status.estado}\n` +
-                 `• Memoria: ${status.memoria}% usado`;
-  
-  alert(mensaje);
-  console.log('Estado del sistema:', status);
-}
-
-  /**
-   * Obtener estado del sistema
-   */
-  private getSystemStatus(): any {
-  return {
-    peliculas: this.getTotalMovies(),
-    usuarios: this.getTotalUsers(),
-    productosBar: this.getTotalBarProducts(),  // 🆕 AGREGAR PRODUCTOS DEL BAR
-    estado: 'Operativo',
-    memoria: Math.floor(Math.random() * 40) + 20,
-    ultimaActualizacion: this.lastUpdate
-  };
-}
-
-
-  // ==================== UTILIDADES ====================
 
   /**
    * Verificar si una ruta está activa
@@ -310,15 +352,11 @@ quickAddBarProduct(): void {
     return this.isRouteActive(route) ? 'active bg-primary text-white' : '';
   }
 
-  // ==================== EVENTOS ====================
-
   /**
    * Manejar clicks en el sidebar (móvil)
    */
   onSidebarClick(): void {
-    // En móvil, cerrar sidebar después de click
     if (window.innerWidth < 768) {
-      // Aquí podrías cerrar un sidebar colapsible
       console.log('Click en sidebar móvil');
     }
   }
@@ -327,11 +365,8 @@ quickAddBarProduct(): void {
    * Manejar resize de ventana
    */
   onWindowResize(): void {
-    // Aquí podrías ajustar la UI según el tamaño de pantalla
     console.log('Ventana redimensionada');
   }
-
-  // ==================== DEBUG ====================
 
   /**
    * Mostrar información de debug (solo desarrollo)

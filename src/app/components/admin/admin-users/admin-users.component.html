@@ -329,10 +329,10 @@
                   <td>
                     <small class="text-muted">
                       <i class="fas fa-calendar me-1"></i>
-                      {{ formatDate(user.fechaRegistro) }}
+                      {{ formatDate(user.fechaRegistro || '') }}
                       <br>
                       <span class="badge bg-light text-dark">
-                        {{ getDaysAgo(user.fechaRegistro) }} días
+                        {{ getDaysAgo(user.fechaRegistro ?? '') }} días
                       </span>
                     </small>
                   </td>
@@ -459,7 +459,7 @@
               </tr>
               <tr>
                 <td class="fw-semibold">Registro:</td>
-                <td>{{ formatDate(selectedUserDetails.fechaRegistro) }}</td>
+                <td>{{ formatDate(selectedUserDetails.fechaRegistro || '') }}</td>
               </tr>
               <tr>
                 <td class="fw-semibold">Favoritas:</td>

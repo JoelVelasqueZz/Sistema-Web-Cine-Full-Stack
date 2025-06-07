@@ -165,7 +165,7 @@
           
           <!-- Hover Overlay -->
           <div class="card-overlay position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center">
-            <button (click)="verPelicula(i)" class="btn btn-light btn-lg overlay-btn">
+            <button (click)="verPelicula(pelicula.idx ?? 0)" class="btn btn-light btn-lg overlay-btn">
               <i class="fas fa-play me-2"></i>Ver Detalles
             </button>
           </div>
@@ -201,8 +201,8 @@
           <!-- Action Buttons -->
           <div class="mt-auto">
             <div class="d-grid gap-2">
-              <button (click)="verPelicula(i)" 
-                      class="btn btn-primary btn-lg fw-semibold">
+              <button (click)="verPelicula(pelicula.idx ?? 0)" 
+        class="btn btn-primary btn-lg fw-semibold">
                 <i class="fas fa-eye me-2"></i>Ver Película
               </button>
             </div>
@@ -215,10 +215,10 @@
               <div class="d-flex gap-1">
                 <!-- 🆕 BOTÓN DE FAVORITAS ACTUALIZADO -->
                 <button class="btn btn-sm" 
-                        [class.btn-danger]="isInFavorites(i)"
+                        [class.btn-danger]="isInFavorites(pelicula.idx ?? 0)"
                         [class.btn-outline-primary]="!isInFavorites(i)"
                         [title]="isInFavorites(i) ? 'Quitar de favoritas' : 'Agregar a favoritas'"
-                        (click)="toggleFavorite(i, $event)">
+                        (click)="toggleFavorite(pelicula.idx ?? 0, $event)">
                   <i class="fas fa-heart" 
                      [class.text-white]="isInFavorites(i)"
                      [class.text-danger]="!isInFavorites(i)"></i>

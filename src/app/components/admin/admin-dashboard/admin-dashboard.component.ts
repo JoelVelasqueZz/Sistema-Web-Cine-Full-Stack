@@ -63,7 +63,8 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     // Escuchar evento de refresh desde admin-layout
     window.addEventListener('adminDataRefresh', this.handleDataRefresh.bind(this));
   }
-
+  
+  
   ngOnDestroy(): void {
     if (this.updateTimer) {
       clearInterval(this.updateTimer);
@@ -162,47 +163,63 @@ getActividadRecienteCombinada(): any[] {
    * Cargar estadísticas del dashboard
    */
   cargarEstadisticas(silencioso: boolean = false): void {
-    if (!silencioso) {
-      this.cargando = true;
-    }
-    
-    try {
-      // Usar el servicio real directamente
-      this.stats = this.adminService.getAdminStats();
-      this.cargando = false;
-      
-      if (!silencioso) {
-        console.log('Estadísticas cargadas:', this.stats);
+  if (!silencioso) {
+    this.cargando = true;
+  }
+  
+  try {
+    // 🆕 CAMBIAR ESTA LÍNEA - Usar Observable
+    this.adminService.getAdminStats().subscribe(
+      stats => {
+        this.stats = stats;
+        this.cargando = false;
+        
+        if (!silencioso) {
+          console.log('Estadísticas cargadas:', this.stats);
+        }
+      },
+      error => {
+        console.error('Error al cargar estadísticas:', error);
+        this.toastService.showError('Error al cargar las estadísticas');
+        this.cargando = false;
       }
-    } catch (error) {
-      console.error('Error al cargar estadísticas:', error);
-      this.toastService.showError('Error al cargar las estadísticas');
-      this.cargando = false;
-    }
+    );
+  } catch (error) {
+    console.error('Error al cargar estadísticas:', error);
+    this.toastService.showError('Error al cargar las estadísticas');
+    this.cargando = false;
   }
+}
 
-  /**
-   * Manejar evento de refresh de datos
-   */
-  private handleDataRefresh(event: any): void {
-    if (event.detail.section === 'Dashboard') {
-      this.cargarEstadisticas(true);
-    }
+/**
+ * Manejar evento de refresh de datos
+ */
+private handleDataRefresh(event: any): void {
+  if (event.detail.section === 'Dashboard') {
+    this.cargarEstadisticas(true);
   }
+}
 
-  /**
-   * Refrescar actividad reciente
-   */
-  refreshActivity(): void {
-    this.refreshingActivity = true;
-    
-    setTimeout(() => {
-      // Recargar solo la actividad reciente
-      this.stats.actividadReciente = this.adminService.getAdminStats().actividadReciente;
+/**
+ * Refrescar actividad reciente
+ */
+refreshActivity(): void {
+  this.refreshingActivity = true;
+  
+  // 🆕 CAMBIAR ESTA PARTE TAMBIÉN
+  this.adminService.getAdminStats().subscribe(
+    stats => {
+      this.stats.actividadReciente = stats.actividadReciente;
       this.refreshingActivity = false;
       this.toastService.showSuccess('Actividad actualizada');
-    }, 1000);
-  }
+    },
+    error => {
+      console.error('Error al refrescar actividad:', error);
+      this.refreshingActivity = false;
+      this.toastService.showError('Error al actualizar actividad');
+    }
+  );
+}
 
   // ==================== UTILIDADES DE FECHA Y FORMATO ====================
 
@@ -671,7 +688,7 @@ getActividadRecienteCombinada(): any[] {
         usuario.nombre,
         usuario.email.length > 25 ? usuario.email.substring(0, 25) + '...' : usuario.email,
         usuario.role === 'admin' ? 'Admin' : 'Cliente',
-        new Date(usuario.fechaRegistro).toLocaleDateString('es-ES'),
+        usuario.fechaRegistro ? new Date(usuario.fechaRegistro).toLocaleDateString('es-ES') : 'Sin fecha',
         usuario.isActive !== false ? 'Activo' : 'Inactivo'
       ]);
       
@@ -730,120 +747,131 @@ getActividadRecienteCombinada(): any[] {
    * Generar reporte de películas mejorado
    */
   generateMoviesReport(): void {
-    this.generatingReport = true;
-    this.toastService.showInfo('Generando reporte de películas...');
+  this.generatingReport = true;
+  this.toastService.showInfo('Generando reporte de películas...');
+  
+  try {
+    const doc = new jsPDF();
     
-    try {
-      const doc = new jsPDF();
-      const peliculas = this.adminService.getAllPeliculas();
-      
-      // Configurar encabezado
-      this.setupPDFHeader(doc, 'REPORTE DE PELÍCULAS', 'Análisis del catálogo cinematográfico');
-      
-      let currentY = 110;
-      
-      // Estadísticas del catálogo mejoradas
-      doc.setFillColor(240, 240, 240);
-      doc.rect(20, currentY - 5, 170, 15, 'F');
-      doc.setFontSize(14);
-      doc.setTextColor(52, 73, 94);
-      doc.text('ESTADISTICAS DEL CATALOGO', 25, currentY + 5);
-      currentY += 20;
-      
-      const ratingPromedio = this.calcularRatingPromedio();
-      const peliculasEstreno = peliculas.filter(p => {
-        const fechaPelicula = new Date(p.fechaEstreno);
-        const hace30Dias = new Date();
-        hace30Dias.setDate(hace30Dias.getDate() - 30);
-        return fechaPelicula >= hace30Dias;
-      }).length;
-      
-      const catalogoStats = [
-        ['Total de Peliculas', this.stats.totalPeliculas.toString()],
-        ['Rating Promedio', `${ratingPromedio.toFixed(1)}/10`],
-        ['Generos Disponibles', this.stats.generosMasPopulares.length.toString()],
-        ['Estrenos Recientes', `${peliculasEstreno} (ultimo mes)`],
-        ['Peliculas Populares', `${this.stats.peliculasPopulares.length} destacadas`],
-        ['Ocupacion Promedio', '73.8%']
-      ];
-      
-      autoTable(doc, {
-        body: catalogoStats,
-        startY: currentY,
-        theme: 'plain',
-        styles: { 
-          fontSize: 11,
-          cellPadding: { top: 5, right: 10, bottom: 5, left: 10 }
-        },
-        columnStyles: {
-          0: { fontStyle: 'bold', cellWidth: 100, fillColor: [248, 249, 250] },
-          1: { cellWidth: 70, halign: 'center', fillColor: [255, 255, 255] }
-        }
-      });
-      
-      currentY = (doc as any).lastAutoTable.finalY + 20;
-      
-      // Agregar gráfico de géneros
-      currentY = this.addGenreChart(doc, currentY);
-      
-      // Top películas mejorado
-      doc.setFillColor(240, 240, 240);
-      doc.rect(20, currentY - 5, 170, 15, 'F');
-      doc.setFontSize(14);
-      doc.setTextColor(52, 73, 94);
-      doc.text('TOP PELÍCULAS MÁS POPULARES', 25, currentY + 5);
-      currentY += 15;
-      
-      const peliculasData = this.stats.peliculasPopulares.map((pelicula, index) => [
-        this.getRankIcon(index + 1),
-        pelicula.titulo,
-        pelicula.genero,
-        `${pelicula.vistas}`,
-        `${pelicula.rating.toFixed(1)}`,
-        this.getPopularityLevel(pelicula.vistas)
-      ]);
-      
-      autoTable(doc, {
-        head: [['Pos', 'Título', 'Género', 'Vistas', 'Rating', 'Popularidad']],
-        body: peliculasData,
-        startY: currentY,
-        theme: 'striped',
-        headStyles: { 
-          fillColor: [155, 89, 182],
-          textColor: [255, 255, 255],
-          fontSize: 10,
-          fontStyle: 'bold'
-        },
-        styles: { 
-          fontSize: 9,
-          cellPadding: { top: 4, right: 6, bottom: 4, left: 6 }
-        },
-        columnStyles: {
-          0: { cellWidth: 15, halign: 'center' },
-          1: { cellWidth: 55 },
-          2: { cellWidth: 30, halign: 'center' },
-          3: { cellWidth: 25, halign: 'center' },
-          4: { cellWidth: 25, halign: 'center' },
-          5: { cellWidth: 25, halign: 'center' }
-        },
-        alternateRowStyles: { fillColor: [248, 249, 250] }
-      });
-      
-      // Configurar pie de página
-      this.setupPDFFooter(doc);
-      
-      // Descargar PDF
-      doc.save(`reporte-peliculas-${new Date().toISOString().split('T')[0]}.pdf`);
-      
-      this.generatingReport = false;
-      this.toastService.showSuccess('Reporte de películas generado exitosamente');
+    // 🆕 SUSCRIBIRSE AL OBSERVABLE para obtener las películas
+    this.adminService.getAllPeliculas().subscribe(
+      peliculas => {
+        // Configurar encabezado
+        this.setupPDFHeader(doc, 'REPORTE DE PELÍCULAS', 'Análisis del catálogo cinematográfico');
+        
+        let currentY = 110;
+        
+        // Estadísticas del catálogo mejoradas
+        doc.setFillColor(240, 240, 240);
+        doc.rect(20, currentY - 5, 170, 15, 'F');
+        doc.setFontSize(14);
+        doc.setTextColor(52, 73, 94);
+        doc.text('ESTADISTICAS DEL CATALOGO', 25, currentY + 5);
+        currentY += 20;
+        
+        const ratingPromedio = this.calcularRatingPromedio();
+        
+        // 🆕 AHORA SÍ PODEMOS USAR .filter() en el array de películas
+        const peliculasEstreno = peliculas.filter(p => {
+          const fechaPelicula = new Date(p.fechaEstreno);
+          const hace30Dias = new Date();
+          hace30Dias.setDate(hace30Dias.getDate() - 30);
+          return fechaPelicula >= hace30Dias;
+        }).length;
+        
+        const catalogoStats = [
+          ['Total de Peliculas', this.stats.totalPeliculas.toString()],
+          ['Rating Promedio', `${ratingPromedio.toFixed(1)}/10`],
+          ['Generos Disponibles', this.stats.generosMasPopulares.length.toString()],
+          ['Estrenos Recientes', `${peliculasEstreno} (ultimo mes)`],
+          ['Peliculas Populares', `${this.stats.peliculasPopulares.length} destacadas`],
+          ['Ocupacion Promedio', '73.8%']
+        ];
+        
+        autoTable(doc, {
+          body: catalogoStats,
+          startY: currentY,
+          theme: 'plain',
+          styles: { 
+            fontSize: 11,
+            cellPadding: { top: 5, right: 10, bottom: 5, left: 10 }
+          },
+          columnStyles: {
+            0: { fontStyle: 'bold', cellWidth: 100, fillColor: [248, 249, 250] },
+            1: { cellWidth: 70, halign: 'center', fillColor: [255, 255, 255] }
+          }
+        });
+        
+        currentY = (doc as any).lastAutoTable.finalY + 20;
+        
+        // Agregar gráfico de géneros
+        currentY = this.addGenreChart(doc, currentY);
+        
+        // Top películas mejorado
+        doc.setFillColor(240, 240, 240);
+        doc.rect(20, currentY - 5, 170, 15, 'F');
+        doc.setFontSize(14);
+        doc.setTextColor(52, 73, 94);
+        doc.text('TOP PELÍCULAS MÁS POPULARES', 25, currentY + 5);
+        currentY += 15;
+        
+        const peliculasData = this.stats.peliculasPopulares.map((pelicula, index) => [
+          this.getRankIcon(index + 1),
+          pelicula.titulo,
+          pelicula.genero,
+          `${pelicula.vistas}`,
+          `${pelicula.rating.toFixed(1)}`,
+          this.getPopularityLevel(pelicula.vistas)
+        ]);
+        
+        autoTable(doc, {
+          head: [['Pos', 'Título', 'Género', 'Vistas', 'Rating', 'Popularidad']],
+          body: peliculasData,
+          startY: currentY,
+          theme: 'striped',
+          headStyles: { 
+            fillColor: [155, 89, 182],
+            textColor: [255, 255, 255],
+            fontSize: 10,
+            fontStyle: 'bold'
+          },
+          styles: { 
+            fontSize: 9,
+            cellPadding: { top: 4, right: 6, bottom: 4, left: 6 }
+          },
+          columnStyles: {
+            0: { cellWidth: 15, halign: 'center' },
+            1: { cellWidth: 55 },
+            2: { cellWidth: 30, halign: 'center' },
+            3: { cellWidth: 25, halign: 'center' },
+            4: { cellWidth: 25, halign: 'center' },
+            5: { cellWidth: 25, halign: 'center' }
+          },
+          alternateRowStyles: { fillColor: [248, 249, 250] }
+        });
+        
+        // Configurar pie de página
+        this.setupPDFFooter(doc);
+        
+        // Descargar PDF
+        doc.save(`reporte-peliculas-${new Date().toISOString().split('T')[0]}.pdf`);
+        
+        this.generatingReport = false;
+        this.toastService.showSuccess('Reporte de películas generado exitosamente');
+      },
+      error => {
+        console.error('Error al obtener películas para reporte:', error);
+        this.generatingReport = false;
+        this.toastService.showError('Error al generar el reporte de películas');
+      }
+    );
 
-    } catch (error) {
-      console.error('Error generando reporte de películas:', error);
-      this.generatingReport = false;
-      this.toastService.showError('Error al generar el reporte de películas');
-    }
+  } catch (error) {
+    console.error('Error generando reporte de películas:', error);
+    this.generatingReport = false;
+    this.toastService.showError('Error al generar el reporte de películas');
   }
+}
 
   /**
    * Generar reporte ejecutivo completo mejorado

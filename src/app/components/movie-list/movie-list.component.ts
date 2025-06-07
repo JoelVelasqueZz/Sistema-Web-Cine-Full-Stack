@@ -1,9 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Pelicula, MovieService } from '../../services/movie.service';
-import { AuthService } from '../../services/auth.service'; // 🆕 AGREGAR
-import { UserService } from '../../services/user.service'; // 🆕 AGREGAR
-import { ToastService } from '../../services/toast.service'; // 🆕 AGREGAR
+import { AuthService } from '../../services/auth.service';
+import { UserService } from '../../services/user.service';
+import { ToastService } from '../../services/toast.service';
 
 @Component({
   selector: 'app-movie-list',
@@ -12,7 +12,6 @@ import { ToastService } from '../../services/toast.service'; // 🆕 AGREGAR
   styleUrl: './movie-list.component.css'
 })
 export class MovieListComponent implements OnInit {
-
   peliculas: Pelicula[] = [];
   peliculasOriginales: Pelicula[] = [];
   peliculasFiltradas: Pelicula[] = [];
@@ -20,26 +19,68 @@ export class MovieListComponent implements OnInit {
   
   generoSeleccionado: string = 'todos';
   generosDisponibles: string[] = [];
+  
+  // Estados de carga
+  cargando = true;
+  errorConexion = false;
 
   constructor(
-    private _movieService: MovieService, 
+    private movieService: MovieService, // 🔧 Solo MovieService
     private router: Router,
     private route: ActivatedRoute,
-    public authService: AuthService,    // 🆕 AGREGAR (público para usar en template)
-    private userService: UserService,   // 🆕 AGREGAR
-    private toastService: ToastService  // 🆕 AGREGAR
+    public authService: AuthService,
+    private userService: UserService,
+    private toastService: ToastService
   ) {}
 
   ngOnInit(): void {
-    this.peliculasOriginales = this._movieService.getPeliculas();
-    this.peliculas = [...this.peliculasOriginales];
-    this.peliculasFiltradas = [...this.peliculas];
-    this.extraerGeneros();
+    this.cargarPeliculas();
     this.verificarParametrosURL();
-    console.log(this.peliculas);
   }
 
-  // 🆕 NUEVO: Verificar si una película está en favoritas
+  // 🔧 MÉTODO CORREGIDO: Usar solo MovieService
+  cargarPeliculas(): void {
+    this.cargando = true;
+    this.errorConexion = false;
+
+    // Usar MovieService (que ya conecta con la API internamente)
+    this.movieService.getPeliculas().subscribe(
+      peliculas => {
+        console.log('✅ Películas cargadas:', peliculas.length);
+        
+        this.peliculasOriginales = peliculas;
+        this.peliculas = [...this.peliculasOriginales];
+        this.peliculasFiltradas = [...this.peliculas];
+        this.extraerGeneros();
+        this.cargando = false;
+        this.errorConexion = false;
+
+        if (peliculas.length === 0) {
+          this.toastService.showInfo('No hay películas disponibles');
+        }
+      },
+      error => {
+        console.error('❌ Error al cargar películas:', error);
+        this.errorConexion = true;
+        this.cargando = false;
+        this.toastService.showError('Error al cargar las películas');
+        
+        // Usar array vacío como fallback
+        this.peliculasOriginales = [];
+        this.peliculas = [];
+        this.peliculasFiltradas = [];
+        this.extraerGeneros();
+      }
+    );
+  }
+
+  // 🔧 MÉTODO: Reintentar conexión
+  reintentarConexion(): void {
+    this.toastService.showInfo('Reintentando conexión...');
+    this.cargarPeliculas();
+  }
+
+  // NUEVO: Verificar si una película está en favoritas
   isInFavorites(peliculaIndex: number): boolean {
     const currentUser = this.authService.getCurrentUser();
     if (!currentUser) return false;
@@ -47,11 +88,10 @@ export class MovieListComponent implements OnInit {
     return this.userService.isInFavorites(currentUser.id, peliculaIndex);
   }
 
-  // 🆕 NUEVO: Toggle favoritas
+  // NUEVO: Toggle favoritas
   toggleFavorite(peliculaIndex: number, event: Event): void {
-    event.stopPropagation(); // Evitar que se active el click del overlay
+    event.stopPropagation();
     
-    // Verificar si está logueado
     const currentUser = this.authService.getCurrentUser();
     if (!currentUser) {
       this.toastService.showWarning('Debes iniciar sesión para agregar favoritas');
@@ -59,13 +99,12 @@ export class MovieListComponent implements OnInit {
       return;
     }
 
-    const pelicula = this.peliculas[peliculaIndex];
+    const pelicula = this.peliculas.find(p => p.idx === peliculaIndex || p.id === peliculaIndex);
     if (!pelicula) return;
 
     const isCurrentlyFavorite = this.isInFavorites(peliculaIndex);
-
+    
     if (isCurrentlyFavorite) {
-      // Remover de favoritas
       const success = this.userService.removeFromFavorites(currentUser.id, peliculaIndex);
       if (success) {
         this.toastService.showSuccess(`"${pelicula.titulo}" removida de favoritas`);
@@ -73,7 +112,6 @@ export class MovieListComponent implements OnInit {
         this.toastService.showError('Error al remover de favoritas');
       }
     } else {
-      // Agregar a favoritas
       const peliculaFavorita = {
         peliculaId: peliculaIndex,
         titulo: pelicula.titulo,
@@ -83,7 +121,7 @@ export class MovieListComponent implements OnInit {
         rating: pelicula.rating,
         fechaAgregada: new Date().toISOString()
       };
-
+      
       const success = this.userService.addToFavorites(currentUser.id, peliculaFavorita);
       if (success) {
         this.toastService.showSuccess(`"${pelicula.titulo}" agregada a favoritas`);
@@ -93,7 +131,7 @@ export class MovieListComponent implements OnInit {
     }
   }
 
-  // TODOS TUS MÉTODOS EXISTENTES SE MANTIENEN IGUAL...
+  // MÉTODOS EXISTENTES (MANTENER TODOS)
   extraerGeneros(): void {
     const generosEnPeliculas = [...new Set(this.peliculasOriginales.map(p => p.genero).filter(g => g))];
     const generosPredefinidos = ['Acción', 'Aventura', 'Romance', 'Comedia', 'Terror', 'Fantasía', 'Misterio', 'Drama', 'Ciencia Ficción'];
@@ -116,6 +154,7 @@ export class MovieListComponent implements OnInit {
 
   private aplicarFiltrosCombinados(): void {
     let peliculasBase: Pelicula[];
+    
     if (this.generoSeleccionado === 'todos') {
       peliculasBase = [...this.peliculasOriginales];
     } else {
@@ -192,5 +231,18 @@ export class MovieListComponent implements OnInit {
 
   verPelicula(idx: number): void {
     this.router.navigate(['/movie', idx]);
+  }
+
+  // MÉTODOS PARA LA INTERFAZ
+  getConnectionStatusClass(): string {
+    if (this.cargando) return 'text-info';
+    if (this.errorConexion) return 'text-danger';
+    return 'text-success';
+  }
+
+  getConnectionStatusText(): string {
+    if (this.cargando) return 'Cargando...';
+    if (this.errorConexion) return 'Error de conexión';
+    return 'Conectado al servidor';
   }
 }

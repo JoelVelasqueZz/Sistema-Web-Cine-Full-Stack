@@ -58,6 +58,7 @@ export class AdminMoviesComponent implements OnInit, OnDestroy {
     'assets/studios/lionsgate.png'
   ];
 
+  connectionStatus = 'connected'; // Siempre conectado con nueva API
   private subscriptions = new Subscription();
 
   constructor(
@@ -94,11 +95,49 @@ export class AdminMoviesComponent implements OnInit, OnDestroy {
     window.removeEventListener('adminDataRefresh', this.handleDataRefresh.bind(this));
   }
 
-  // ==================== CONFIGURACIÓN DINÁMICA ====================
+  cargarPeliculas(): void {
+    this.cargando = true;
+    this.connectionStatus = 'connected';
+    
+    // 🔄 ACTUALIZADO: Usar AdminService con Observables
+    this.adminService.getAllPeliculas().subscribe(
+      peliculas => {
+        this.peliculas = peliculas.map((pelicula, index) => ({ 
+          ...pelicula, 
+          idx: pelicula.id || index
+        }));
+        
+        this.aplicarFiltros();
+        this.calcularEstadisticas();
+        this.cargando = false;
+        
+        if (peliculas.length > 0) {
+          this.toastService.showSuccess(`${peliculas.length} películas cargadas desde el servidor`);
+        } else {
+          this.toastService.showInfo('No hay películas en el servidor');
+        }
+      },
+      error => {
+        this.cargando = false;
+        this.toastService.showError('Error al cargar películas desde el servidor');
+        console.error('Error cargando películas:', error);
+      }
+    );
+  }
+
+  recargarPeliculas(): void {
+    this.cargarPeliculas();
+  }
 
   getStatsArray() {
     return [
-      { value: this.estadisticas.total, label: 'Total Películas', bgClass: 'bg-primary text-white', icon: 'fas fa-film' },
+      { 
+        value: this.estadisticas.total, 
+        label: 'Total Películas', 
+        bgClass: 'bg-primary text-white', 
+        icon: 'fas fa-film',
+        extra: '(API)'
+      },
       { value: this.estadisticas.ratingPromedio, label: 'Rating Promedio', bgClass: 'bg-success text-white', icon: 'fas fa-star' },
       { value: this.getCantidadGeneros(), label: 'Géneros Diferentes', bgClass: 'bg-info text-white', icon: 'fas fa-tags' },
       { value: this.estadisticas.anioMasReciente, label: 'Año Más Reciente', bgClass: 'bg-warning text-dark', icon: 'fas fa-calendar' }
@@ -131,36 +170,11 @@ export class AdminMoviesComponent implements OnInit, OnDestroy {
     ];
   }
 
-  // ==================== CARGA DE DATOS ====================
-
-  cargarPeliculas(): void {
-    this.cargando = true;
-    
-    try {
-      this.peliculas = this.adminService.getAllPeliculas();
-      
-      if (this.peliculas.length > 0) {
-        this.peliculas = this.peliculas.map((pelicula, index) => ({ ...pelicula, idx: index }));
-      }
-      
-      this.aplicarFiltros();
-      this.calcularEstadisticas();
-      console.log(`${this.peliculas.length} películas cargadas exitosamente`);
-    } catch (error) {
-      console.error('Error al cargar películas:', error);
-      this.toastService.showError('Error al cargar las películas');
-    } finally {
-      this.cargando = false;
-    }
-  }
-
   private handleDataRefresh(event: any): void {
     if (event.detail.section === 'Gestión de Películas') {
       this.cargarPeliculas();
     }
   }
-
-  // ==================== GESTIÓN DE VISTA ====================
 
   cambiarVista(vista: 'lista' | 'agregar' | 'editar'): void {
     this.vistaActual = vista;
@@ -193,8 +207,6 @@ export class AdminMoviesComponent implements OnInit, OnDestroy {
     }
   }
 
-  // ==================== CRUD DE PELÍCULAS ====================
-
   guardarPelicula(): void {
     const validacion = this.adminService.validatePeliculaData(this.peliculaForm);
     
@@ -206,30 +218,74 @@ export class AdminMoviesComponent implements OnInit, OnDestroy {
 
     this.procesando = true;
     this.erroresValidacion = [];
+    
+    const esAgregar = this.vistaActual === 'agregar';
+    
+    if (esAgregar) {
+      this.crearPelicula();
+    } else {
+      this.actualizarPelicula();
+    }
+  }
 
-    setTimeout(() => {
-      try {
-        const esAgregar = this.vistaActual === 'agregar';
-        const resultado = esAgregar 
-          ? this.adminService.createPelicula(this.peliculaForm as Omit<Pelicula, 'idx'>)
-          : this.adminService.updatePelicula(this.peliculaEditandoIndex, this.peliculaForm);
+  private crearPelicula(): void {
+    // 🔄 ACTUALIZADO: Usar AdminService Observable
+    this.adminService.createPelicula(this.peliculaForm as Omit<Pelicula, 'idx' | 'id'>).subscribe(
+      success => {
+        this.procesando = false;
         
-        if (resultado) {
-          const mensaje = esAgregar ? 'Película agregada exitosamente' : 'Película actualizada exitosamente';
-          this.toastService.showSuccess(mensaje);
+        if (success) {
+          this.toastService.showSuccess('Película agregada exitosamente');
           this.cargarPeliculas();
           this.vistaActual = 'lista';
         } else {
-          const mensajeError = esAgregar ? 'Error al agregar la película' : 'Error al actualizar la película';
-          this.toastService.showError(mensajeError);
+          this.toastService.showError('Error al agregar la película');
         }
-      } catch (error) {
-        console.error('Error al guardar película:', error);
-        this.toastService.showError('Error inesperado al guardar la película');
-      } finally {
+      },
+      error => {
         this.procesando = false;
+        this.toastService.showError('Error de conexión al agregar película');
+        console.error('Error creando película:', error);
       }
-    }, 1000);
+    );
+  }
+
+  private actualizarPelicula(): void {
+    const peliculaSeleccionada = this.peliculas[this.peliculaEditandoIndex];
+    
+    if (!peliculaSeleccionada) {
+      this.toastService.showError('No se pudo identificar la película a actualizar');
+      this.procesando = false;
+      return;
+    }
+
+    const peliculaId = peliculaSeleccionada.id || peliculaSeleccionada.idx;
+    
+    if (!peliculaId || peliculaId === 0) {
+      this.toastService.showError('Error: ID de película inválido');
+      this.procesando = false;
+      return;
+    }
+    
+    // 🔄 ACTUALIZADO: Usar AdminService Observable
+    this.adminService.updatePelicula(peliculaId, this.peliculaForm).subscribe(
+      success => {
+        this.procesando = false;
+        
+        if (success) {
+          this.toastService.showSuccess('Película actualizada exitosamente');
+          this.cargarPeliculas();
+          this.vistaActual = 'lista';
+        } else {
+          this.toastService.showError('Error al actualizar la película');
+        }
+      },
+      error => {
+        this.procesando = false;
+        this.toastService.showError('Error de conexión al actualizar película');
+        console.error('Error actualizando película:', error);
+      }
+    );
   }
 
   confirmarEliminarPelicula(pelicula: Pelicula): void {
@@ -249,19 +305,43 @@ export class AdminMoviesComponent implements OnInit, OnDestroy {
     if (this.peliculaParaEliminar >= 0) {
       this.procesando = true;
       
-      setTimeout(() => {
-        const resultado = this.adminService.deletePelicula(this.peliculaParaEliminar);
-        
-        if (resultado) {
-          this.toastService.showSuccess('Película eliminada exitosamente');
-          this.cargarPeliculas();
-        } else {
-          this.toastService.showError('Error al eliminar la película');
-        }
-        
-        this.cerrarModalConfirmacion();
+      const peliculaSeleccionada = this.peliculas[this.peliculaParaEliminar];
+      
+      if (!peliculaSeleccionada) {
+        this.toastService.showError('No se pudo identificar la película a eliminar');
         this.procesando = false;
-      }, 1000);
+        return;
+      }
+
+      const peliculaId = peliculaSeleccionada.id || peliculaSeleccionada.idx;
+      
+      if (!peliculaId || peliculaId === 0) {
+        this.toastService.showError('Error: ID de película inválido');
+        this.procesando = false;
+        return;
+      }
+      
+      // 🔄 ACTUALIZADO: Usar AdminService Observable
+      this.adminService.deletePelicula(peliculaId).subscribe(
+        success => {
+          this.procesando = false;
+          
+          if (success) {
+            this.toastService.showSuccess('Película eliminada exitosamente');
+            this.cargarPeliculas();
+            this.cerrarModalConfirmacion();
+          } else {
+            this.toastService.showError('Error al eliminar la película');
+            this.cerrarModalConfirmacion();
+          }
+        },
+        error => {
+          this.procesando = false;
+          this.toastService.showError('Error de conexión al eliminar película');
+          this.cerrarModalConfirmacion();
+          console.error('Error eliminando película:', error);
+        }
+      );
     }
   }
 
@@ -271,18 +351,14 @@ export class AdminMoviesComponent implements OnInit, OnDestroy {
   }
 
   verPelicula(pelicula: Pelicula): void {
-    const indiceReal = this.peliculas.findIndex(p => 
-      p.titulo === pelicula.titulo && p.director === pelicula.director
-    );
+    const peliculaId = pelicula.id || pelicula.idx;
     
-    if (indiceReal !== -1) {
-      this.router.navigate(['/movie', indiceReal]);
+    if (peliculaId) {
+      this.router.navigate(['/movie', peliculaId]);
     } else {
       this.toastService.showError('No se pudo encontrar la película');
     }
   }
-
-  // ==================== FILTROS Y BÚSQUEDA ====================
 
   aplicarFiltros(): void {
     this.peliculasFiltradas = this.peliculas.filter(pelicula => {
@@ -293,7 +369,6 @@ export class AdminMoviesComponent implements OnInit, OnDestroy {
       
       return cumpleBusqueda && cumpleGenero && cumpleAnio && cumpleRating;
     });
-
     this.calcularPaginacion();
   }
 
@@ -322,8 +397,6 @@ export class AdminMoviesComponent implements OnInit, OnDestroy {
     return !!(this.terminoBusqueda || this.filtroGenero || this.filtroAnio || this.filtroRating);
   }
 
-  // ==================== PAGINACIÓN ====================
-
   calcularPaginacion(): void {
     this.totalPaginas = Math.ceil(this.peliculasFiltradas.length / this.peliculasPorPagina);
     this.paginaActual = Math.min(this.paginaActual, Math.max(1, this.totalPaginas));
@@ -345,8 +418,6 @@ export class AdminMoviesComponent implements OnInit, OnDestroy {
     const fin = Math.min(this.totalPaginas, this.paginaActual + 2);
     return Array.from({ length: fin - inicio + 1 }, (_, i) => inicio + i);
   }
-
-  // ==================== ESTADÍSTICAS ====================
 
   calcularEstadisticas(): void {
     const stats = this.peliculas.reduce((acc, pelicula) => {
@@ -370,8 +441,6 @@ export class AdminMoviesComponent implements OnInit, OnDestroy {
     };
   }
 
-  // ==================== UTILIDADES ====================
-
   resetearFormulario(): void {
     this.peliculaForm = {
       titulo: '', sinopsis: '', poster: '', fechaEstreno: '', estudio: '',
@@ -389,7 +458,9 @@ export class AdminMoviesComponent implements OnInit, OnDestroy {
     return anios.sort((a, b) => b - a);
   }
 
-  formatearDuracion(duracion: string): string { return duracion || 'No especificada'; }
+  formatearDuracion(duracion: string): string { 
+    return duracion || 'No especificada'; 
+  }
 
   getRatingClass(rating: number): string {
     if (rating >= 8) return 'bg-success';
@@ -413,6 +484,7 @@ export class AdminMoviesComponent implements OnInit, OnDestroy {
         fechaExportacion: new Date().toISOString(),
         totalPeliculas: this.peliculas.length,
         estadisticas: this.estadisticas,
+        fuente: 'API PostgreSQL',
         peliculas: this.peliculas.map(({ titulo, director, genero, anio, rating, duracion }) => ({
           titulo, director, genero, anio, rating, duracion
         }))
@@ -434,7 +506,6 @@ export class AdminMoviesComponent implements OnInit, OnDestroy {
       
       this.toastService.showSuccess('Lista de películas exportada');
     } catch (error) {
-      console.error('Error al exportar:', error);
       this.toastService.showError('Error al exportar la lista');
     }
   }
@@ -448,7 +519,9 @@ export class AdminMoviesComponent implements OnInit, OnDestroy {
     return `${inicio}-${fin} de ${this.peliculasFiltradas.length}`;
   }
 
-  getCantidadGeneros(): number { return Object.keys(this.estadisticas.porGenero).length; }
+  getCantidadGeneros(): number { 
+    return Object.keys(this.estadisticas.porGenero).length; 
+  }
 
   getEstudioNombre(estudioPath: string): string {
     try {
@@ -464,8 +537,6 @@ export class AdminMoviesComponent implements OnInit, OnDestroy {
     return pelicula.titulo + pelicula.director;
   }
 
-  // ==================== VISTA PREVIA DE IMAGEN ====================
-
   onImageError(event: any): void {
     this.imageError = true;
     this.imageLoaded = false;
@@ -480,5 +551,22 @@ export class AdminMoviesComponent implements OnInit, OnDestroy {
     this.peliculaForm.poster = url;
     this.imageError = false;
     this.imageLoaded = false;
+  }
+
+  getConnectionStatusClass(): string {
+    return 'text-success'; // Siempre conectado
+  }
+
+  getConnectionStatusIcon(): string {
+    return 'fas fa-wifi';
+  }
+
+  getConnectionStatusText(): string {
+    return 'Conectado al servidor PostgreSQL';
+  }
+
+  sincronizarDatos(): void {
+    this.toastService.showInfo('Recargando datos desde el servidor...');
+    this.cargarPeliculas();
   }
 }

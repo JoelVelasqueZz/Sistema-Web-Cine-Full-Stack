@@ -9,15 +9,20 @@ import { Pelicula, MovieService } from '../../services/movie.service';
   styleUrl: './home.component.css'
 })
 export class HomeComponent {
-i: number | undefined;
-  constructor(private router: Router, private movieService: MovieService) {}
+  i: number | undefined;
+  
+  constructor(
+    private router: Router, 
+    private movieService: MovieService
+  ) {
+    console.log('🏠 Home component inicializado');
+  }
 
   verPelicula(idx: number) {
     this.router.navigate(['/movie', idx]);
   }
 
-  // Implement navigation logic here
   scrollToTop() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
- }
+}

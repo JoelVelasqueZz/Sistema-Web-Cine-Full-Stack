@@ -90,7 +90,7 @@
             </div>
             
             <!-- Sinopsis truncada -->
-            <p class="card-text text-muted small mb-3" style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
+            <p class="card-text text-muted small mb-3" style="display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
               {{ pelicula.sinopsis }}
             </p>
           </div>
@@ -98,7 +98,7 @@
           <!-- Botones de acción -->
           <div class="mt-auto">
             <div class="d-grid gap-2">
-              <button (click)="verPelicula(pelicula.idx!)" 
+              <button (click)="verPelicula(pelicula)" 
                       type="button" 
                       class="btn btn-primary fw-semibold">
                 <i class="fas fa-eye me-2"></i>Ver Detalles
