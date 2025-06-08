@@ -17,6 +17,9 @@ export class ProfileComponent implements OnInit {
   pointsStats: PointsStats | null = null; // 🆕 NUEVO
   editMode: boolean = false;
   
+  // 🆕 AGREGAR ESTA VARIABLE PARA CONTAR FAVORITAS REAL
+  realFavoritesCount: number = 0;
+  
   // Datos del formulario de edición
   profileForm: UpdateProfileData = {
     nombre: '',
@@ -76,6 +79,18 @@ export class ProfileComponent implements OnInit {
           };
         }
       });
+
+      // 🆕 CARGAR FAVORITAS REALES SEPARADAMENTE
+      this.userService.getUserFavorites().subscribe({
+        next: (favoritas) => {
+          this.realFavoritesCount = favoritas.length;
+          console.log('❤️ Favoritas reales cargadas:', this.realFavoritesCount);
+        },
+        error: (error) => {
+          console.error('❌ Error al cargar favoritas:', error);
+          this.realFavoritesCount = 0;
+        }
+      });
       
       // 🆕 CARGAR ESTADÍSTICAS DE PUNTOS (si tienes PointsService)
       if (this.pointsService) {
@@ -96,6 +111,11 @@ export class ProfileComponent implements OnInit {
         avatar: this.currentUser.avatar
       };
     }
+  }
+
+  // 🆕 MÉTODO SIMPLE PARA OBTENER EL CONTEO CORRECTO DE FAVORITAS
+  getFavoritesCount(): number {
+    return this.realFavoritesCount;
   }
 
   toggleEditMode(): void {
@@ -154,6 +174,7 @@ export class ProfileComponent implements OnInit {
       }
     });
   }
+
   refreshData(): void {
     this.loadUserData();
   }
@@ -176,23 +197,25 @@ export class ProfileComponent implements OnInit {
       localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
     }
   }
-isLoggedIn(): boolean {
-  return this.authService.isLoggedIn();
-}
 
-/**
- * Verificar si el usuario es cliente
- */
-isCliente(): boolean {
-  return this.isLoggedIn() && this.currentUser?.role === 'cliente';
-}
+  isLoggedIn(): boolean {
+    return this.authService.isLoggedIn();
+  }
 
-/**
- * Verificar si el usuario es admin  
- */
-isAdmin(): boolean {
-  return this.authService.isAdmin();
-}
+  /**
+   * Verificar si el usuario es cliente
+   */
+  isCliente(): boolean {
+    return this.isLoggedIn() && this.currentUser?.role === 'cliente';
+  }
+
+  /**
+   * Verificar si el usuario es admin  
+   */
+  isAdmin(): boolean {
+    return this.authService.isAdmin();
+  }
+
   getAccountAge(): string {
     if (!this.currentUser || !this.currentUser.fechaRegistro) return '0 días';
     
