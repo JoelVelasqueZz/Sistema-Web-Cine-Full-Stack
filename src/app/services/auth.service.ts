@@ -12,7 +12,7 @@ export class AuthService {
   private readonly API_URL = 'http://localhost:3000/api';
 
   // 🔐 Estado de autenticación
-  private isAuthenticated: boolean = false;
+  public isAuthenticated: boolean = false;
   private currentUser: Usuario | null = null;
   private authToken: string | null = null;
 

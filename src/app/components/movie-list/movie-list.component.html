@@ -215,27 +215,27 @@
               <div class="d-flex gap-1">
                 <!-- 🆕 BOTÓN DE FAVORITAS ACTUALIZADO -->
                 <button 
-  class="btn btn-sm position-relative" 
-  [class.btn-danger]="isInFavorites((pelicula.id ?? pelicula.idx ?? 0))"
-  [class.btn-outline-danger]="!isInFavorites((pelicula.id ?? pelicula.idx ?? 0))"
-  [disabled]="isFavoriteLoading((pelicula.id ?? pelicula.idx ?? 0))"
-  (click)="toggleFavorite((pelicula.id ?? pelicula.idx ?? 0), $event)"
-  [title]="isInFavorites((pelicula.id ?? pelicula.idx ?? 0)) ? 'Quitar de favoritas' : 'Agregar a favoritas'">
-  
-  <!-- Spinner cuando está cargando -->
-  <span *ngIf="isFavoriteLoading((pelicula.id ?? pelicula.idx ?? 0))" 
-        class="spinner-border spinner-border-sm me-1" 
-        role="status"></span>
-  
-  <!-- Ícono normal -->
-  <i *ngIf="!isFavoriteLoading((pelicula.id ?? pelicula.idx ?? 0))" 
-     class="fas fa-heart"></i>
-     
-  <!-- Texto (opcional) -->
-  <span class="d-none d-md-inline ms-1">
-    {{ isInFavorites((pelicula.id ?? pelicula.idx ?? 0)) ? 'Favorita' : 'Favorita' }}
-  </span>
-</button>
+                  class="btn btn-sm position-relative" 
+                  [class.btn-danger]="isInFavorites((pelicula.id ?? pelicula.idx ?? 0))"
+                  [class.btn-outline-danger]="!isInFavorites((pelicula.id ?? pelicula.idx ?? 0))"
+                  [disabled]="isFavoriteLoading((pelicula.id ?? pelicula.idx ?? 0))"
+                  (click)="toggleFavorite((pelicula.id ?? pelicula.idx ?? 0), $event)"
+                  [title]="isInFavorites((pelicula.id ?? pelicula.idx ?? 0)) ? 'Quitar de favoritas' : 'Agregar a favoritas'">
+                  
+                  <!-- Spinner cuando está cargando -->
+                  <span *ngIf="isFavoriteLoading((pelicula.id ?? pelicula.idx ?? 0))" 
+                        class="spinner-border spinner-border-sm me-1" 
+                        role="status"></span>
+                  
+                  <!-- Ícono normal -->
+                  <i *ngIf="!isFavoriteLoading((pelicula.id ?? pelicula.idx ?? 0))" 
+                    class="fas fa-heart"></i>
+                    
+                  <!-- Texto (opcional) -->
+                  <span class="d-none d-md-inline ms-1">
+                    {{ isInFavorites((pelicula.id ?? pelicula.idx ?? 0)) ? 'Favorita' : 'Favorita' }}
+                  </span>
+                </button>
                 <button class="btn btn-outline-primary btn-sm" title="Compartir">
                   <i class="fas fa-share"></i>
                 </button>

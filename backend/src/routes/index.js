@@ -35,10 +35,11 @@ router.get('/test-db', async (req, res, next) => {
 // Rutas de módulos
 router.use('/movies', require('./movies'));
 router.use('/auth', require('./auth'));
-router.use('/users', require('./users')); // 🆕 NUEVA RUTA DE USUARIOS
+router.use('/users', require('./users'));
 router.use('/favorites', require('./favorites'));
+router.use('/functions', require('./functions')); // 🆕 AGREGAR ESTA LÍNEA
 
-// Aquí iremos agregando las otras rutas
+// Aquí iremos agregando las otras rutas (COMENTADAS)
 // router.use('/bar', require('./bar'));
 // router.use('/orders', require('./orders'));
 // router.use('/points', require('./points'));

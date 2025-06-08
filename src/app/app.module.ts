@@ -2,7 +2,7 @@ import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
-import { HttpClientModule } from '@angular/common/http'; // 🆕 AGREGAR ESTA LÍNEA
+import { HttpClientModule } from '@angular/common/http';
 
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
@@ -32,6 +32,7 @@ import { AdminLayoutComponent } from './components/admin/admin-layout/admin-layo
 import { AdminDashboardComponent } from './components/admin/admin-dashboard/admin-dashboard.component';
 import { AdminMoviesComponent } from './components/admin/admin-movies/admin-movies.component';
 import { AdminUsersComponent } from './components/admin/admin-users/admin-users.component';
+import { FunctionService } from './services/function.service';
 import { AdminService } from './services/admin.service';
 // 🍿 COMPONENTES DEL BAR
 import { BarListComponent } from './components/bar-list/bar-list.component';
@@ -41,6 +42,11 @@ import { BarService } from './services/bar.service';
 import { FooterComponent } from './components/footer/footer.component';
 import { AdminBarComponent } from './components/admin/admin-bar/admin-bar.component';
 import { RewardsComponent } from './components/rewards/rewards.component';
+
+// 🎬 COMPONENTES DE FUNCIONES
+import { FunctionAdminComponent } from './components/admin/function-admin/function-admin.component';
+import { FunctionListComponent } from './components/function-list/function-list.component';
+import { FunctionDetailComponent } from './components/function-detail/function-detail.component';
 
 @NgModule({
   declarations: [
@@ -71,7 +77,11 @@ import { RewardsComponent } from './components/rewards/rewards.component';
     BarListComponent, 
     BarDetailComponent, 
     FooterComponent,   
-    RewardsComponent
+    RewardsComponent,
+    // 🎬 COMPONENTES DE FUNCIONES
+    FunctionAdminComponent,
+    FunctionListComponent,
+    FunctionDetailComponent
   ],
   imports: [
     BrowserModule,
@@ -79,7 +89,7 @@ import { RewardsComponent } from './components/rewards/rewards.component';
     FormsModule,
     AppRoutingModule,
     BrowserAnimationsModule,
-    HttpClientModule // 🆕 AGREGAR ESTA LÍNEA
+    HttpClientModule
   ],
   providers: [
     AuthService,
@@ -87,8 +97,8 @@ import { RewardsComponent } from './components/rewards/rewards.component';
     EmailService,
     PaypalSimulationService,
     AdminService,
-    // 🍿 SERVICIO DEL BAR
-    BarService
+    BarService,
+    FunctionService
   ],
   bootstrap: [AppComponent]
 })

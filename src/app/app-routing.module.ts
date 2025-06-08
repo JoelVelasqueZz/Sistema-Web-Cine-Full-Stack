@@ -29,6 +29,7 @@ import { AdminBarComponent } from './components/admin/admin-bar/admin-bar.compon
 
 // 🆕 NUEVOS COMPONENTES DEL SISTEMA DE PUNTOS
 import { RewardsComponent } from './components/rewards/rewards.component';
+import { FunctionAdminComponent } from './components/admin/function-admin/function-admin.component';
 
 const routes: Routes = [
   { path: 'home', component: HomeComponent },
@@ -72,6 +73,11 @@ const routes: Routes = [
     path: 'profile', 
     component: ProfileComponent,
     canActivate: [AuthGuard]
+  },
+  {
+  path: 'admin/functions',
+  component: FunctionAdminComponent,
+  canActivate: [AdminGuard] // Si tienes guard
   },
   { 
     path: 'favorites', 

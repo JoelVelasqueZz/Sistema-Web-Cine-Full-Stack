@@ -1,10 +1,27 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { MovieService, Pelicula, FuncionCine, Seat } from '../../services/movie.service';
+import { MovieService, Pelicula } from '../../services/movie.service';
+import { FunctionService, FuncionCine } from '../../services/function.service';
 import { CartService } from '../../services/cart.service';
 import { ToastService } from '../../services/toast.service';
 import { AuthService } from '../../services/auth.service';
 import { UserService } from '../../services/user.service';
+
+// 🆕 Interface actualizada para asientos (coincide con la BD)
+interface Seat {
+  id: number;                // ID de la BD
+  fila: string;              // row -> fila
+  numero: number;            // number sigue igual
+  es_vip: boolean;           // isVip -> es_vip
+  esta_ocupado: boolean;     // isOccupied -> esta_ocupado
+  esta_deshabilitado: boolean; // 🆕 NUEVO: Campo para asientos no disponibles
+  precio: string;            // price -> precio (viene como string de la BD)
+  seat_id: string;           // Código del asiento (ej: "A1")
+  
+  // Propiedades para el frontend
+  isSelected?: boolean;
+  isDisabled?: boolean;      // Se calcula basado en esta_deshabilitado
+}
 
 @Component({
   selector: 'app-seat-selection',
@@ -14,7 +31,7 @@ import { UserService } from '../../services/user.service';
 })
 export class SeatSelectionComponent implements OnInit {
   pelicula: Pelicula | null = null;
-  peliculaIndex: number = -1;
+  peliculaId: number = -1;
   funcion: FuncionCine | null = null;
   funcionId: string = '';
   cantidad: number = 1;
@@ -22,10 +39,15 @@ export class SeatSelectionComponent implements OnInit {
   seats: Seat[] = [];
   selectedSeats: Seat[] = [];
   
+  // Estados de carga
+  cargando: boolean = true;
+  errorConexion: boolean = false;
+
   constructor(
     private route: ActivatedRoute,
     private router: Router,
     private movieService: MovieService,
+    private functionService: FunctionService,
     private cartService: CartService,
     private toastService: ToastService,
     public authService: AuthService,
@@ -36,37 +58,116 @@ export class SeatSelectionComponent implements OnInit {
     this.cargarDatos();
   }
 
+  // 🔧 MÉTODO ACTUALIZADO: Usar APIs reales
   cargarDatos(): void {
+    this.cargando = true;
+    this.errorConexion = false;
+
     // Obtener parámetros de la ruta
-    this.peliculaIndex = Number(this.route.snapshot.paramMap.get('movieId'));
+    this.peliculaId = Number(this.route.snapshot.paramMap.get('movieId'));
     this.funcionId = this.route.snapshot.paramMap.get('funcionId') || '';
     this.cantidad = Number(this.route.snapshot.paramMap.get('cantidad')) || 1;
 
-    // Cargar película
-    this.pelicula = this.movieService.getPelicula(this.peliculaIndex);
-    
-    // Cargar función - Manejar undefined
-    const funcionEncontrada = this.movieService.getFuncion(this.funcionId);
-    this.funcion = funcionEncontrada || null;
-    
-    if (!this.pelicula || !this.funcion) {
-      console.error('Película o función no encontrada');
+    console.log('🎬 Parámetros recibidos:', {
+      peliculaId: this.peliculaId,
+      funcionId: this.funcionId,
+      cantidad: this.cantidad
+    });
+
+    if (!this.peliculaId || !this.funcionId) {
+      this.toastService.showError('Parámetros inválidos');
       this.router.navigate(['/movies']);
       return;
     }
 
-    // Generar asientos
-    this.seats = this.movieService.generateSeatsForFunction(this.funcionId);
-    console.log('Asientos generados:', this.seats);
+    // Cargar película desde API
+    this.movieService.getPeliculaById(this.peliculaId).subscribe({
+      next: (pelicula) => {
+        if (pelicula) {
+          this.pelicula = pelicula;
+          console.log('✅ Película cargada:', pelicula.titulo);
+          
+          // Cargar función desde API
+          this.cargarFuncion();
+        } else {
+          console.error('Película no encontrada');
+          this.toastService.showError('Película no encontrada');
+          this.router.navigate(['/movies']);
+        }
+      },
+      error: (error) => {
+        console.error('❌ Error al cargar película:', error);
+        this.errorConexion = true;
+        this.cargando = false;
+        this.toastService.showError('Error al cargar la película');
+      }
+    });
   }
 
-  // MANEJO DE ASIENTOS
+  // 🔧 MÉTODO ACTUALIZADO: Cargar función y asientos reales
+  private cargarFuncion(): void {
+    this.functionService.getFunctionById(this.funcionId).subscribe({
+      next: (funcion) => {
+        if (funcion) {
+          this.funcion = funcion;
+          console.log('✅ Función cargada:', funcion);
+          
+          // 🆕 CAMBIO: Cargar asientos reales en lugar de generarlos
+          this.cargarAsientosReales();
+        } else {
+          console.error('Función no encontrada');
+          this.toastService.showError('Función no encontrada');
+          this.router.navigate(['/ticket-purchase', this.peliculaId]);
+        }
+      },
+      error: (error) => {
+        console.error('❌ Error al cargar función:', error);
+        this.errorConexion = true;
+        this.cargando = false;
+        this.toastService.showError('Error al cargar la función');
+      }
+    });
+  }
+
+  // 🆕 MÉTODO NUEVO: Cargar asientos reales de la BD
+  private cargarAsientosReales(): void {
+    console.log('🪑 Cargando asientos reales para función:', this.funcionId);
+    
+    this.functionService.getSeatsForFunction(this.funcionId).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          // Mapear asientos de la BD al formato del frontend
+          this.seats = response.data.map((seat: any) => ({
+            ...seat,
+            isSelected: false,
+            isDisabled: seat.esta_deshabilitado || false // Podrías agregar lógica para deshabilitar ciertos asientos
+          }));
+          
+          console.log(`✅ ${this.seats.length} asientos cargados desde la BD`);
+          this.cargando = false;
+        } else {
+          console.error('❌ No se pudieron cargar los asientos');
+          this.toastService.showError('No se pudieron cargar los asientos');
+          this.cargando = false;
+        }
+      },
+      error: (error) => {
+        console.error('❌ Error al cargar asientos:', error);
+        this.errorConexion = true;
+        this.cargando = false;
+        this.toastService.showError('Error al cargar los asientos');
+      }
+    });
+  }
+
+  // ==================== MANEJO DE ASIENTOS ====================
+  
   toggleSeat(seat: Seat): void {
-    // No permitir seleccionar asientos ocupados o deshabilitados
-    if (seat.isOccupied || seat.isDisabled) {
+    if (seat.esta_ocupado || seat.isDisabled) {
+      this.toastService.showWarning('Este asiento no está disponible');
       return;
     }
-
+    
     if (seat.isSelected) {
       // Deseleccionar asiento
       seat.isSelected = false;
@@ -82,50 +183,55 @@ export class SeatSelectionComponent implements OnInit {
       seat.isSelected = true;
       this.selectedSeats.push(seat);
     }
-    console.log('Asientos seleccionados:', this.selectedSeats);
+    
+    console.log('🪑 Asientos seleccionados:', this.selectedSeats.map(s => s.seat_id));
   }
 
-  // UTILIDADES DE ASIENTOS
+  // ==================== UTILIDADES DE ASIENTOS ====================
+  
   getUniqueRows(): string[] {
-    const rows = [...new Set(this.seats.map(seat => seat.row))];
+    const rows = [...new Set(this.seats.map(seat => seat.fila))];
     return rows.sort();
   }
 
   getSeatsByRow(row: string): Seat[] {
-    return this.seats.filter(seat => seat.row === row).sort((a, b) => a.number - b.number);
+    return this.seats
+      .filter(seat => seat.fila === row)
+      .sort((a, b) => a.numero - b.numero);
   }
 
   isSeatAvailable(seat: Seat): boolean {
-    return !seat.isOccupied && !seat.isDisabled && !seat.isSelected;
+    return !seat.esta_ocupado && !seat.isDisabled && !seat.isSelected;
   }
 
   getSeatTooltip(seat: Seat): string {
     if (seat.isDisabled) return 'No disponible';
-    if (seat.isOccupied) return 'Ocupado';
-    if (seat.isSelected) return 'Seleccionado';
-    if (seat.isVip) return `VIP - $${seat.price.toFixed(2)}`;
-    return `$${seat.price.toFixed(2)}`;
+    if (seat.esta_ocupado) return 'Ocupado';
+    if (seat.isSelected) return 'Seleccionado - ' + this.functionService.formatPrice(parseFloat(seat.precio));
+    if (seat.es_vip) return `VIP - ${this.functionService.formatPrice(parseFloat(seat.precio))}`;
+    return this.functionService.formatPrice(parseFloat(seat.precio));
   }
 
-  // CÁLCULOS DE PRECIOS
+  // ==================== CÁLCULOS DE PRECIOS ====================
+  
   getTotalPrice(): number {
-    return this.selectedSeats.reduce((total, seat) => total + seat.price, 0);
+    return this.selectedSeats.reduce((total, seat) => total + parseFloat(seat.precio), 0);
   }
 
   hasVipSeats(): boolean {
-    return this.selectedSeats.some(seat => seat.isVip);
+    return this.selectedSeats.some(seat => seat.es_vip);
   }
 
   getNormalSeats(): Seat[] {
-    return this.selectedSeats.filter(seat => !seat.isVip);
+    return this.selectedSeats.filter(seat => !seat.es_vip);
   }
 
   getVipSeats(): Seat[] {
-    return this.selectedSeats.filter(seat => seat.isVip);
+    return this.selectedSeats.filter(seat => seat.es_vip);
   }
 
   getNormalPrice(): number {
-    return this.getNormalSeats().reduce((total, seat) => total + seat.price, 0);
+    return this.getNormalSeats().reduce((total, seat) => total + parseFloat(seat.precio), 0);
   }
 
   getVipPrice(): number {
@@ -133,10 +239,11 @@ export class SeatSelectionComponent implements OnInit {
   }
 
   getVipTotalPrice(): number {
-    return this.getVipSeats().reduce((total, seat) => total + seat.price, 0);
+    return this.getVipSeats().reduce((total, seat) => total + parseFloat(seat.precio), 0);
   }
 
-  // ACCIONES
+  // ==================== ACCIONES ====================
+  
   limpiarSeleccion(): void {
     this.selectedSeats.forEach(seat => seat.isSelected = false);
     this.selectedSeats = [];
@@ -144,7 +251,7 @@ export class SeatSelectionComponent implements OnInit {
   }
 
   cancelar(): void {
-    this.router.navigate(['/ticket-purchase', this.peliculaIndex]);
+    this.router.navigate(['/ticket-purchase', this.peliculaId]);
   }
 
   confirmarSeleccion(): void {
@@ -163,35 +270,33 @@ export class SeatSelectionComponent implements OnInit {
       return;
     }
 
-    // ✅ CALCULAR PRECIO PROMEDIO POR ASIENTO
-    const precioTotalAsientos = this.getTotalPrice();
-    const precioPromedioPorAsiento = precioTotalAsientos / this.selectedSeats.length;
+    // 🆕 AGREGAR AL HISTORIAL
+    this.agregarAlHistorial();
 
-    // Crear función modificada con el precio correcto
-    const funcionConPrecioVIP = {
-      ...this.funcion,
-      precio: precioPromedioPorAsiento,  // ← PRECIO CORRECTO
-      asientosSeleccionados: this.selectedSeats.map(s => s.id),
-      precioTotal: precioTotalAsientos
-    };
-
-    // 🔧 USAR EL NUEVO MÉTODO DEL CART SERVICE
+    // Crear item para el carrito con datos reales
     const itemCarrito = {
       tipo: 'pelicula',
       pelicula: this.pelicula,
-      funcion: funcionConPrecioVIP,
-      cantidad: this.selectedSeats.length
+      funcion: {
+        ...this.funcion,
+        asientosSeleccionados: this.selectedSeats.map(s => s.seat_id), // Usar seat_id en lugar de id
+        precioTotal: this.getTotalPrice(),
+        desglosePrecio: {
+          normal: this.getNormalPrice(),
+          vip: this.getVipTotalPrice(),
+          asientosNormales: this.getNormalSeats().length,
+          asientosVip: this.getVipSeats().length
+        }
+      },
+      cantidad: this.selectedSeats.length,
+      precioUnitario: this.getTotalPrice() / this.selectedSeats.length,
+      precioTotal: this.getTotalPrice()
     };
 
+    console.log('🛒 Agregando al carrito:', itemCarrito);
+
     const agregado = this.cartService.addToCart(itemCarrito);
-
     if (agregado) {
-      // Marcar asientos como ocupados
-      this.movieService.updateOccupiedSeats(
-        this.funcionId, 
-        this.selectedSeats.map(s => s.id)
-      );
-
       this.toastService.showSuccess(`¡${this.selectedSeats.length} asiento(s) agregado(s) al carrito!`);
       this.router.navigate(['/cart']);
     } else {
@@ -199,12 +304,38 @@ export class SeatSelectionComponent implements OnInit {
     }
   }
 
+  private agregarAlHistorial(): void {
+    const currentUser = this.authService.getCurrentUser();
+    if (currentUser && this.pelicula) {
+      this.userService.addToHistory(currentUser.id, {
+        peliculaId: this.peliculaId,
+        titulo: this.pelicula.titulo,
+        poster: this.pelicula.poster,
+        genero: this.pelicula.genero,
+        anio: this.pelicula.anio,
+        fechaVista: new Date().toISOString(),
+        tipoAccion: 'comprada'
+      });
+    }
+  }
+
+  // 🔧 USAR FORMATEO DEL FunctionService
   formatearFecha(fecha: string): string {
-    const fechaObj = new Date(fecha + 'T00:00:00');
-    return fechaObj.toLocaleDateString('es-ES', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric'
-    });
+    return this.functionService.formatDateForDisplay(fecha);
+  }
+
+  // 🆕 MÉTODO PARA REINTENTAR
+  reintentarConexion(): void {
+    this.toastService.showInfo('Reintentando conexión...');
+    this.cargarDatos();
+  }
+
+  // 🆕 MÉTODO PARA TRACK
+  trackSeat(index: number, seat: Seat): string {
+    return seat.id.toString();
+  }
+
+  getAsientosRestantes(): number {
+    return this.cantidad - this.selectedSeats.length;
   }
 }

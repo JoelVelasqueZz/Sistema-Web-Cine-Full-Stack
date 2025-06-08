@@ -4,6 +4,7 @@ import { MovieService, Pelicula } from '../../services/movie.service';
 import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../services/toast.service';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { FunctionService } from '../../services/function.service';
 
 @Component({
   selector: 'app-movie-detail',
@@ -28,7 +29,11 @@ export class MovieDetailComponent implements OnInit {
   errorEdicion: string = '';
   exitoEdicion: string = '';
 
+  // 🆕 PROPIEDADES PARA ADMINISTRACIÓN DE FUNCIONES
+  showFunctionAdmin: boolean = false;
+
   constructor(
+    private functionService: FunctionService,
     private activatedRoute: ActivatedRoute, 
     private movieService: MovieService, // 🔧 Solo MovieService
     private router: Router,
@@ -38,12 +43,29 @@ export class MovieDetailComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.activatedRoute.params.subscribe(params => {
-      this.peliculaId = +params['id']; // Convertir a número
-      console.log('ID de película recibido:', this.peliculaId);
-      this.cargarPelicula();
-    });
-  }
+  this.activatedRoute.params.subscribe(params => {
+    this.peliculaId = +params['id'];
+    console.log('ID de película recibido:', this.peliculaId);
+    this.cargarPelicula();
+    this.cargarConteoFunciones(); // 🆕 Cargar conteo al inicializar
+  });
+}
+private cargarConteoFunciones(): void {
+  if (!this.peliculaId || this.funcionesLoaded) return;
+  
+  this.functionService.getFunctionsByMovie(this.peliculaId).subscribe({
+    next: (funciones) => {
+      this.funcionesCount = funciones.length;
+      this.funcionesLoaded = true;
+      console.log(`📊 Funciones encontradas: ${this.funcionesCount}`);
+    },
+    error: (error) => {
+      console.error('Error al obtener conteo de funciones:', error);
+      this.funcionesCount = 0;
+      this.funcionesLoaded = true;
+    }
+  });
+}
 
   // 🔧 MÉTODO ACTUALIZADO: Usar solo MovieService
   cargarPelicula(): void {
@@ -236,13 +258,13 @@ export class MovieDetailComponent implements OnInit {
     );
   }
 
+  // 🆕 MÉTODOS ACTUALIZADOS PARA GESTIÓN DE FUNCIONES
   gestionarFunciones(): void {
     if (!this.authService.isAdmin()) {
       this.toastService.showError('No tienes permisos para realizar esta acción');
       return;
     }
-    this.toastService.showInfo('Gestión de funciones próximamente disponible');
-    console.log('Gestionar funciones para película:', this.pelicula.titulo);
+    this.showFunctionAdmin = !this.showFunctionAdmin;
   }
 
   agregarFuncion(): void {
@@ -250,8 +272,7 @@ export class MovieDetailComponent implements OnInit {
       this.toastService.showError('No tienes permisos para realizar esta acción');
       return;
     }
-    this.toastService.showInfo('Función para agregar horarios próximamente disponible');
-    console.log('Agregar función para película:', this.pelicula.titulo);
+    this.showFunctionAdmin = true;
   }
 
   verTodasLasFunciones(): void {
@@ -259,22 +280,18 @@ export class MovieDetailComponent implements OnInit {
       this.toastService.showError('No tienes permisos para realizar esta acción');
       return;
     }
-    
-    // 🔧 CORREGIDO: Usar MovieService según tu implementación
-    try {
-      const funciones = this.movieService.getFuncionesPelicula(this.peliculaId);
-      console.log('Funciones de la película:', funciones);
-      
-      if (funciones.length > 0) {
-        this.toastService.showInfo(`Esta película tiene ${funciones.length} funciones programadas`);
-      } else {
-        this.toastService.showWarning('Esta película no tiene funciones programadas');
-      }
-    } catch (error) {
-      console.error('Error al cargar funciones:', error);
-      this.toastService.showError('Error al cargar funciones');
-    }
+    this.showFunctionAdmin = true;
   }
+funcionesCount: number = 0;
+funcionesLoaded: boolean = false;
+
+  getFuncionesCount(): number {
+  return this.funcionesCount;
+}
+refreshFuncionesCount(): void {
+  this.funcionesLoaded = false;
+  this.cargarConteoFunciones();
+}
 
   verEstadisticas(): void {
     if (!this.authService.isAdmin()) {
@@ -297,16 +314,6 @@ export class MovieDetailComponent implements OnInit {
     
     alert(mensaje);
     console.log('Estadísticas:', stats);
-  }
-
-  getFuncionesCount(): number {
-    try {
-      const funciones = this.movieService.getFuncionesPelicula(this.peliculaId);
-      return funciones.length;
-    } catch (error) {
-      console.error('Error al obtener funciones:', error);
-      return 0;
-    }
   }
 
   // ==================== MÉTODOS AUXILIARES ====================
