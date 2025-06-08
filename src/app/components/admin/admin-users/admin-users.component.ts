@@ -100,56 +100,56 @@ export class AdminUsersComponent implements OnInit {
    * 🔥 MÉTODO CORREGIDO: Cargar estadísticas por usuario específico
    */
   private loadUserStatsIndividually(): void {
-    this.allUsers.forEach(user => {
-      // 🔥 IMPORTANTE: Crear cache específico para cada usuario
-      this.userStats[user.id] = { 
-        favoritas: 0, 
-        historial: 0, 
-        loading: true,
-        lastUpdated: Date.now()
-      };
-      
-      // 🎯 Cargar favoritas ESPECÍFICAS del usuario
-      this.userService.getUserFavorites(user.id).subscribe({
-        next: (favoritas) => {
-          console.log(`📊 Usuario ${user.nombre} (ID: ${user.id}) tiene ${favoritas.length} favoritas`);
-          
-          // 🔥 Actualizar cache específico del usuario
-          if (this.userStats[user.id]) {
-            this.userStats[user.id].favoritas = favoritas.length;
-            this.checkIfStatsComplete(user.id);
-          }
-        },
-        error: (error) => {
-          console.error(`❌ Error cargando favoritas para usuario ${user.nombre} (ID: ${user.id}):`, error);
-          
-          if (this.userStats[user.id]) {
-            this.userStats[user.id].favoritas = 0;
-            this.checkIfStatsComplete(user.id);
-          }
+  this.allUsers.forEach(user => {
+    // 🔥 IMPORTANTE: Crear cache específico para cada usuario
+    this.userStats[user.id] = { 
+      favoritas: 0, 
+      historial: 0, 
+      loading: true,
+      lastUpdated: Date.now()
+    };
+    
+    // 🎯 Cargar favoritas ESPECÍFICAS del usuario usando API
+    this.userService.getUserFavoritesById(user.id).subscribe({
+      next: (favoritas) => {
+        console.log(`📊 Usuario ${user.nombre} (ID: ${user.id}) tiene ${favoritas.length} favoritas`);
+        
+        // 🔥 Actualizar cache específico del usuario
+        if (this.userStats[user.id]) {
+          this.userStats[user.id].favoritas = favoritas.length;
+          this.checkIfStatsComplete(user.id);
         }
-      });
-      
-      // 🔥 CORREGIDO: Cargar historial ESPECÍFICO del usuario usando Observable
-      this.userService.getUserHistory(user.id).subscribe({
-        next: (historial) => {
-          console.log(`📊 Usuario ${user.nombre} (ID: ${user.id}) tiene ${historial.length} en historial`);
-          
-          if (this.userStats[user.id]) {
-            this.userStats[user.id].historial = historial.length;
-            this.checkIfStatsComplete(user.id);
-          }
-        },
-        error: (error) => {
-          console.error(`❌ Error cargando historial para usuario ${user.id}:`, error);
-          if (this.userStats[user.id]) {
-            this.userStats[user.id].historial = 0;
-            this.checkIfStatsComplete(user.id);
-          }
+      },
+      error: (error) => {
+        console.error(`❌ Error cargando favoritas para usuario ${user.nombre} (ID: ${user.id}):`, error);
+        
+        if (this.userStats[user.id]) {
+          this.userStats[user.id].favoritas = 0;
+          this.checkIfStatsComplete(user.id);
         }
-      });
+      }
     });
-  }
+    
+    // 🔥 CORREGIDO: Cargar historial ESPECÍFICO del usuario usando API
+    this.userService.getUserHistoryById(user.id, { limit: 50 }).subscribe({
+      next: (historial) => {
+        console.log(`📊 Usuario ${user.nombre} (ID: ${user.id}) tiene ${historial.length} en historial`);
+        
+        if (this.userStats[user.id]) {
+          this.userStats[user.id].historial = historial.length;
+          this.checkIfStatsComplete(user.id);
+        }
+      },
+      error: (error) => {
+        console.error(`❌ Error cargando historial para usuario ${user.id}:`, error);
+        if (this.userStats[user.id]) {
+          this.userStats[user.id].historial = 0;
+          this.checkIfStatsComplete(user.id);
+        }
+      }
+    });
+  });
+}
   
   private checkIfStatsComplete(userId: number): void {
     const stats = this.userStats[userId];
@@ -286,50 +286,51 @@ export class AdminUsersComponent implements OnInit {
 
   // 🆕 Forzar recarga de estadísticas para un usuario específico
   refreshUserStats(userId: number): void {
-    console.log(`🔄 Recargando estadísticas para usuario ID: ${userId}`);
-    
-    if (this.userStats[userId]) {
-      this.userStats[userId].loading = true;
-    }
-
-    // Recargar favoritas
-    this.userService.getUserFavorites(userId).subscribe({
-      next: (favoritas) => {
-        console.log(`✅ Favoritas recargadas para usuario ${userId}: ${favoritas.length}`);
-        
-        if (this.userStats[userId]) {
-          this.userStats[userId].favoritas = favoritas.length;
-          this.userStats[userId].loading = false;
-          this.userStats[userId].lastUpdated = Date.now();
-        }
-      },
-      error: (error) => {
-        console.error(`❌ Error recargando favoritas para usuario ${userId}:`, error);
-        if (this.userStats[userId]) {
-          this.userStats[userId].loading = false;
-        }
-      }
-    });
-
-    // 🔥 CORREGIDO: Recargar historial usando Observable
-    this.userService.getUserHistory(userId).subscribe({
-      next: (historial) => {
-        console.log(`✅ Historial recargado para usuario ${userId}: ${historial.length}`);
-        
-        if (this.userStats[userId]) {
-          this.userStats[userId].historial = historial.length;
-          this.userStats[userId].loading = false;
-          this.userStats[userId].lastUpdated = Date.now();
-        }
-      },
-      error: (error) => {
-        console.error(`❌ Error recargando historial para usuario ${userId}:`, error);
-        if (this.userStats[userId]) {
-          this.userStats[userId].loading = false;
-        }
-      }
-    });
+  console.log(`🔄 Recargando estadísticas para usuario ID: ${userId}`);
+  
+  if (this.userStats[userId]) {
+    this.userStats[userId].loading = true;
   }
+
+  // Recargar favoritas usando API específica para admin
+  this.userService.getUserFavoritesById(userId).subscribe({
+    next: (favoritas) => {
+      console.log(`✅ Favoritas recargadas para usuario ${userId}: ${favoritas.length}`);
+      
+      if (this.userStats[userId]) {
+        this.userStats[userId].favoritas = favoritas.length;
+        this.userStats[userId].lastUpdated = Date.now();
+        // No cambiar loading aquí, esperar a que termine el historial también
+      }
+    },
+    error: (error) => {
+      console.error(`❌ Error recargando favoritas para usuario ${userId}:`, error);
+      if (this.userStats[userId]) {
+        this.userStats[userId].favoritas = 0;
+      }
+    }
+  });
+
+  // 🔥 CORREGIDO: Recargar historial usando API específica para admin
+  this.userService.getUserHistoryById(userId, { limit: 50 }).subscribe({
+    next: (historial) => {
+      console.log(`✅ Historial recargado para usuario ${userId}: ${historial.length}`);
+      
+      if (this.userStats[userId]) {
+        this.userStats[userId].historial = historial.length;
+        this.userStats[userId].loading = false;
+        this.userStats[userId].lastUpdated = Date.now();
+      }
+    },
+    error: (error) => {
+      console.error(`❌ Error recargando historial para usuario ${userId}:`, error);
+      if (this.userStats[userId]) {
+        this.userStats[userId].historial = 0;
+        this.userStats[userId].loading = false;
+      }
+    }
+  });
+}
 
   // ==================== GESTIÓN DE USUARIOS ====================
   

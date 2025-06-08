@@ -80,25 +80,28 @@ export class MovieListComponent implements OnInit {
 
   // 🆕 Cargar estado de favoritas para todas las películas
   cargarEstadoFavoritas(): void {
-    const currentUser = this.authService.getCurrentUser();
-    if (!currentUser) return;
+  const currentUser = this.authService.getCurrentUser();
+  if (!currentUser) return;
 
-    this.peliculas.forEach(pelicula => {
-      const peliculaId = pelicula.id ?? pelicula.idx;
-      if (peliculaId === undefined) {
-        return;
+  this.peliculas.forEach(pelicula => {
+    const peliculaId = pelicula.id ?? pelicula.idx;
+    if (peliculaId === undefined) {
+      return;
+    }
+    
+    // 🔥 CAMBIO: NO pasar userId como primer parámetro
+    this.userService.isInFavorites(currentUser.id, peliculaId).subscribe({
+      next: (isFavorite) => {
+        this.favoritasStatus[peliculaId] = isFavorite;
+      },
+      error: (error) => {
+        console.error('Error al verificar favorita:', error);
+        this.favoritasStatus[peliculaId] = false;
       }
-      this.userService.isInFavorites(currentUser.id, peliculaId).subscribe({
-        next: (isFavorite) => {
-          this.favoritasStatus[peliculaId] = isFavorite;
-        },
-        error: (error) => {
-          console.error('Error al verificar favorita:', error);
-          this.favoritasStatus[peliculaId] = false;
-        }
-      });
     });
-  }
+  });
+}
+
 
   reintentarConexion(): void {
     this.toastService.showInfo('Reintentando conexión...');
@@ -112,76 +115,78 @@ export class MovieListComponent implements OnInit {
 
   // 🔥 MÉTODO CORREGIDO: Ahora maneja Observable correctamente
   toggleFavorite(peliculaIndex: number, event: Event): void {
-    event.stopPropagation();
-    
-    const currentUser = this.authService.getCurrentUser();
-    if (!currentUser) {
-      this.toastService.showWarning('Debes iniciar sesión para agregar favoritas');
-      this.router.navigate(['/login']);
-      return;
-    }
+  event.stopPropagation();
+  
+  const currentUser = this.authService.getCurrentUser();
+  if (!currentUser) {
+    this.toastService.showWarning('Debes iniciar sesión para agregar favoritas');
+    this.router.navigate(['/login']);
+    return;
+  }
 
-    const pelicula = this.peliculas.find(p => (p.idx === peliculaIndex) || (p.id === peliculaIndex));
-    if (!pelicula) return;
+  const pelicula = this.peliculas.find(p => (p.idx === peliculaIndex) || (p.id === peliculaIndex));
+  if (!pelicula) return;
 
-    const peliculaId = pelicula.id ?? pelicula.idx;
-    if (peliculaId === undefined) {
-      this.toastService.showError('ID de película no válido');
-      return;
-    }
-    const isCurrentlyFavorite = this.isInFavorites(peliculaId);
-    
-    // Mostrar loading
-    this.favoritasLoading[peliculaId] = true;
+  const peliculaId = pelicula.id ?? pelicula.idx;
+  if (peliculaId === undefined) {
+    this.toastService.showError('ID de película no válido');
+    return;
+  }
+  
+  const isCurrentlyFavorite = this.isInFavorites(peliculaId);
+  
+  // Mostrar loading
+  this.favoritasLoading[peliculaId] = true;
 
-    if (isCurrentlyFavorite) {
-      // Remover de favoritas
-      this.userService.removeFromFavorites(currentUser.id, peliculaId).subscribe({
-        next: (success) => {
-          this.favoritasLoading[peliculaId] = false;
-          if (success) {
-            this.favoritasStatus[peliculaId] = false;
-            this.toastService.showSuccess(`"${pelicula.titulo}" removida de favoritas`);
-          } else {
-            this.toastService.showError('Error al remover de favoritas');
-          }
-        },
-        error: (error) => {
-          this.favoritasLoading[peliculaId] = false;
-          console.error('Error al remover favorita:', error);
+  if (isCurrentlyFavorite) {
+    // Remover de favoritas - 🔥 CAMBIO: NO pasar userId como primer parámetro
+    this.userService.removeFromFavorites(currentUser.id, peliculaId).subscribe({
+      next: (success) => {
+        this.favoritasLoading[peliculaId] = false;
+        if (success) {
+          this.favoritasStatus[peliculaId] = false;
+          this.toastService.showSuccess(`"${pelicula.titulo}" removida de favoritas`);
+        } else {
           this.toastService.showError('Error al remover de favoritas');
         }
-      });
-    } else {
-      // Agregar a favoritas
-      const peliculaFavorita = {
-        peliculaId: peliculaId,
-        titulo: pelicula.titulo,
-        poster: pelicula.poster,
-        genero: pelicula.genero,
-        anio: pelicula.anio,
-        rating: pelicula.rating,
-        fechaAgregada: new Date().toISOString()
-      };
-      
-      this.userService.addToFavorites(currentUser.id, peliculaFavorita).subscribe({
-        next: (success) => {
-          this.favoritasLoading[peliculaId] = false;
-          if (success) {
-            this.favoritasStatus[peliculaId] = true;
-            this.toastService.showSuccess(`"${pelicula.titulo}" agregada a favoritas`);
-          } else {
-            this.toastService.showWarning('La película ya está en favoritas');
-          }
-        },
-        error: (error) => {
-          this.favoritasLoading[peliculaId] = false;
-          console.error('Error al agregar favorita:', error);
-          this.toastService.showError('Error al agregar a favoritas');
+      },
+      error: (error) => {
+        this.favoritasLoading[peliculaId] = false;
+        console.error('Error al remover favorita:', error);
+        this.toastService.showError('Error al remover de favoritas');
+      }
+    });
+  } else {
+    // Agregar a favoritas
+    const peliculaFavorita = {
+      peliculaId: peliculaId,
+      titulo: pelicula.titulo,
+      poster: pelicula.poster,
+      genero: pelicula.genero,
+      anio: pelicula.anio,
+      rating: pelicula.rating,
+      fechaAgregada: new Date().toISOString()
+    };
+    
+    // 🔥 CAMBIO: Seguir pasando userId para compatibilidad, pero el service lo ignora
+    this.userService.addToFavorites(currentUser.id, peliculaFavorita).subscribe({
+      next: (success) => {
+        this.favoritasLoading[peliculaId] = false;
+        if (success) {
+          this.favoritasStatus[peliculaId] = true;
+          this.toastService.showSuccess(`"${pelicula.titulo}" agregada a favoritas`);
+        } else {
+          this.toastService.showWarning('La película ya está en favoritas');
         }
-      });
-    }
+      },
+      error: (error) => {
+        this.favoritasLoading[peliculaId] = false;
+        console.error('Error al agregar favorita:', error);
+        this.toastService.showError('Error al agregar a favoritas');
+      }
+    });
   }
+}
 
   // 🆕 Verificar si está cargando favorita
   isFavoriteLoading(peliculaId: number): boolean {

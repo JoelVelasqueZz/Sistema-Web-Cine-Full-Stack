@@ -40,29 +40,29 @@ export class FavoritesComponent implements OnInit {
   }
 
   loadFavoritas(): void {
-    if (!this.currentUser) {
-      this.loading = false;
-      return;
-    }
-
-    this.loading = true;
-    
-    // 🔥 CAMBIO PRINCIPAL: Usar Observable
-    this.userService.getUserFavorites(this.currentUser.id).subscribe({
-      next: (favoritas) => {
-        this.favoritas = favoritas;
-        this.extraerGeneros();
-        this.loading = false;
-        console.log('📡 Favoritas cargadas:', favoritas.length);
-      },
-      error: (error) => {
-        console.error('❌ Error al cargar favoritas:', error);
-        this.favoritas = [];
-        this.loading = false;
-        this.toastService.showError('Error al cargar favoritas');
-      }
-    });
+  if (!this.currentUser) {
+    this.loading = false;
+    return;
   }
+
+  this.loading = true;
+  
+  // 🔥 CAMBIO: NO pasar userId, solo usar getUserFavorites()
+  this.userService.getUserFavorites().subscribe({
+    next: (favoritas) => {
+      this.favoritas = favoritas;
+      this.extraerGeneros();
+      this.loading = false;
+      console.log('📡 Favoritas cargadas del usuario actual:', favoritas.length);
+    },
+    error: (error) => {
+      console.error('❌ Error al cargar favoritas:', error);
+      this.favoritas = [];
+      this.loading = false;
+      this.toastService.showError('Error al cargar favoritas');
+    }
+  });
+}
 
   extraerGeneros(): void {
     const generos = [...new Set(this.favoritas.map(f => f.genero))];
@@ -91,32 +91,31 @@ export class FavoritesComponent implements OnInit {
   }
 
   removeFromFavorites(peliculaId: number): void {
-    if (!this.currentUser) return;
+  if (!this.currentUser) return;
 
-    // 🔥 CAMBIO: Usar Observable
-    this.userService.removeFromFavorites(this.currentUser.id, peliculaId).subscribe({
-      next: (success) => {
-        if (success) {
-          // Remover localmente después del éxito
-          this.favoritas = this.favoritas.filter(f => f.peliculaId !== peliculaId);
-          this.extraerGeneros();
-          this.toastService.showSuccess('Película removida de favoritas');
-          
-          // Ajustar página si es necesario
-          if (this.favoritasPaginadas.length === 0 && this.paginaActual > 1) {
-            this.paginaActual--;
-          }
-        } else {
-          this.toastService.showError('Error al remover de favoritas');
+  // 🔥 CAMBIO: NO pasar userId
+  this.userService.removeFromFavorites(this.currentUser.id, peliculaId).subscribe({
+    next: (success) => {
+      if (success) {
+        // Remover localmente después del éxito
+        this.favoritas = this.favoritas.filter(f => f.peliculaId !== peliculaId);
+        this.extraerGeneros();
+        this.toastService.showSuccess('Película removida de favoritas');
+        
+        // Ajustar página si es necesario
+        if (this.favoritasPaginadas.length === 0 && this.paginaActual > 1) {
+          this.paginaActual--;
         }
-      },
-      error: (error) => {
-        console.error('❌ Error al remover favorita:', error);
+      } else {
         this.toastService.showError('Error al remover de favoritas');
       }
-    });
-  }
-
+    },
+    error: (error) => {
+      console.error('❌ Error al remover favorita:', error);
+      this.toastService.showError('Error al remover de favoritas');
+    }
+  });
+}
   verPelicula(peliculaId: number): void {
     // Agregar al historial
     if (this.currentUser) {
@@ -152,28 +151,28 @@ export class FavoritesComponent implements OnInit {
     this.paginaActual = 1; // Resetear a primera página
   }
 
-  clearAllFavorites(): void {
-    if (!this.currentUser) return;
-    
-    if (confirm('¿Estás seguro de que quieres eliminar todas tus películas favoritas?')) {
-      // 🔥 CAMBIO: Usar Observable
-      this.userService.clearAllFavorites(this.currentUser.id).subscribe({
-        next: (success) => {
-          if (success) {
-            this.favoritas = [];
-            this.extraerGeneros();
-            this.toastService.showSuccess('Todas las favoritas han sido eliminadas');
-          } else {
-            this.toastService.showError('Error al eliminar todas las favoritas');
-          }
-        },
-        error: (error) => {
-          console.error('❌ Error al limpiar favoritas:', error);
+ clearAllFavorites(): void {
+  if (!this.currentUser) return;
+  
+  if (confirm('¿Estás seguro de que quieres eliminar todas tus películas favoritas?')) {
+    // 🔥 CAMBIO: NO pasar userId
+    this.userService.clearAllFavorites(this.currentUser.id).subscribe({
+      next: (success) => {
+        if (success) {
+          this.favoritas = [];
+          this.extraerGeneros();
+          this.toastService.showSuccess('Todas las favoritas han sido eliminadas');
+        } else {
           this.toastService.showError('Error al eliminar todas las favoritas');
         }
-      });
-    }
+      },
+      error: (error) => {
+        console.error('❌ Error al limpiar favoritas:', error);
+        this.toastService.showError('Error al eliminar todas las favoritas');
+      }
+    });
   }
+}
 
   getTimeSinceFavorite(fechaAgregada: string): string {
     const fecha = new Date(fechaAgregada);

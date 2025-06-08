@@ -40,50 +40,49 @@ export class HistoryComponent implements OnInit {
    * 🔥 ACTUALIZADO: Cargar historial desde API
    */
   loadHistorial(): void {
-    if (!this.currentUser) {
-      this.loading = false;
-      return;
-    }
-
-    this.loading = true;
-    
-    // Construir opciones de filtro
-    const options: HistoryOptions = {
-      limit: this.itemsPorPagina,
-      offset: (this.paginaActual - 1) * this.itemsPorPagina,
-      tipoAccion: this.filtroTipo === 'todas' ? undefined : this.filtroTipo as 'vista' | 'comprada'
-    };
-
-    // Agregar filtros de fecha
-    if (this.filtroFecha !== 'todas') {
-      const { fechaDesde, fechaHasta } = this.getFechaRange(this.filtroFecha);
-      options.fechaDesde = fechaDesde;
-      options.fechaHasta = fechaHasta;
-    }
-
-    // 🔥 CAMBIO PRINCIPAL: Usar Observable
-    this.userService.getUserHistory(this.currentUser.id, options).subscribe({
-      next: (historial) => {
-        if (this.paginaActual === 1) {
-          this.historial = historial;
-        } else {
-          this.historial = [...this.historial, ...historial];
-        }
-        
-        this.hasMore = historial.length === this.itemsPorPagina;
-        this.loading = false;
-        
-        console.log('📡 Historial cargado:', historial.length, 'items');
-      },
-      error: (error) => {
-        console.error('❌ Error al cargar historial:', error);
-        this.historial = [];
-        this.loading = false;
-        this.toastService.showError('Error al cargar historial');
-      }
-    });
+  if (!this.currentUser) {
+    this.loading = false;
+    return;
   }
 
+  this.loading = true;
+  
+  // Construir opciones de filtro
+  const options: HistoryOptions = {
+    limit: this.itemsPorPagina,
+    offset: (this.paginaActual - 1) * this.itemsPorPagina,
+    tipoAccion: this.filtroTipo === 'todas' ? undefined : this.filtroTipo as 'vista' | 'comprada'
+  };
+
+  // Agregar filtros de fecha
+  if (this.filtroFecha !== 'todas') {
+    const { fechaDesde, fechaHasta } = this.getFechaRange(this.filtroFecha);
+    options.fechaDesde = fechaDesde;
+    options.fechaHasta = fechaHasta;
+  }
+
+  // 🔥 CAMBIO PRINCIPAL: NO pasar userId como primer parámetro
+  this.userService.getUserHistory(options).subscribe({
+    next: (historial) => {
+      if (this.paginaActual === 1) {
+        this.historial = historial;
+      } else {
+        this.historial = [...this.historial, ...historial];
+      }
+      
+      this.hasMore = historial.length === this.itemsPorPagina;
+      this.loading = false;
+      
+      console.log('📡 Historial cargado del usuario actual:', historial.length, 'items');
+    },
+    error: (error) => {
+      console.error('❌ Error al cargar historial:', error);
+      this.historial = [];
+      this.loading = false;
+      this.toastService.showError('Error al cargar historial');
+    }
+  });
+}
   /**
    * 🆕 NUEVO: Obtener rango de fechas según filtro
    */
@@ -161,28 +160,28 @@ export class HistoryComponent implements OnInit {
   /**
    * 🔥 ACTUALIZADO: Limpiar historial usando API
    */
-  clearHistory(): void {
-    if (!this.currentUser) return;
-    
-    if (confirm('¿Estás seguro de que quieres eliminar todo tu historial?')) {
-      this.userService.clearHistory(this.currentUser.id).subscribe({
-        next: (success) => {
-          if (success) {
-            this.historial = [];
-            this.paginaActual = 1;
-            this.hasMore = false;
-            this.toastService.showSuccess('Historial eliminado correctamente');
-          } else {
-            this.toastService.showError('Error al eliminar el historial');
-          }
-        },
-        error: (error) => {
-          console.error('❌ Error al limpiar historial:', error);
+ clearHistory(): void {
+  if (!this.currentUser) return;
+  
+  if (confirm('¿Estás seguro de que quieres eliminar todo tu historial?')) {
+    this.userService.clearHistory(this.currentUser.id).subscribe({
+      next: (success) => {
+        if (success) {
+          this.historial = [];
+          this.paginaActual = 1;
+          this.hasMore = false;
+          this.toastService.showSuccess('Historial eliminado correctamente');
+        } else {
           this.toastService.showError('Error al eliminar el historial');
         }
-      });
-    }
+      },
+      error: (error) => {
+        console.error('❌ Error al limpiar historial:', error);
+        this.toastService.showError('Error al eliminar el historial');
+      }
+    });
   }
+}
 
   /**
    * 🔥 ACTUALIZADO: Cambiar página (ahora recarga desde API)

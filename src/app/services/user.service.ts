@@ -191,143 +191,173 @@ export class UserService {
   /**
    * Obtener favoritas del usuario desde la API
    */
-  getUserFavorites(userId: number): Observable<PeliculaFavorita[]> {
-    const headers = this.getAuthHeaders();
-    
-    return this.http.get<any>(`${this.API_URL}/favorites/${userId}`, { headers }).pipe(
-      map(response => {
-        console.log(`📡 Favoritas obtenidas de BD para usuario ${userId}:`, response.data?.length || 0);
-        return (response.data || []).map((fav: any) => this.convertApiFavoriteToLocal(fav));
-      }),
-      catchError(error => {
-        console.error(`❌ Error al obtener favoritas para usuario ${userId}:`, error);
-        // Fallback a localStorage si falla la API
-        return of(this.getUserFavoritesLocal(userId));
-      })
-    );
-  }
+  getUserFavorites(): Observable<PeliculaFavorita[]> {
+  const headers = this.getAuthHeaders();
+  
+  // Solo para usuario actual - la API toma el userId del token
+  return this.http.get<any>(`${this.API_URL}/favorites`, { headers }).pipe(
+    map(response => {
+      console.log(`📡 Favoritas obtenidas de BD para usuario actual:`, response.data?.length || 0);
+      return (response.data || []).map((fav: any) => this.convertApiFavoriteToLocal(fav));
+    }),
+    catchError(error => {
+      console.error(`❌ Error al obtener favoritas del usuario actual:`, error);
+      return of([]);
+    })
+  );
+}
+getUserFavoritesById(userId: number): Observable<PeliculaFavorita[]> {
+  const headers = this.getAuthHeaders();
+  
+  return this.http.get<any>(`${this.API_URL}/favorites/${userId}`, { headers }).pipe(
+    map(response => {
+      console.log(`📡 [ADMIN] Favoritas obtenidas para usuario ${userId}:`, response.data?.length || 0);
+      return (response.data || []).map((fav: any) => this.convertApiFavoriteToLocal(fav));
+    }),
+    catchError(error => {
+      console.error(`❌ [ADMIN] Error al obtener favoritas para usuario ${userId}:`, error);
+      return of([]);
+    })
+  );
+}
 
   /**
    * Agregar a favoritas usando API
    */
   addToFavorites(userId: number, pelicula: PeliculaFavorita): Observable<boolean> {
-    const headers = this.getAuthHeaders();
-    const body = { 
-      peliculaId: pelicula.peliculaId,
-      userId: userId
-    };
+  const headers = this.getAuthHeaders();
+  const body = { 
+    peliculaId: pelicula.peliculaId
+    // No enviar userId porque la API lo toma del token
+  };
 
-    return this.http.post<any>(`${this.API_URL}/favorites`, body, { headers }).pipe(
-      map(response => {
-        if (response.success) {
-          console.log(`✅ Película agregada a favoritas en BD para usuario ${userId}:`, pelicula.titulo);
-          return true;
-        }
-        return false;
-      }),
-      catchError(error => {
-        console.error(`❌ Error al agregar a favoritas para usuario ${userId}:`, error);
-        // Fallback a localStorage si falla la API
-        return of(this.addToFavoritesLocal(userId, pelicula));
-      })
-    );
-  }
+  return this.http.post<any>(`${this.API_URL}/favorites`, body, { headers }).pipe(
+    map(response => {
+      if (response.success) {
+        console.log(`✅ Película agregada a favoritas en BD:`, pelicula.titulo);
+        return true;
+      }
+      return false;
+    }),
+    catchError(error => {
+      console.error(`❌ Error al agregar a favoritas:`, error);
+      // Fallback a localStorage si falla la API
+      return of(this.addToFavoritesLocal(userId, pelicula));
+    })
+  );
+}
 
   /**
    * Remover de favoritas usando API
    */
   removeFromFavorites(userId: number, peliculaId: number): Observable<boolean> {
-    const headers = this.getAuthHeaders();
+  const headers = this.getAuthHeaders();
 
-    return this.http.delete<any>(`${this.API_URL}/favorites/${userId}/${peliculaId}`, { headers }).pipe(
-      map(response => {
-        if (response.success) {
-          console.log(`✅ Película removida de favoritas en BD para usuario ${userId}`);
-          return true;
-        }
-        return false;
-      }),
-      catchError(error => {
-        console.error(`❌ Error al remover de favoritas para usuario ${userId}:`, error);
-        // Fallback a localStorage si falla la API
-        return of(this.removeFromFavoritesLocal(userId, peliculaId));
-      })
-    );
-  }
+  return this.http.delete<any>(`${this.API_URL}/favorites/${peliculaId}`, { headers }).pipe(
+    map(response => {
+      if (response.success) {
+        console.log(`✅ Película removida de favoritas en BD`);
+        return true;
+      }
+      return false;
+    }),
+    catchError(error => {
+      console.error(`❌ Error al remover de favoritas:`, error);
+      // Fallback a localStorage si falla la API
+      return of(this.removeFromFavoritesLocal(userId, peliculaId));
+    })
+  );
+}
+
 
   /**
    * Verificar si está en favoritas
    */
-  isInFavorites(userId: number, peliculaId: number): Observable<boolean> {
-    const headers = this.getAuthHeaders();
+ isInFavorites(userId: number, peliculaId: number): Observable<boolean> {
+  const headers = this.getAuthHeaders();
 
-    return this.http.get<any>(`${this.API_URL}/favorites/${userId}/check/${peliculaId}`, { headers }).pipe(
-      map(response => {
-        if (response.success) {
-          return response.data.isFavorite;
-        }
-        return false;
-      }),
-      catchError(error => {
-        console.error(`❌ Error al verificar favorita para usuario ${userId}:`, error);
-        // Fallback a localStorage
-        return of(this.isInFavoritesLocal(userId, peliculaId));
-      })
-    );
-  }
+  return this.http.get<any>(`${this.API_URL}/favorites/check/${peliculaId}`, { headers }).pipe(
+    map(response => {
+      if (response.success) {
+        return response.data.isFavorite;
+      }
+      return false;
+    }),
+    catchError(error => {
+      console.error(`❌ Error al verificar favorita:`, error);
+      // Fallback a localStorage
+      return of(this.isInFavoritesLocal(userId, peliculaId));
+    })
+  );
+}
+
 
   /**
    * Limpiar todas las favoritas
    */
   clearAllFavorites(userId: number): Observable<boolean> {
-    const headers = this.getAuthHeaders();
+  const headers = this.getAuthHeaders();
 
-    return this.http.delete<any>(`${this.API_URL}/favorites/${userId}/clear`, { headers }).pipe(
-      map(response => {
-        if (response.success) {
-          console.log(`✅ Todas las favoritas limpiadas en BD para usuario ${userId}`);
-          return true;
-        }
-        return false;
-      }),
-      catchError(error => {
-        console.error(`❌ Error al limpiar favoritas para usuario ${userId}:`, error);
-        return of(false);
-      })
-    );
+  return this.http.delete<any>(`${this.API_URL}/favorites/clear`, { headers }).pipe(
+    map(response => {
+      if (response.success) {
+        console.log(`✅ Todas las favoritas limpiadas en BD`);
+        return true;
+      }
+      return false;
+    }),
+    catchError(error => {
+      console.error(`❌ Error al limpiar favoritas:`, error);
+      return of(false);
+    })
+  );
+}
+private getCurrentUserId(): number {
+  // Obtener desde AuthService o token
+  const token = localStorage.getItem('auth_token');
+  if (token) {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.id || payload.userId || 0;
+    } catch (error) {
+      console.error('Error al obtener usuario ID del token:', error);
+      return 0;
+    }
   }
+  return 0;
+}
 
   // ==================== MÉTODOS DE HISTORIAL (ACTUALIZADOS PARA API) ====================
 
   /**
    * 🔥 NUEVO: Obtener historial del usuario desde la API
    */
-  getUserHistory(userId: number, options?: HistoryOptions): Observable<HistorialItem[]> {
-    const headers = this.getAuthHeaders();
-    
-    // Construir parámetros de query
-    let params = new URLSearchParams();
-    if (options?.limit) params.append('limit', options.limit.toString());
-    if (options?.offset) params.append('offset', options.offset.toString());
-    if (options?.tipoAccion && options.tipoAccion !== 'todas') params.append('tipoAccion', options.tipoAccion);
-    if (options?.fechaDesde) params.append('fechaDesde', options.fechaDesde);
-    if (options?.fechaHasta) params.append('fechaHasta', options.fechaHasta);
-    
-    const queryString = params.toString();
-    const url = `${this.API_URL}/history${queryString ? '?' + queryString : ''}`;
-    
-    return this.http.get<any>(url, { headers }).pipe(
-      map(response => {
-        console.log(`📡 Historial obtenido de BD para usuario ${userId}:`, response.data?.length || 0);
-        return (response.data || []).map((item: any) => this.convertApiHistoryToLocal(item));
-      }),
-      catchError(error => {
-        console.error(`❌ Error al obtener historial para usuario ${userId}:`, error);
-        // Fallback a localStorage si falla la API
-        return of(this.getUserHistoryLocal(userId));
-      })
-    );
-  }
+getUserHistory(options?: HistoryOptions): Observable<HistorialItem[]> {
+  const headers = this.getAuthHeaders();
+  
+  // Construir parámetros de query
+  let params = new URLSearchParams();
+  if (options?.limit) params.append('limit', options.limit.toString());
+  if (options?.offset) params.append('offset', options.offset.toString());
+  if (options?.tipoAccion && options.tipoAccion !== 'todas') params.append('tipoAccion', options.tipoAccion);
+  if (options?.fechaDesde) params.append('fechaDesde', options.fechaDesde);
+  if (options?.fechaHasta) params.append('fechaHasta', options.fechaHasta);
+  
+  const queryString = params.toString();
+  const url = `${this.API_URL}/history${queryString ? '?' + queryString : ''}`;
+  
+  return this.http.get<any>(url, { headers }).pipe(
+    map(response => {
+      console.log(`📡 Historial obtenido de BD para usuario actual:`, response.data?.length || 0);
+      return (response.data || []).map((item: any) => this.convertApiHistoryToLocal(item));
+    }),
+    catchError(error => {
+      console.error(`❌ Error al obtener historial del usuario actual:`, error);
+      return of([]);
+    })
+  );
+}
+
 
   /**
    * 🔥 NUEVO: Agregar al historial usando API
