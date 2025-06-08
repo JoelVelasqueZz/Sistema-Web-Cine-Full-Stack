@@ -273,9 +273,8 @@ const releaseSeats = async (req, res) => {
   }
 };
 
-// 🆕 FUNCIÓN MEJORADA: Configuración más inteligente de salas
 function getSalaConfiguration(nombreSala, totalAsientos) {
-  // Configuraciones predefinidas por sala
+
   const configuracionesSala = {
     'Sala VIP': { 
       baseFilas: 6, 

@@ -1,3 +1,4 @@
+// backend/src/routes/index.js
 const express = require('express');
 const router = express.Router();
 
@@ -32,12 +33,25 @@ router.get('/test-db', async (req, res, next) => {
   }
 });
 
-// Rutas de módulos
-router.use('/movies', require('./movies'));
+// ==================== RUTAS DE MÓDULOS ====================
+
+// Rutas de autenticación
 router.use('/auth', require('./auth'));
+
+// Rutas de usuarios
 router.use('/users', require('./users'));
+
+// Rutas de películas
+router.use('/movies', require('./movies'));
+
+// Rutas de funciones de cine
+router.use('/functions', require('./functions'));
+
+// Rutas de favoritas
 router.use('/favorites', require('./favorites'));
-router.use('/functions', require('./functions')); // 🆕 AGREGAR ESTA LÍNEA
+
+// 🆕 Rutas de historial
+router.use('/history', require('./history'));
 
 // Aquí iremos agregando las otras rutas (COMENTADAS)
 // router.use('/bar', require('./bar'));

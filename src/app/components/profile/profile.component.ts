@@ -59,18 +59,35 @@ export class ProfileComponent implements OnInit {
     this.currentUser = this.authService.getCurrentUser();
     
     if (this.currentUser) {
-      // Cargar estadísticas del usuario
-      this.userStats = this.userService.getUserStats(this.currentUser.id);
+      // 🔥 CORREGIDO: Cargar estadísticas del usuario usando Observable
+      this.userService.getUserStats(this.currentUser.id).subscribe({
+        next: (stats) => {
+          this.userStats = stats;
+          console.log('📊 Estadísticas de usuario cargadas:', stats);
+        },
+        error: (error) => {
+          console.error('❌ Error al cargar estadísticas de usuario:', error);
+          // Usar estadísticas por defecto si falla
+          this.userStats = {
+            totalFavoritas: 0,
+            totalVistas: 0,
+            generoFavorito: 'Ninguno',
+            ultimaActividad: null
+          };
+        }
+      });
       
-      // 🆕 CARGAR ESTADÍSTICAS DE PUNTOS
-      this.pointsStats = this.pointsService.getUserPointsStats(this.currentUser.id);
-      this.userPoints = this.pointsService.getUserPoints(this.currentUser.id);
-      
-      // 🆕 OBTENER CÓDIGO DE REFERIDO
-      this.referralCode = this.pointsService.getUserReferralCode(this.currentUser.id);
-      
-      // 🆕 DAR PUNTOS DE BIENVENIDA SI ES NUEVO USUARIO
-      this.pointsService.giveWelcomePoints(this.currentUser.id);
+      // 🆕 CARGAR ESTADÍSTICAS DE PUNTOS (si tienes PointsService)
+      if (this.pointsService) {
+        this.pointsStats = this.pointsService.getUserPointsStats(this.currentUser.id);
+        this.userPoints = this.pointsService.getUserPoints(this.currentUser.id);
+        
+        // 🆕 OBTENER CÓDIGO DE REFERIDO
+        this.referralCode = this.pointsService.getUserReferralCode(this.currentUser.id);
+        
+        // 🆕 DAR PUNTOS DE BIENVENIDA SI ES NUEVO USUARIO
+        this.pointsService.giveWelcomePoints(this.currentUser.id);
+      }
       
       // Inicializar formulario con datos actuales
       this.profileForm = {
@@ -113,21 +130,39 @@ export class ProfileComponent implements OnInit {
       return;
     }
 
-    // Simular guardado (en un proyecto real, aquí harías la petición al backend)
-    setTimeout(() => {
-      if (this.userService.updateProfile(this.currentUser!.id, this.profileForm)) {
-        // Actualizar datos en AuthService (simulado)
-        this.updateCurrentUser();
-        
-        this.toastService.showSuccess('Perfil actualizado correctamente');
-        this.editMode = false;
-        this.loadUserData();
-      } else {
+    // 🔥 CORREGIDO: Usar Observable para actualizar perfil
+    this.userService.updateProfile(this.currentUser.id, this.profileForm).subscribe({
+      next: (success) => {
+        if (success) {
+          // Actualizar datos en AuthService
+          this.updateCurrentUser();
+          
+          this.toastService.showSuccess('Perfil actualizado correctamente');
+          this.editMode = false;
+          
+          // Recargar datos
+          this.loadUserData();
+        } else {
+          this.toastService.showError('Error al actualizar el perfil');
+        }
+        this.loading = false;
+      },
+      error: (error) => {
+        console.error('❌ Error al actualizar perfil:', error);
         this.toastService.showError('Error al actualizar el perfil');
+        this.loading = false;
       }
-      
-      this.loading = false;
-    }, 1000);
+    });
+  }
+  refreshData(): void {
+    this.loadUserData();
+  }
+
+  /**
+   * 🆕 MÉTODO PARA VERIFICAR SI LAS ESTADÍSTICAS ESTÁN CARGANDO
+   */
+  isStatsLoading(): boolean {
+    return this.userStats === null;
   }
 
   private updateCurrentUser(): void {

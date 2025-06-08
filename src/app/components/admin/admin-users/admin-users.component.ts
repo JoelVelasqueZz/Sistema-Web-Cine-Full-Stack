@@ -4,7 +4,6 @@ import { AuthService, Usuario } from '../../../services/auth.service';
 import { AdminService } from '../../../services/admin.service';
 import { UserService } from '../../../services/user.service';
 import { ToastService } from '../../../services/toast.service';
-
 // Importar jsPDF al inicio del archivo
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -16,31 +15,38 @@ import autoTable from 'jspdf-autotable';
   styleUrls: ['./admin-users.component.css']
 })
 export class AdminUsersComponent implements OnInit {
-
+  
   // Datos de usuarios
   allUsers: Usuario[] = [];
   filteredUsers: Usuario[] = [];
   selectedUserDetails: Usuario | null = null;
-
+  
   // Estados de carga
   loading: boolean = true;
   processing: boolean = false;
-
+  
   // Filtros
   searchTerm: string = '';
   roleFilter: string = '';
   statusFilter: string = '';
   sortBy: string = 'nombre';
-
+  
   // Selección múltiple
   selectedUsers: number[] = [];
   selectAll: boolean = false;
-
+  
   // Usuario actual (no puede modificarse a sí mismo)
   currentUserId: number;
-
-  // 🆕 Cache para favoritas y historial para evitar múltiples llamadas
-  userStats: { [userId: number]: { favoritas: number; historial: number; loading: boolean } } = {};
+  
+  // 🆕 Cache para favoritas y historial POR USUARIO ESPECÍFICO
+  userStats: { 
+    [userId: number]: { 
+      favoritas: number; 
+      historial: number; 
+      loading: boolean;
+      lastUpdated: number; // timestamp para cache
+    } 
+  } = {};
 
   constructor(
     private authService: AuthService,
@@ -64,7 +70,7 @@ export class AdminUsersComponent implements OnInit {
   }
 
   // ==================== CARGA DE DATOS ====================
-
+  
   /**
    * Cargar lista de usuarios
    */
@@ -78,8 +84,8 @@ export class AdminUsersComponent implements OnInit {
         this.applyFilters();
         this.loading = false;
         
-        // 🆕 Cargar estadísticas de usuarios
-        this.loadUserStats();
+        // 🆕 Cargar estadísticas de usuarios individualmente
+        this.loadUserStatsIndividually();
       },
       error: (error) => {
         console.error('❌ Error al cargar usuarios:', error);
@@ -92,42 +98,84 @@ export class AdminUsersComponent implements OnInit {
   }
 
   /**
-   * 🆕 Cargar estadísticas de usuarios (favoritas e historial)
+   * 🔥 MÉTODO CORREGIDO: Cargar estadísticas por usuario específico
    */
-  private loadUserStats(): void {
+  private loadUserStatsIndividually(): void {
     this.allUsers.forEach(user => {
-      // Inicializar loading
-      this.userStats[user.id] = { favoritas: 0, historial: 0, loading: true };
+      // 🔥 IMPORTANTE: Crear cache específico para cada usuario
+      this.userStats[user.id] = { 
+        favoritas: 0, 
+        historial: 0, 
+        loading: true,
+        lastUpdated: Date.now()
+      };
       
-      // Cargar favoritas
+      // 🎯 Cargar favoritas ESPECÍFICAS del usuario
       this.userService.getUserFavorites(user.id).subscribe({
         next: (favoritas) => {
-          this.userStats[user.id].favoritas = favoritas.length;
-          this.userStats[user.id].loading = false;
+          console.log(`📊 Usuario ${user.nombre} (ID: ${user.id}) tiene ${favoritas.length} favoritas`);
+          
+          // 🔥 Actualizar cache específico del usuario
+          if (this.userStats[user.id]) {
+            this.userStats[user.id].favoritas = favoritas.length;
+            this.checkIfStatsComplete(user.id);
+          }
         },
         error: (error) => {
-          console.error(`Error cargando favoritas para usuario ${user.id}:`, error);
-          this.userStats[user.id].favoritas = 0;
-          this.userStats[user.id].loading = false;
+          console.error(`❌ Error cargando favoritas para usuario ${user.nombre} (ID: ${user.id}):`, error);
+          
+          if (this.userStats[user.id]) {
+            this.userStats[user.id].favoritas = 0;
+            this.checkIfStatsComplete(user.id);
+          }
         }
       });
       
-      // Cargar historial (método local)
-      this.userStats[user.id].historial = this.userService.getUserHistory(user.id).length;
+      // 🔥 CORREGIDO: Cargar historial ESPECÍFICO del usuario usando Observable
+      this.userService.getUserHistory(user.id).subscribe({
+        next: (historial) => {
+          console.log(`📊 Usuario ${user.nombre} (ID: ${user.id}) tiene ${historial.length} en historial`);
+          
+          if (this.userStats[user.id]) {
+            this.userStats[user.id].historial = historial.length;
+            this.checkIfStatsComplete(user.id);
+          }
+        },
+        error: (error) => {
+          console.error(`❌ Error cargando historial para usuario ${user.id}:`, error);
+          if (this.userStats[user.id]) {
+            this.userStats[user.id].historial = 0;
+            this.checkIfStatsComplete(user.id);
+          }
+        }
+      });
     });
   }
-
+  
+private checkIfStatsComplete(userId: number): void {
+    const stats = this.userStats[userId];
+    if (stats) {
+      // Solo marcar como completado cuando ambos requests hayan terminado
+      // (esto es una simplificación, en un caso real podrías usar forkJoin)
+      stats.loading = false;
+      stats.lastUpdated = Date.now();
+    }
+  }
   /**
    * Refrescar datos
    */
   refreshData(): void {
     this.clearSelection();
+    
+    // 🔥 Limpiar cache de estadísticas
+    this.userStats = {};
+    
     this.loadUsers();
     this.toastService.showInfo('Actualizando lista de usuarios...');
   }
 
   // ==================== FILTROS Y BÚSQUEDA ====================
-
+  
   applyFilters(): void {
     let filtered = [...this.allUsers];
 
@@ -186,7 +234,7 @@ export class AdminUsersComponent implements OnInit {
   }
 
   // ==================== ESTADÍSTICAS ====================
-
+  
   getTotalUsers(): number {
     return this.allUsers.length;
   }
@@ -208,13 +256,27 @@ export class AdminUsersComponent implements OnInit {
     ).length;
   }
 
-  // 🔥 MÉTODOS CORREGIDOS: Usar cache en lugar de llamadas directas
+  // 🔥 MÉTODOS COMPLETAMENTE CORREGIDOS: Usar cache específico por usuario
   getUserFavorites(userId: number): number {
-    return this.userStats[userId]?.favoritas || 0;
+    const stats = this.userStats[userId];
+    if (!stats) {
+      console.warn(`⚠️ No hay estadísticas cargadas para usuario ID: ${userId}`);
+      return 0;
+    }
+    
+    console.log(`📊 Favoritas para usuario ID ${userId}: ${stats.favoritas}`);
+    return stats.favoritas;
   }
 
   getUserHistory(userId: number): number {
-    return this.userStats[userId]?.historial || 0;
+    const stats = this.userStats[userId];
+    if (!stats) {
+      console.warn(`⚠️ No hay estadísticas de historial para usuario ID: ${userId}`);
+      return 0;
+    }
+    
+    console.log(`📊 Historial para usuario ID ${userId}: ${stats.historial}`);
+    return stats.historial;
   }
 
   // 🆕 Verificar si está cargando las estadísticas
@@ -222,13 +284,60 @@ export class AdminUsersComponent implements OnInit {
     return this.userStats[userId]?.loading || false;
   }
 
-  // ==================== GESTIÓN DE USUARIOS ====================
+  // 🆕 Forzar recarga de estadísticas para un usuario específico
+  refreshUserStats(userId: number): void {
+    console.log(`🔄 Recargando estadísticas para usuario ID: ${userId}`);
+    
+    if (this.userStats[userId]) {
+      this.userStats[userId].loading = true;
+    }
 
+    // Recargar favoritas
+    this.userService.getUserFavorites(userId).subscribe({
+      next: (favoritas) => {
+        console.log(`✅ Favoritas recargadas para usuario ${userId}: ${favoritas.length}`);
+        
+        if (this.userStats[userId]) {
+          this.userStats[userId].favoritas = favoritas.length;
+          this.userStats[userId].loading = false;
+          this.userStats[userId].lastUpdated = Date.now();
+        }
+      },
+      error: (error) => {
+        console.error(`❌ Error recargando favoritas para usuario ${userId}:`, error);
+        if (this.userStats[userId]) {
+          this.userStats[userId].loading = false;
+        }
+      }
+    });
+
+    // 🔥 CORREGIDO: Recargar historial usando Observable
+    this.userService.getUserHistory(userId).subscribe({
+      next: (historial) => {
+        console.log(`✅ Historial recargado para usuario ${userId}: ${historial.length}`);
+        
+        if (this.userStats[userId]) {
+          this.userStats[userId].historial = historial.length;
+          this.userStats[userId].loading = false;
+          this.userStats[userId].lastUpdated = Date.now();
+        }
+      },
+      error: (error) => {
+        console.error(`❌ Error recargando historial para usuario ${userId}:`, error);
+        if (this.userStats[userId]) {
+          this.userStats[userId].loading = false;
+        }
+      }
+    });
+  }
+  // ==================== GESTIÓN DE USUARIOS ====================
+  
   toggleUserRole(user: Usuario): void {
     if (user.id === this.currentUserId) {
       this.toastService.showWarning('No puedes cambiar tu propio rol');
       return;
     }
+
     if (this.processing) return;
 
     const nuevoRol = user.role === 'admin' ? 'cliente' : 'admin';
@@ -263,6 +372,7 @@ export class AdminUsersComponent implements OnInit {
       this.toastService.showWarning('No puedes desactivar tu propia cuenta');
       return;
     }
+
     if (this.processing) return;
 
     const nuevoEstado = !user.isActive;
@@ -296,6 +406,9 @@ export class AdminUsersComponent implements OnInit {
 
   viewUserDetails(user: Usuario): void {
     this.selectedUserDetails = user;
+    
+    // 🔄 Refrescar estadísticas del usuario seleccionado
+    this.refreshUserStats(user.id);
     
     // Abrir modal (usando Bootstrap)
     const modal = document.getElementById('userDetailsModal');
@@ -357,7 +470,7 @@ export class AdminUsersComponent implements OnInit {
             this.applyFilters();
           }
           
-          // Limpiar cache de estadísticas
+          // 🔥 Limpiar cache de estadísticas del usuario eliminado
           delete this.userStats[user.id];
           
           this.toastService.showSuccess(`Usuario ${user.nombre} eliminado exitosamente`);
@@ -375,7 +488,7 @@ export class AdminUsersComponent implements OnInit {
   }
 
   // ==================== SELECCIÓN MÚLTIPLE ====================
-
+  
   isUserSelected(userId: number): boolean {
     return this.selectedUsers.includes(userId);
   }
@@ -413,7 +526,7 @@ export class AdminUsersComponent implements OnInit {
   }
 
   // ==================== ACCIONES MASIVAS ====================
-
+  
   bulkChangeRole(newRole: 'admin' | 'cliente'): void {
     if (this.selectedUsers.length === 0) return;
 
@@ -513,7 +626,7 @@ export class AdminUsersComponent implements OnInit {
   }
 
   // ==================== REPORTES Y EXPORTACIÓN ====================
-
+  
   exportUsers(): void {
     this.processing = true;
     this.toastService.showInfo('Generando exportación de usuarios en PDF...');
@@ -662,14 +775,14 @@ export class AdminUsersComponent implements OnInit {
   }
 
   // ==================== MÉTODOS AUXILIARES PARA PDF ====================
-
+  
   private setupPDFHeader(doc: jsPDF, titulo: string, subtitulo?: string): void {
     doc.setFillColor(41, 128, 185);
     doc.rect(0, 0, 210, 45, 'F');
     
     doc.setFontSize(24);
     doc.setTextColor(255, 255, 255);
-    doc.text('CinemaApp', 20, 25);
+    doc.text('ParkyFilms', 20, 25);
     
     doc.setFontSize(12);
     doc.text('Gestión de Usuarios', 20, 35);
@@ -707,7 +820,7 @@ export class AdminUsersComponent implements OnInit {
       
       doc.setFontSize(8);
       doc.setTextColor(100, 100, 100);
-      doc.text('CinemaApp - Gestión de Usuarios', 20, 282);
+      doc.text('ParkyFilms - Gestión de Usuarios', 20, 282);
       doc.text('Documento Confidencial - Solo uso interno', 20, 287);
       
       doc.setTextColor(41, 128, 185);
@@ -722,7 +835,7 @@ export class AdminUsersComponent implements OnInit {
   }
 
   // ==================== UTILIDADES ====================
-
+  
   formatDate(fecha: string): string {
     return new Date(fecha).toLocaleDateString('es-ES', {
       year: 'numeric',

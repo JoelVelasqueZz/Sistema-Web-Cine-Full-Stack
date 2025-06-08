@@ -8,7 +8,6 @@ import { Usuario } from './auth.service';
   providedIn: 'root'
 })
 export class UserService {
-
   // 🔗 API Configuration
   private readonly API_URL = 'http://localhost:3000/api';
 
@@ -195,13 +194,13 @@ export class UserService {
   getUserFavorites(userId: number): Observable<PeliculaFavorita[]> {
     const headers = this.getAuthHeaders();
     
-    return this.http.get<any>(`${this.API_URL}/favorites`, { headers }).pipe(
+    return this.http.get<any>(`${this.API_URL}/favorites/${userId}`, { headers }).pipe(
       map(response => {
-        console.log('📡 Favoritas obtenidas de BD:', response.data?.length || 0);
+        console.log(`📡 Favoritas obtenidas de BD para usuario ${userId}:`, response.data?.length || 0);
         return (response.data || []).map((fav: any) => this.convertApiFavoriteToLocal(fav));
       }),
       catchError(error => {
-        console.error('❌ Error al obtener favoritas:', error);
+        console.error(`❌ Error al obtener favoritas para usuario ${userId}:`, error);
         // Fallback a localStorage si falla la API
         return of(this.getUserFavoritesLocal(userId));
       })
@@ -213,18 +212,21 @@ export class UserService {
    */
   addToFavorites(userId: number, pelicula: PeliculaFavorita): Observable<boolean> {
     const headers = this.getAuthHeaders();
-    const body = { peliculaId: pelicula.peliculaId };
+    const body = { 
+      peliculaId: pelicula.peliculaId,
+      userId: userId
+    };
 
     return this.http.post<any>(`${this.API_URL}/favorites`, body, { headers }).pipe(
       map(response => {
         if (response.success) {
-          console.log('✅ Película agregada a favoritas en BD:', pelicula.titulo);
+          console.log(`✅ Película agregada a favoritas en BD para usuario ${userId}:`, pelicula.titulo);
           return true;
         }
         return false;
       }),
       catchError(error => {
-        console.error('❌ Error al agregar a favoritas:', error);
+        console.error(`❌ Error al agregar a favoritas para usuario ${userId}:`, error);
         // Fallback a localStorage si falla la API
         return of(this.addToFavoritesLocal(userId, pelicula));
       })
@@ -237,16 +239,16 @@ export class UserService {
   removeFromFavorites(userId: number, peliculaId: number): Observable<boolean> {
     const headers = this.getAuthHeaders();
 
-    return this.http.delete<any>(`${this.API_URL}/favorites/${peliculaId}`, { headers }).pipe(
+    return this.http.delete<any>(`${this.API_URL}/favorites/${userId}/${peliculaId}`, { headers }).pipe(
       map(response => {
         if (response.success) {
-          console.log('✅ Película removida de favoritas en BD');
+          console.log(`✅ Película removida de favoritas en BD para usuario ${userId}`);
           return true;
         }
         return false;
       }),
       catchError(error => {
-        console.error('❌ Error al remover de favoritas:', error);
+        console.error(`❌ Error al remover de favoritas para usuario ${userId}:`, error);
         // Fallback a localStorage si falla la API
         return of(this.removeFromFavoritesLocal(userId, peliculaId));
       })
@@ -259,7 +261,7 @@ export class UserService {
   isInFavorites(userId: number, peliculaId: number): Observable<boolean> {
     const headers = this.getAuthHeaders();
 
-    return this.http.get<any>(`${this.API_URL}/favorites/check/${peliculaId}`, { headers }).pipe(
+    return this.http.get<any>(`${this.API_URL}/favorites/${userId}/check/${peliculaId}`, { headers }).pipe(
       map(response => {
         if (response.success) {
           return response.data.isFavorite;
@@ -267,7 +269,7 @@ export class UserService {
         return false;
       }),
       catchError(error => {
-        console.error('❌ Error al verificar favorita:', error);
+        console.error(`❌ Error al verificar favorita para usuario ${userId}:`, error);
         // Fallback a localStorage
         return of(this.isInFavoritesLocal(userId, peliculaId));
       })
@@ -280,17 +282,170 @@ export class UserService {
   clearAllFavorites(userId: number): Observable<boolean> {
     const headers = this.getAuthHeaders();
 
-    return this.http.delete<any>(`${this.API_URL}/favorites/clear`, { headers }).pipe(
+    return this.http.delete<any>(`${this.API_URL}/favorites/${userId}/clear`, { headers }).pipe(
       map(response => {
         if (response.success) {
-          console.log('✅ Todas las favoritas limpiadas en BD');
+          console.log(`✅ Todas las favoritas limpiadas en BD para usuario ${userId}`);
           return true;
         }
         return false;
       }),
       catchError(error => {
-        console.error('❌ Error al limpiar favoritas:', error);
+        console.error(`❌ Error al limpiar favoritas para usuario ${userId}:`, error);
         return of(false);
+      })
+    );
+  }
+
+  // ==================== MÉTODOS DE HISTORIAL (ACTUALIZADOS PARA API) ====================
+
+  /**
+   * 🔥 NUEVO: Obtener historial del usuario desde la API
+   */
+  getUserHistory(userId: number, options?: HistoryOptions): Observable<HistorialItem[]> {
+    const headers = this.getAuthHeaders();
+    
+    // Construir parámetros de query
+    let params = new URLSearchParams();
+    if (options?.limit) params.append('limit', options.limit.toString());
+    if (options?.offset) params.append('offset', options.offset.toString());
+    if (options?.tipoAccion && options.tipoAccion !== 'todas') params.append('tipoAccion', options.tipoAccion);
+    if (options?.fechaDesde) params.append('fechaDesde', options.fechaDesde);
+    if (options?.fechaHasta) params.append('fechaHasta', options.fechaHasta);
+    
+    const queryString = params.toString();
+    const url = `${this.API_URL}/history${queryString ? '?' + queryString : ''}`;
+    
+    return this.http.get<any>(url, { headers }).pipe(
+      map(response => {
+        console.log(`📡 Historial obtenido de BD para usuario ${userId}:`, response.data?.length || 0);
+        return (response.data || []).map((item: any) => this.convertApiHistoryToLocal(item));
+      }),
+      catchError(error => {
+        console.error(`❌ Error al obtener historial para usuario ${userId}:`, error);
+        // Fallback a localStorage si falla la API
+        return of(this.getUserHistoryLocal(userId));
+      })
+    );
+  }
+
+  /**
+   * 🔥 NUEVO: Agregar al historial usando API
+   */
+  addToHistory(userId: number, historialItem: HistorialItem): Observable<boolean> {
+    const headers = this.getAuthHeaders();
+    const body = {
+      peliculaId: historialItem.peliculaId,
+      tipoAccion: historialItem.tipoAccion
+    };
+
+    return this.http.post<any>(`${this.API_URL}/history`, body, { headers }).pipe(
+      map(response => {
+        if (response.success) {
+          console.log(`✅ Item agregado al historial en BD para usuario ${userId}:`, historialItem.titulo);
+          return true;
+        }
+        return false;
+      }),
+      catchError(error => {
+        console.error(`❌ Error al agregar al historial para usuario ${userId}:`, error);
+        // Fallback a localStorage si falla la API
+        return of(this.addToHistoryLocal(userId, historialItem));
+      })
+    );
+  }
+
+  /**
+   * 🔥 NUEVO: Limpiar historial usando API
+   */
+  clearHistory(userId: number): Observable<boolean> {
+    const headers = this.getAuthHeaders();
+
+    return this.http.delete<any>(`${this.API_URL}/history/clear`, { headers }).pipe(
+      map(response => {
+        if (response.success) {
+          console.log(`✅ Historial limpiado en BD para usuario ${userId}`);
+          return true;
+        }
+        return false;
+      }),
+      catchError(error => {
+        console.error(`❌ Error al limpiar historial para usuario ${userId}:`, error);
+        return of(false);
+      })
+    );
+  }
+
+  /**
+   * 🔥 NUEVO: Obtener estadísticas de historial desde API
+   */
+  getUserHistoryStats(userId: number): Observable<HistoryStats | null> {
+    const headers = this.getAuthHeaders();
+
+    return this.http.get<any>(`${this.API_URL}/history/stats`, { headers }).pipe(
+      map(response => {
+        if (response.success) {
+          console.log(`📊 Estadísticas de historial obtenidas para usuario ${userId}`);
+          return response.data;
+        }
+        return null;
+      }),
+      catchError(error => {
+        console.error(`❌ Error al obtener estadísticas de historial para usuario ${userId}:`, error);
+        return of(null);
+      })
+    );
+  }
+
+  /**
+   * 🔥 NUEVO: Obtener historial de usuario específico (solo admin)
+   */
+  getUserHistoryById(userId: number, options?: HistoryOptions): Observable<HistorialItem[]> {
+    const headers = this.getAuthHeaders();
+    
+    // Construir parámetros de query
+    let params = new URLSearchParams();
+    if (options?.limit) params.append('limit', options.limit.toString());
+    if (options?.offset) params.append('offset', options.offset.toString());
+    
+    const queryString = params.toString();
+    const url = `${this.API_URL}/history/${userId}${queryString ? '?' + queryString : ''}`;
+    
+    return this.http.get<any>(url, { headers }).pipe(
+      map(response => {
+        console.log(`📡 [ADMIN] Historial obtenido para usuario ${userId}:`, response.data?.length || 0);
+        return (response.data || []).map((item: any) => this.convertApiHistoryToLocal(item));
+      }),
+      catchError(error => {
+        console.error(`❌ [ADMIN] Error al obtener historial para usuario ${userId}:`, error);
+        return of([]);
+      })
+    );
+  }
+
+  /**
+   * 🔥 ACTUALIZAR: Obtener estadísticas del usuario (ahora usa API si está disponible)
+   */
+  getUserStats(userId: number): Observable<UserStats> {
+    // Intentar obtener desde API primero
+    return this.getUserHistoryStats(userId).pipe(
+      map(apiStats => {
+        if (apiStats) {
+          // Convertir estadísticas de API a formato local
+          return {
+            totalFavoritas: 0, // Se obtiene de otro método
+            totalVistas: apiStats.totalVistas || 0,
+            generoFavorito: apiStats.generoMasVisto || 'Ninguno',
+            ultimaActividad: apiStats.ultimaActividad || null
+          };
+        } else {
+          // Fallback a datos locales
+          return this.getUserStatsLocal(userId);
+        }
+      }),
+      catchError(error => {
+        console.error('Error al obtener estadísticas, usando datos locales:', error);
+        return of(this.getUserStatsLocal(userId));
       })
     );
   }
@@ -372,26 +527,9 @@ export class UserService {
   }
 
   /**
-   * Convertir favorita de API a formato local
+   * Obtener historial del localStorage (fallback)
    */
-  private convertApiFavoriteToLocal(apiFav: any): PeliculaFavorita {
-    return {
-      peliculaId: apiFav.pelicula_id,
-      titulo: apiFav.titulo,
-      poster: apiFav.poster,
-      genero: apiFav.genero,
-      anio: apiFav.anio,
-      rating: parseFloat(apiFav.rating?.toString() || '0'),
-      fechaAgregada: apiFav.fecha_agregada
-    };
-  }
-
-  // ==================== MÉTODOS LOCALES (HISTORIAL) ====================
-
-  /**
-   * Obtener historial del usuario (local por ahora)
-   */
-  getUserHistory(userId: number): HistorialItem[] {
+  private getUserHistoryLocal(userId: number): HistorialItem[] {
     const historyKey = `history_${userId}`;
     const history = localStorage.getItem(historyKey);
     
@@ -401,7 +539,7 @@ export class UserService {
           new Date(b.fechaVista).getTime() - new Date(a.fechaVista).getTime()
         );
       } catch (error) {
-        console.error('Error al obtener historial:', error);
+        console.error('Error al obtener historial local:', error);
         return [];
       }
     }
@@ -409,11 +547,11 @@ export class UserService {
   }
 
   /**
-   * Agregar al historial (local por ahora)
+   * Agregar al historial local (fallback)
    */
-  addToHistory(userId: number, historialItem: HistorialItem): boolean {
+  private addToHistoryLocal(userId: number, historialItem: HistorialItem): boolean {
     try {
-      const history = this.getUserHistory(userId);
+      const history = this.getUserHistoryLocal(userId);
       
       const yaExiste = history.some(item => 
         item.peliculaId === historialItem.peliculaId &&
@@ -430,38 +568,23 @@ export class UserService {
         const historyKey = `history_${userId}`;
         localStorage.setItem(historyKey, JSON.stringify(historialLimitado));
         
-        console.log('Agregado al historial:', historialItem.titulo);
+        console.log('Agregado al historial local:', historialItem.titulo);
         return true;
       }
       
       return false;
     } catch (error) {
-      console.error('Error al agregar al historial:', error);
+      console.error('Error al agregar al historial local:', error);
       return false;
     }
   }
 
   /**
-   * Limpiar historial
+   * Obtener estadísticas locales (fallback)
    */
-  clearHistory(userId: number): boolean {
-    try {
-      const historyKey = `history_${userId}`;
-      localStorage.removeItem(historyKey);
-      console.log('Historial limpiado');
-      return true;
-    } catch (error) {
-      console.error('Error al limpiar historial:', error);
-      return false;
-    }
-  }
-
-  /**
-   * Obtener estadísticas del usuario
-   */
-  getUserStats(userId: number): UserStats {
-    const favorites = this.getUserFavoritesLocal(userId); // Usar método local para stats
-    const history = this.getUserHistory(userId);
+  private getUserStatsLocal(userId: number): UserStats {
+    const favorites = this.getUserFavoritesLocal(userId);
+    const history = this.getUserHistoryLocal(userId);
     
     // Contar géneros favoritos
     const generos: { [key: string]: number } = {};
@@ -480,6 +603,36 @@ export class UserService {
       totalVistas: history.length,
       generoFavorito: generoFavorito,
       ultimaActividad: history.length > 0 ? history[0].fechaVista : null
+    };
+  }
+
+  /**
+   * Convertir favorita de API a formato local
+   */
+  private convertApiFavoriteToLocal(apiFav: any): PeliculaFavorita {
+    return {
+      peliculaId: apiFav.pelicula_id,
+      titulo: apiFav.titulo,
+      poster: apiFav.poster,
+      genero: apiFav.genero,
+      anio: apiFav.anio,
+      rating: parseFloat(apiFav.rating?.toString() || '0'),
+      fechaAgregada: apiFav.fecha_agregada
+    };
+  }
+
+  /**
+   * Convertir historial de API a formato local
+   */
+  private convertApiHistoryToLocal(apiHistory: any): HistorialItem {
+    return {
+      peliculaId: apiHistory.peliculaId || apiHistory.pelicula_id,
+      titulo: apiHistory.titulo,
+      poster: apiHistory.poster,
+      genero: apiHistory.genero,
+      anio: apiHistory.anio,
+      fechaVista: apiHistory.fechaVista || apiHistory.fecha_vista,
+      tipoAccion: apiHistory.tipoAccion || apiHistory.tipo_accion
     };
   }
 
@@ -527,7 +680,7 @@ export class UserService {
   }
 }
 
-// ==================== INTERFACES ====================
+// ==================== INTERFACES ACTUALIZADAS ====================
 
 export interface UpdateProfileData {
   nombre?: string;
@@ -560,4 +713,25 @@ export interface UserStats {
   totalVistas: number;
   generoFavorito: string;
   ultimaActividad: string | null;
+}
+
+export interface HistoryOptions {
+  limit?: number;
+  offset?: number;
+  tipoAccion?: 'todas' | 'vista' | 'comprada';
+  fechaDesde?: string;
+  fechaHasta?: string;
+}
+
+export interface HistoryStats {
+  totalActividades: number;
+  totalVistas: number;
+  totalCompradas: number;
+  generosDiferentes: number;
+  generoMasVisto: string;
+  ultimaActividad: string | null;
+  actividadUltimos7Dias: Array<{
+    fecha: string;
+    actividades: number;
+  }>;
 }

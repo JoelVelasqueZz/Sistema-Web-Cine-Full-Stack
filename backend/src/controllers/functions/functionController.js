@@ -454,4 +454,4 @@ module.exports = {
   updateFunction,
   deleteFunction,
   getFunctionsByDate
-};
+};  
