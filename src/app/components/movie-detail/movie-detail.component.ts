@@ -5,6 +5,7 @@ import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../services/toast.service';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FunctionService } from '../../services/function.service';
+import { UserService } from '../../services/user.service';
 
 @Component({
   selector: 'app-movie-detail',
@@ -39,7 +40,8 @@ export class MovieDetailComponent implements OnInit {
     private router: Router,
     private sanitizer: DomSanitizer,
     public authService: AuthService,
-    private toastService: ToastService
+    private toastService: ToastService,
+    private userService: UserService
   ) {}
 
   ngOnInit(): void {
@@ -69,45 +71,46 @@ private cargarConteoFunciones(): void {
 
   // 🔧 MÉTODO ACTUALIZADO: Usar solo MovieService
   cargarPelicula(): void {
-    this.cargando = true;
-    this.errorConexion = false;
-    this.peliculaNoEncontrada = false;
+  this.cargando = true;
+  this.errorConexion = false;
+  this.peliculaNoEncontrada = false;
 
-    // Usar MovieService (que ya conecta con la API internamente)
-    this.movieService.getPeliculaById(this.peliculaId).subscribe(
-      (pelicula) => {
-        if (pelicula) {
-          console.log('✅ Película cargada:', pelicula.titulo);
-          this.pelicula = pelicula;
-          this.configurarTrailer();
-          this.cargando = false;
-          this.errorConexion = false;
-          this.peliculaNoEncontrada = false;
-        } else {
-          console.log('⚠️ Película no encontrada');
-          this.peliculaNoEncontrada = true;
-          this.cargando = false;
-          
-          // Redirigir a la lista de películas después de un delay
-          setTimeout(() => {
-            this.router.navigate(['/movies']);
-            this.toastService.showError('Película no encontrada');
-          }, 3000);
-        }
-      },
-      error => {
-        console.error('❌ Error al cargar película:', error);
-        this.errorConexion = true;
+  this.movieService.getPeliculaById(this.peliculaId).subscribe(
+    (pelicula) => {
+      if (pelicula) {
+        console.log('✅ Película cargada:', pelicula.titulo);
+        this.pelicula = pelicula;
+        this.configurarTrailer();
         this.cargando = false;
-        this.toastService.showError('Error al cargar la película');
+        this.errorConexion = false;
+        this.peliculaNoEncontrada = false;
         
-        // Redirigir después de un delay
+        // 🆕 AGREGAR TRACKING AUTOMÁTICO
+        this.trackMovieView();
+        
+      } else {
+        console.log('⚠️ Película no encontrada');
+        this.peliculaNoEncontrada = true;
+        this.cargando = false;
+        
         setTimeout(() => {
           this.router.navigate(['/movies']);
+          this.toastService.showError('Película no encontrada');
         }, 3000);
       }
-    );
-  }
+    },
+    error => {
+      console.error('❌ Error al cargar película:', error);
+      this.errorConexion = true;
+      this.cargando = false;
+      this.toastService.showError('Error al cargar la película');
+      
+      setTimeout(() => {
+        this.router.navigate(['/movies']);
+      }, 3000);
+    }
+  );
+}
 
   // MÉTODO: Configurar URL del trailer
   private configurarTrailer(): void {
@@ -315,6 +318,32 @@ refreshFuncionesCount(): void {
     alert(mensaje);
     console.log('Estadísticas:', stats);
   }
+  private trackMovieView(): void {
+  const currentUser = this.authService.getCurrentUser();
+  
+  if (currentUser && this.pelicula) {
+    const historialItem = {
+      peliculaId: this.peliculaId,
+      titulo: this.pelicula.titulo,
+      poster: this.pelicula.poster,
+      genero: this.pelicula.genero,
+      anio: this.pelicula.anio,
+      fechaVista: new Date().toISOString(),
+      tipoAccion: 'vista' as const
+    };
+
+    this.userService.addToHistory(currentUser.id, historialItem).subscribe({
+      next: (success) => {
+        if (success) {
+          console.log('✅ Vista registrada en historial:', this.pelicula.titulo);
+        }
+      },
+      error: (error) => {
+        console.error('❌ Error al registrar vista:', error);
+      }
+    });
+  }
+}
 
   // ==================== MÉTODOS AUXILIARES ====================
 

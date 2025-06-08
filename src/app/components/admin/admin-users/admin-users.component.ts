@@ -65,7 +65,6 @@ export class AdminUsersComponent implements OnInit {
       this.router.navigate(['/home']);
       return;
     }
-
     this.loadUsers();
   }
 
@@ -152,7 +151,7 @@ export class AdminUsersComponent implements OnInit {
     });
   }
   
-private checkIfStatsComplete(userId: number): void {
+  private checkIfStatsComplete(userId: number): void {
     const stats = this.userStats[userId];
     if (stats) {
       // Solo marcar como completado cuando ambos requests hayan terminado
@@ -161,6 +160,7 @@ private checkIfStatsComplete(userId: number): void {
       stats.lastUpdated = Date.now();
     }
   }
+
   /**
    * Refrescar datos
    */
@@ -330,6 +330,7 @@ private checkIfStatsComplete(userId: number): void {
       }
     });
   }
+
   // ==================== GESTIÓN DE USUARIOS ====================
   
   toggleUserRole(user: Usuario): void {
@@ -623,6 +624,80 @@ private checkIfStatsComplete(userId: number): void {
         }
       });
     }
+  }
+
+  // ==================== 🆕 MÉTODOS PARA VER HISTORIAL DE USUARIO ====================
+  
+  /**
+   * Ver historial detallado de un usuario específico
+   */
+  viewUserHistory(user: Usuario): void {
+    console.log(`📋 [ADMIN] Viendo historial de usuario: ${user.nombre} (ID: ${user.id})`);
+    
+    this.userService.getUserHistoryById(user.id, { limit: 50 }).subscribe({
+      next: (historial) => {
+        console.log(`📊 Historial obtenido: ${historial.length} elementos`);
+        
+        // Mostrar historial en alert
+        this.showUserHistoryAlert(user, historial);
+      },
+      error: (error) => {
+        console.error(`❌ Error al obtener historial para usuario ${user.id}:`, error);
+        this.toastService.showError(`Error al cargar historial de ${user.nombre}`);
+      }
+    });
+  }
+
+  /**
+   * Mostrar historial en un alert (puedes mejorarlo con modal después)
+   */
+  private showUserHistoryAlert(user: Usuario, historial: any[]): void {
+    if (historial.length === 0) {
+      alert(`📋 ${user.nombre} no tiene historial de actividad.`);
+      return;
+    }
+
+    const totalVistas = historial.filter(h => h.tipoAccion === 'vista').length;
+    const totalCompradas = historial.filter(h => h.tipoAccion === 'comprada').length;
+    const generos = [...new Set(historial.map(h => h.genero))];
+    
+    let mensaje = `📋 Historial de ${user.nombre}\n`;
+    mensaje += `═══════════════════════════════\n\n`;
+    
+    mensaje += `📊 RESUMEN:\n`;
+    mensaje += `• Total actividades: ${historial.length}\n`;
+    mensaje += `• Películas vistas: ${totalVistas}\n`;
+    mensaje += `• Películas compradas: ${totalCompradas}\n`;
+    mensaje += `• Géneros diferentes: ${generos.length}\n\n`;
+    
+    mensaje += `🎬 ÚLTIMAS 10 ACTIVIDADES:\n`;
+    mensaje += `─────────────────────────────\n`;
+    
+    historial.slice(0, 10).forEach((item, index) => {
+      const tipo = item.tipoAccion === 'vista' ? '👁️ Vista' : '🛒 Comprada';
+      const fecha = new Date(item.fechaVista).toLocaleDateString('es-ES', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+      const hora = new Date(item.fechaVista).toLocaleTimeString('es-ES', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      
+      mensaje += `${index + 1}. ${tipo} - ${item.titulo}\n`;
+      mensaje += `   📅 ${fecha} a las ${hora}\n`;
+      mensaje += `   🎭 ${item.genero} (${item.anio})\n\n`;
+    });
+    
+    if (historial.length > 10) {
+      mensaje += `... y ${historial.length - 10} actividades más\n\n`;
+    }
+    
+    mensaje += `═══════════════════════════════\n`;
+    mensaje += `📈 Para análisis más detallado, exporta el reporte de usuarios`;
+    
+    alert(mensaje);
   }
 
   // ==================== REPORTES Y EXPORTACIÓN ====================
