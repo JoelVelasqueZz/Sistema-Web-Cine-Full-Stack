@@ -1,7 +1,7 @@
 // src/app/components/admin/admin-coming-soon/admin-coming-soon.component.ts
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
-import { MovieService, ProximoEstreno } from '../../../services/movie.service'; // 🔄 USAR MOVIESERVICE EXISTENTE
+import { MovieService, ProximoEstreno } from '../../../services/movie.service';
 import { AdminService } from '../../../services/admin.service';
 import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
@@ -56,13 +56,11 @@ export class AdminComingSoonComponent implements OnInit, OnDestroy {
     'Amazon Studios', 'Apple TV+'
   ];
 
-  // Nueva propiedad para manejar actores como texto
   actoresTexto: string = '';
-
   private subscriptions = new Subscription();
 
   constructor(
-    private movieService: MovieService, // 🔄 USAR MOVIESERVICE EXISTENTE
+    private movieService: MovieService,
     private adminService: AdminService,
     private authService: AuthService,
     private toastService: ToastService,
@@ -70,29 +68,28 @@ export class AdminComingSoonComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute
   ) {}
 
- ngOnInit(): void {
-  if (!this.authService.isAdmin()) {
-    this.toastService.showError('No tienes permisos para gestionar próximos estrenos');
-    this.router.navigate(['/home']);
-    return;
+  ngOnInit(): void {
+    if (!this.authService.isAdmin()) {
+      this.toastService.showError('No tienes permisos para gestionar próximos estrenos');
+      this.router.navigate(['/home']);
+      return;
+    }
+
+    console.log('🧪 Probando conexión a API...');
+    this.movieService.testComingSoonConnection();
+
+    this.cargarEstrenos();
+    
+    this.subscriptions.add(
+      this.route.queryParams.subscribe(params => {
+        if (params['action'] === 'add') {
+          this.mostrarFormularioAgregar();
+        }
+      })
+    );
+
+    window.addEventListener('adminDataRefresh', this.handleDataRefresh.bind(this));
   }
-
-  // 🧪 TEMPORAL: Probar conexión API
-  console.log('🧪 Probando conexión a API...');
-  this.movieService.testComingSoonConnection();
-
-  this.cargarEstrenos();
-  
-  this.subscriptions.add(
-    this.route.queryParams.subscribe(params => {
-      if (params['action'] === 'add') {
-        this.mostrarFormularioAgregar();
-      }
-    })
-  );
-
-  window.addEventListener('adminDataRefresh', this.handleDataRefresh.bind(this));
-}
 
   ngOnDestroy(): void {
     this.subscriptions.unsubscribe();
@@ -102,42 +99,57 @@ export class AdminComingSoonComponent implements OnInit, OnDestroy {
   // ==================== CARGAR DATOS ====================
 
   cargarEstrenos(): void {
-  this.cargando = true;
-  
-  // 🔄 USAR MÉTODO HÍBRIDO DEL MOVIESERVICE
-  this.movieService.getProximosEstrenosHybrid().subscribe(
-    estrenos => {
-      // ✅ YA NO NECESITAS MAPEAR idx aquí porque ya viene de la API
-      this.estrenos = estrenos;
-      
-      this.aplicarFiltros();
-      this.calcularEstadisticas();
-      this.cargando = false;
-      
-      if (estrenos.length > 0) {
-        this.toastService.showSuccess(`${estrenos.length} próximos estrenos cargados`);
-      } else {
-        this.toastService.showInfo('No hay próximos estrenos programados');
+    this.cargando = true;
+    
+    this.movieService.getProximosEstrenosHybrid().subscribe(
+      estrenos => {
+        console.log('📡 Próximos estrenos cargados:', estrenos.length);
+        this.estrenos = estrenos;
+        
+        this.aplicarFiltros();
+        this.calcularEstadisticas();
+        this.cargando = false;
+        
+        if (estrenos.length > 0) {
+          this.toastService.showSuccess(`${estrenos.length} próximos estrenos cargados`);
+        } else {
+          this.toastService.showInfo('No hay próximos estrenos programados');
+        }
+      },
+      error => {
+        this.cargando = false;
+        this.toastService.showError('Error al cargar próximos estrenos');
+        console.error('Error cargando estrenos:', error);
       }
-    },
-    error => {
-      this.cargando = false;
-      this.toastService.showError('Error al cargar próximos estrenos');
-      console.error('Error cargando estrenos:', error);
-      
-      // 🔄 FALLBACK A DATOS LOCALES
-      console.log('🔄 Usando datos locales como fallback');
-      this.estrenos = this.movieService.getProximosEstrenos(); // Ya incluye idx
-      this.aplicarFiltros();
-      this.calcularEstadisticas();
-    }
-  );
-}
+    );
+  }
 
   // ==================== CRUD OPERATIONS ====================
 
+  guardarEstreno(): void {
+    const validacion = this.movieService.validateProximoEstrenoData(this.estrenoForm);
+    
+    if (!validacion.valid) {
+      this.erroresValidacion = validacion.errors;
+      this.toastService.showError('Por favor corrige los errores en el formulario');
+      return;
+    }
+
+    this.procesando = true;
+    this.erroresValidacion = [];
+    
+    this.actualizarActores();
+    
+    const esAgregar = this.vistaActual === 'agregar';
+    
+    if (esAgregar) {
+      this.crearEstreno();
+    } else {
+      this.actualizarEstreno();
+    }
+  }
+
   private crearEstreno(): void {
-    // 🔄 USAR MOVIESERVICE PARA CREAR
     this.movieService.addProximoEstreno(this.estrenoForm as Omit<ProximoEstreno, 'id'>).subscribe(
       success => {
         this.procesando = false;
@@ -175,7 +187,6 @@ export class AdminComingSoonComponent implements OnInit, OnDestroy {
       return;
     }
     
-    // 🔄 USAR MOVIESERVICE PARA ACTUALIZAR
     this.movieService.updateProximoEstreno(estrenoId, this.estrenoForm).subscribe(
       success => {
         this.procesando = false;
@@ -216,7 +227,6 @@ export class AdminComingSoonComponent implements OnInit, OnDestroy {
         return;
       }
       
-      // 🔄 USAR MOVIESERVICE PARA ELIMINAR
       this.movieService.deleteProximoEstreno(estrenoId).subscribe(
         success => {
           this.procesando = false;
@@ -240,34 +250,7 @@ export class AdminComingSoonComponent implements OnInit, OnDestroy {
     }
   }
 
-  // ==================== VALIDACIÓN ====================
-
-  guardarEstreno(): void {
-    // 🔄 USAR VALIDACIÓN DEL MOVIESERVICE
-    const validacion = this.movieService.validateProximoEstrenoData(this.estrenoForm);
-    
-    if (!validacion.valid) {
-      this.erroresValidacion = validacion.errors;
-      this.toastService.showError('Por favor corrige los errores en el formulario');
-      return;
-    }
-
-    this.procesando = true;
-    this.erroresValidacion = [];
-    
-    // Convertir actores de texto a array
-    this.actualizarActores();
-    
-    const esAgregar = this.vistaActual === 'agregar';
-    
-    if (esAgregar) {
-      this.crearEstreno();
-    } else {
-      this.actualizarEstreno();
-    }
-  }
-
-  // ==================== RESTO DE MÉTODOS (IGUALES QUE ANTES) ====================
+  // ==================== MÉTODOS DE INTERFAZ ====================
 
   private handleDataRefresh(event: any): void {
     if (event.detail.section === 'Gestión de Próximos Estrenos') {
@@ -283,9 +266,6 @@ export class AdminComingSoonComponent implements OnInit, OnDestroy {
     }
   }
 
-  // ... [Resto de métodos igual que en la implementación anterior]
-  // getStatsArray(), getTableColumns(), getActions(), cambiarVista(), etc.
-  
   getStatsArray() {
     return [
       { 
@@ -373,7 +353,6 @@ export class AdminComingSoonComponent implements OnInit, OnDestroy {
         fechaEstreno: this.formatDateForInput(estreno.fechaEstreno)
       };
       
-      // Convertir actores array a texto
       this.actoresTexto = estreno.actores ? estreno.actores.join(', ') : '';
       
       this.estrenoEditandoIndex = indiceReal;
@@ -513,7 +492,8 @@ export class AdminComingSoonComponent implements OnInit, OnDestroy {
     this.imageLoaded = false;
   }
 
-  // Métodos auxiliares
+  // ==================== MÉTODOS DE UTILIDAD ====================
+
   getAniosDisponibles(): number[] {
     const anios = [...new Set(this.estrenos.map(e => this.getAnioFromFecha(e.fechaEstreno)))];
     return anios.sort((a, b) => a - b);
@@ -580,12 +560,25 @@ export class AdminComingSoonComponent implements OnInit, OnDestroy {
     return `${inicio}-${fin} de ${this.estrenosFiltrados.length}`;
   }
 
-  onImageError(event: any): void {
-    this.imageError = true;
-    this.imageLoaded = false;
+  // ==================== MÉTODOS PARA MANEJO DE IMÁGENES ====================
+
+  onImageErrorTable(event: Event): void {
+    const target = event.target as HTMLImageElement;
+    if (target) {
+      target.src = 'https://via.placeholder.com/300x450/cccccc/666666?text=Sin+Imagen';
+    }
   }
 
-  onImageLoad(event: any): void {
+  onImageError(event: Event): void {
+    this.imageError = true;
+    this.imageLoaded = false;
+    const target = event.target as HTMLImageElement;
+    if (target) {
+      target.src = 'https://via.placeholder.com/300x450/cccccc/666666?text=Sin+Imagen';
+    }
+  }
+
+  onImageLoad(event: Event): void {
     this.imageError = false;
     this.imageLoaded = true;
   }

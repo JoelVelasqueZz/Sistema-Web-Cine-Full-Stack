@@ -95,57 +95,76 @@
               </div>
             </div>
 
-           <!-- Navegación principal -->
-<div class="nav-section">
-  <h6 class="text-muted text-uppercase small fw-bold mb-3">
-    <i class="fas fa-bars me-2"></i>Navegación
-  </h6>
-  
-  <div class="list-group list-group-flush">
-    
-    <!-- Dashboard -->
-    <a [routerLink]="['/admin/dashboard']" 
-       routerLinkActive="active"
-       class="list-group-item list-group-item-action border-0 py-3 rounded mb-1"
-       (click)="setCurrentSection('Dashboard')">
-      <i class="fas fa-tachometer-alt me-3 text-primary"></i>
-      Dashboard
-      <span class="badge bg-primary ms-auto">Home</span>
-    </a>
-    
-    <!-- Gestión de Películas -->
-    <a [routerLink]="['/admin/movies']" 
-       routerLinkActive="active"
-       class="list-group-item list-group-item-action border-0 py-3 rounded mb-1"
-       (click)="setCurrentSection('Gestión de Películas')">
-      <i class="fas fa-film me-3 text-success"></i>
-      Gestionar Películas
-      <span class="badge bg-success ms-auto">{{ getTotalMovies() }}</span>
-    </a>
-    
-    <!-- 🆕 NUEVA SECCIÓN: Gestión del Bar -->
-    <a [routerLink]="['/admin/bar']" 
-       routerLinkActive="active"
-       class="list-group-item list-group-item-action border-0 py-3 rounded mb-1"
-       (click)="setCurrentSection('Gestión del Bar')">
-      <i class="fas fa-utensils me-3 text-warning"></i>
-      Gestionar Bar
-      <span class="badge bg-warning text-dark ms-auto">{{ getTotalBarProducts() }}</span>
-    </a>
-    
-    <!-- Gestión de Usuarios -->
-    <a [routerLink]="['/admin/users']" 
-       routerLinkActive="active"
-       class="list-group-item list-group-item-action border-0 py-3 rounded mb-1"
-       (click)="setCurrentSection('Gestión de Usuarios')">
-      <i class="fas fa-users me-3 text-info"></i>
-      Gestionar Usuarios
-      <span class="badge bg-info ms-auto">{{ getTotalUsers() }}</span>
-    </a>
-    
-  </div>
-</div>
-
+            <!-- Navegación principal -->
+            <div class="nav-section">
+              <h6 class="text-muted text-uppercase small fw-bold mb-3">
+                <i class="fas fa-bars me-2"></i>Navegación
+              </h6>
+              
+              <div class="list-group list-group-flush">
+                
+                <!-- Dashboard -->
+                <a [routerLink]="['/admin/dashboard']" 
+                   routerLinkActive="active"
+                   class="list-group-item list-group-item-action border-0 py-3 rounded mb-1"
+                   (click)="setCurrentSection('Dashboard')">
+                  <i class="fas fa-tachometer-alt me-3 text-primary"></i>
+                  Dashboard
+                  <span class="badge bg-primary ms-auto">Home</span>
+                </a>
+                
+                <!-- Gestión de Películas -->
+                <a [routerLink]="['/admin/movies']" 
+                   routerLinkActive="active"
+                   class="list-group-item list-group-item-action border-0 py-3 rounded mb-1"
+                   (click)="setCurrentSection('Gestión de Películas')">
+                  <i class="fas fa-film me-3 text-success"></i>
+                  Gestionar Películas
+                  <span class="badge bg-success ms-auto">{{ getTotalMovies() }}</span>
+                </a>
+                
+                <!-- ✅ Próximos Estrenos -->
+                <a [routerLink]="['/admin/coming-soon']" 
+                   routerLinkActive="active"
+                   class="list-group-item list-group-item-action border-0 py-3 rounded mb-1"
+                   (click)="setCurrentSection('Gestión de Próximos Estrenos')">
+                  <i class="fas fa-calendar-star me-3 text-info"></i>
+                  Próximos Estrenos
+                  <span class="badge bg-info ms-auto">{{ getTotalComingSoon() }}</span>
+                </a>
+                
+                <!-- ✅ Gestión de Funciones -->
+                <a [routerLink]="['/admin/functions']" 
+                   routerLinkActive="active"
+                   class="list-group-item list-group-item-action border-0 py-3 rounded mb-1"
+                   (click)="setCurrentSection('Gestión de Funciones')">
+                  <i class="fas fa-clock me-3 text-primary"></i>
+                  Gestionar Funciones
+                  <span class="badge bg-primary ms-auto">{{ getTotalFunctions() }}</span>
+                </a>
+                
+                <!-- Gestión del Bar -->
+                <a [routerLink]="['/admin/bar']" 
+                   routerLinkActive="active"
+                   class="list-group-item list-group-item-action border-0 py-3 rounded mb-1"
+                   (click)="setCurrentSection('Gestión del Bar')">
+                  <i class="fas fa-utensils me-3 text-warning"></i>
+                  Gestionar Bar
+                  <span class="badge bg-warning text-dark ms-auto">{{ getTotalBarProducts() }}</span>
+                </a>
+                
+                <!-- Gestión de Usuarios -->
+                <a [routerLink]="['/admin/users']" 
+                   routerLinkActive="active"
+                   class="list-group-item list-group-item-action border-0 py-3 rounded mb-1"
+                   (click)="setCurrentSection('Gestión de Usuarios')">
+                  <i class="fas fa-users me-3 text-secondary"></i>
+                  Gestionar Usuarios
+                  <span class="badge bg-secondary ms-auto">{{ getTotalUsers() }}</span>
+                </a>
+                
+              </div>
+            </div>
 
             <!-- Reportes y herramientas -->
             <div class="nav-section mt-4">
@@ -194,34 +213,41 @@
               </div>
             </div>
 
-           <!-- Acciones rápidas -->
-<div class="quick-actions mt-4">
-  <h6 class="text-muted text-uppercase small fw-bold mb-3">
-    <i class="fas fa-bolt me-2"></i>Acciones Rápidas
-  </h6>
-  
-  <div class="d-grid gap-2">
-    <button class="btn btn-outline-primary btn-sm" 
-            (click)="quickAddMovie()">
-      <i class="fas fa-plus me-2"></i>Agregar Película
-    </button>
-    
-    <!-- 🆕 NUEVA ACCIÓN: Agregar Producto del Bar -->
-    <button class="btn btn-outline-warning btn-sm" 
-            (click)="quickAddBarProduct()">
-      <i class="fas fa-utensils me-2"></i>Agregar Producto
-    </button>
-    
-    <button class="btn btn-outline-success btn-sm" 
-            (click)="generateReport()">
-      <i class="fas fa-file-download me-2"></i>Generar Reporte
-    </button>
-    <button class="btn btn-outline-info btn-sm" 
-            (click)="viewSystemStatus()">
-      <i class="fas fa-heartbeat me-2"></i>Estado del Sistema
-    </button>
-  </div>
-</div>
+            <!-- Acciones rápidas -->
+            <div class="quick-actions mt-4">
+              <h6 class="text-muted text-uppercase small fw-bold mb-3">
+                <i class="fas fa-bolt me-2"></i>Acciones Rápidas
+              </h6>
+              
+              <div class="d-grid gap-2">
+                <button class="btn btn-outline-primary btn-sm" 
+                        (click)="quickAddMovie()">
+                  <i class="fas fa-plus me-2"></i>Agregar Película
+                </button>
+                
+                <!-- ✅ Agregar Próximo Estreno -->
+                <button class="btn btn-outline-info btn-sm" 
+                        (click)="quickAddComingSoon()">
+                  <i class="fas fa-calendar-plus me-2"></i>Agregar Estreno
+                </button>
+                
+                <!-- Agregar Producto del Bar -->
+                <button class="btn btn-outline-warning btn-sm" 
+                        (click)="quickAddBarProduct()">
+                  <i class="fas fa-utensils me-2"></i>Agregar Producto
+                </button>
+                
+                <button class="btn btn-outline-success btn-sm" 
+                        (click)="generateReport()">
+                  <i class="fas fa-file-download me-2"></i>Generar Reporte
+                </button>
+                
+                <button class="btn btn-outline-secondary btn-sm" 
+                        (click)="viewSystemStatus()">
+                  <i class="fas fa-heartbeat me-2"></i>Estado del Sistema
+                </button>
+              </div>
+            </div>
 
           </div>
         </div>
@@ -270,19 +296,19 @@
         </a>
       </div>
       <div class="col-3">
+        <a [routerLink]="['/admin/coming-soon']" 
+           routerLinkActive="active"
+           class="d-block text-center py-2 text-decoration-none">
+          <i class="fas fa-calendar-star d-block"></i>
+          <small>Estrenos</small>
+        </a>
+      </div>
+      <div class="col-3">
         <a [routerLink]="['/admin/users']" 
            routerLinkActive="active"
            class="d-block text-center py-2 text-decoration-none">
           <i class="fas fa-users d-block"></i>
           <small>Usuarios</small>
-        </a>
-      </div>
-      <div class="col-3">
-        <a [routerLink]="['/admin/reports']" 
-           routerLinkActive="active"
-           class="d-block text-center py-2 text-decoration-none">
-          <i class="fas fa-chart-bar d-block"></i>
-          <small>Reportes</small>
         </a>
       </div>
     </div>

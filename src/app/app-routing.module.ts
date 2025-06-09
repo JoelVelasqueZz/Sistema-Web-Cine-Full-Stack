@@ -19,14 +19,13 @@ import { HistoryComponent } from './components/history/history.component';
 import { AdminGuard } from './guards/admin.guard';
 import { BarListComponent } from './components/bar-list/bar-list.component';
 import { BarDetailComponent } from './components/bar-detail/bar-detail.component';
-
 //IMPORTAR COMPONENTES ADMIN
 import { AdminLayoutComponent } from './components/admin/admin-layout/admin-layout.component';
 import { AdminDashboardComponent } from './components/admin/admin-dashboard/admin-dashboard.component';
 import { AdminMoviesComponent } from './components/admin/admin-movies/admin-movies.component';
 import { AdminUsersComponent } from './components/admin/admin-users/admin-users.component';
 import { AdminBarComponent } from './components/admin/admin-bar/admin-bar.component';
-
+import { AdminComingSoonComponent } from './components/admin/admin-coming-soon/admin-coming-soon.component';
 // 🆕 NUEVOS COMPONENTES DEL SISTEMA DE PUNTOS
 import { RewardsComponent } from './components/rewards/rewards.component';
 import { FunctionAdminComponent } from './components/admin/function-admin/function-admin.component';
@@ -54,8 +53,18 @@ const routes: Routes = [
   { path: 'buscar/:termino', component: SearchComponent },
   { path: 'login', component: LoginComponent },
   { path: 'register', component: RegisterComponent },
-  { path: 'coming-soon', component: ComingSoonComponent },
-  { path: 'coming-soon/:id', component: ComingSoonDetailComponent },
+  
+  // RUTAS PÚBLICAS PARA PRÓXIMOS ESTRENOS
+  {
+    path: 'coming-soon',
+    component: ComingSoonComponent,
+    data: { title: 'Próximos Estrenos' }
+  },
+  {
+    path: 'coming-soon/:id',
+    component: ComingSoonDetailComponent,
+    data: { title: 'Detalles del Estreno' }
+  },
   
   // 🍿 RUTAS DEL BAR
   { path: 'bar', component: BarListComponent },
@@ -74,11 +83,6 @@ const routes: Routes = [
     component: ProfileComponent,
     canActivate: [AuthGuard]
   },
-  {
-  path: 'admin/functions',
-  component: FunctionAdminComponent,
-  canActivate: [AdminGuard] // Si tienes guard
-  },
   { 
     path: 'favorites', 
     component: FavoritesComponent,
@@ -89,22 +93,52 @@ const routes: Routes = [
     component: HistoryComponent,
     canActivate: [AuthGuard]
   },
-
+  
   // 🔥 RUTAS DE ADMINISTRACIÓN (PROTEGIDAS CON AdminGuard)
   {
     path: 'admin',
     component: AdminLayoutComponent,
     canActivate: [AuthGuard, AdminGuard],
     children: [
-      { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
-      { path: 'dashboard', component: AdminDashboardComponent },
-      { path: 'movies', component: AdminMoviesComponent },
-      { path: 'users', component: AdminUsersComponent },
-      // 🍿 Ruta de administración del bar
-      { path: 'bar', component: AdminBarComponent }
+      {
+        path: '',
+        redirectTo: 'dashboard',
+        pathMatch: 'full'
+      },
+      {
+        path: 'dashboard',
+        component: AdminDashboardComponent,
+        data: { title: 'Dashboard Admin' }
+      },
+      {
+        path: 'movies',
+        component: AdminMoviesComponent,
+        data: { title: 'Gestión de Películas' }
+      },
+      // 🆕 NUEVA RUTA PARA PRÓXIMOS ESTRENOS
+      {
+        path: 'coming-soon',
+        component: AdminComingSoonComponent,
+        data: { title: 'Gestión de Próximos Estrenos' }
+      },
+      {
+        path: 'functions',
+        component: FunctionAdminComponent,
+        data: { title: 'Gestión de Funciones' }
+      },
+      {
+        path: 'users',
+        component: AdminUsersComponent,
+        data: { title: 'Gestión de Usuarios' }
+      },
+      {
+        path: 'bar',
+        component: AdminBarComponent,
+        data: { title: 'Gestión del Bar' }
+      }
     ]
   },
-
+  
   { path: '', redirectTo: '/home', pathMatch: 'full' },
   { path: '**', redirectTo: '/home' }
 ];

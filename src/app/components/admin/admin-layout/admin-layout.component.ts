@@ -1,3 +1,4 @@
+// src/app/components/admin/admin-layout/admin-layout.component.ts
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router, NavigationEnd } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
@@ -10,7 +11,7 @@ import { BarService } from '../../../services/bar.service';
 
 @Component({
   selector: 'app-admin-layout',
-  standalone: false,  // ← ASEGÚRATE DE QUE ESTÉ EN false
+  standalone: false,
   templateUrl: './admin-layout.component.html',
   styleUrls: ['./admin-layout.component.css']
 })
@@ -21,10 +22,12 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
   refreshing: boolean = false;
   lastUpdate: string = '';
   
-  // 🆕 AGREGAR ESTAS PROPIEDADES PARA CACHE
+  // PROPIEDADES PARA CACHE
   private totalMovies: number = 0;
   private totalUsers: number = 0;
   private totalBarProducts: number = 0;
+  private totalComingSoon: number = 0;
+  private totalFunctions: number = 0; // ✅ AGREGADO
   
   private routerSubscription: Subscription = new Subscription();
 
@@ -38,27 +41,22 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    // Verificar permisos de admin
     if (!this.authService.isAdmin()) {
       this.toastService.showError('No tienes permisos para acceder al panel de administración');
       this.router.navigate(['/home']);
       return;
     }
 
-    // 🆕 CARGAR DATOS INICIALES
     this.loadInitialData();
 
-    // Escuchar cambios de ruta para actualizar breadcrumbs
     this.routerSubscription = this.router.events.pipe(
       filter(event => event instanceof NavigationEnd)
     ).subscribe((event: NavigationEnd) => {
       this.updateCurrentSection(event.urlAfterRedirects);
     });
 
-    // Actualizar timestamp inicial
     this.updateLastUpdate();
     
-    // Actualizar cada minuto
     setInterval(() => {
       this.updateLastUpdate();
     }, 60000);
@@ -66,7 +64,7 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
     console.log('Panel de administración inicializado');
   }
 
-  // 🆕 MÉTODO PARA CARGAR DATOS INICIALES
+  // ✅ MÉTODO ACTUALIZADO PARA CARGAR DATOS INICIALES
   private loadInitialData(): void {
     // Cargar total de películas
     this.movieService.getPeliculas().subscribe(
@@ -78,6 +76,26 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
         this.totalMovies = 0;
       }
     );
+
+    // Cargar total de próximos estrenos
+    this.movieService.getProximosEstrenosHybrid().subscribe(
+      estrenos => {
+        this.totalComingSoon = estrenos.length;
+      },
+      error => {
+        console.error('Error al cargar próximos estrenos:', error);
+        this.totalComingSoon = 0;
+      }
+    );
+
+    // ✅ CARGAR TOTAL DE FUNCIONES (simulado por ahora)
+    try {
+      // Valor simulado - puedes implementar un método real después
+      this.totalFunctions = 15;
+    } catch (error) {
+      console.error('Error al cargar funciones:', error);
+      this.totalFunctions = 0;
+    }
 
     // Cargar total de usuarios
     try {
@@ -102,34 +120,31 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
     }
   }
 
-  // ==================== MÉTODOS CORREGIDOS ====================
+  // ==================== MÉTODOS GETTER ====================
 
-  /**
-   * Obtener total de películas (CORREGIDO)
-   */
   getTotalMovies(): number {
     return this.totalMovies;
   }
 
-  /**
-   * Obtener total de usuarios (YA ESTABA BIEN)
-   */
   getTotalUsers(): number {
     return this.totalUsers;
   }
 
-  /**
-   * Obtener total de productos del bar (CORREGIDO)
-   */
   getTotalBarProducts(): number {
     return this.totalBarProducts;
   }
 
-  // ==================== MÉTODO REFRESH CORREGIDO ====================
+  getTotalComingSoon(): number {
+    return this.totalComingSoon;
+  }
 
-  /**
-   * Refrescar datos del sistema (CORREGIDO)
-   */
+  // ✅ MÉTODO FALTANTE AGREGADO
+  getTotalFunctions(): number {
+    return this.totalFunctions;
+  }
+
+  // ==================== MÉTODO REFRESH ACTUALIZADO ====================
+
   refreshData(): void {
     this.refreshing = true;
     
@@ -146,9 +161,137 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
     }, 1500);
   }
 
-  /**
-   * Generar reporte rápido (CORREGIDO)
-   */
+  // ✅ MÉTODO updateCurrentSection ACTUALIZADO
+  private updateCurrentSection(url: string): void {
+    if (url.includes('/admin/dashboard')) {
+      this.currentSection = 'Dashboard';
+    } else if (url.includes('/admin/movies')) {
+      this.currentSection = 'Gestión de Películas';
+    } else if (url.includes('/admin/coming-soon')) {
+      this.currentSection = 'Gestión de Próximos Estrenos';
+    } else if (url.includes('/admin/functions')) { // ✅ AGREGADO
+      this.currentSection = 'Gestión de Funciones';
+    } else if (url.includes('/admin/bar')) {
+      this.currentSection = 'Gestión del Bar';
+    } else if (url.includes('/admin/users')) {
+      this.currentSection = 'Gestión de Usuarios';
+    } else if (url.includes('/admin/reports')) {
+      this.currentSection = 'Reportes';
+    } else if (url.includes('/admin/settings')) {
+      this.currentSection = 'Configuración';
+    } else if (url.includes('/admin/logs')) {
+      this.currentSection = 'Logs del Sistema';
+    } else {
+      this.currentSection = 'Dashboard';
+    }
+  }
+
+  // ==================== MÉTODO quickAddComingSoon ====================
+
+  quickAddComingSoon(): void {
+    this.router.navigate(['/admin/coming-soon'], { 
+      queryParams: { action: 'add' } 
+    });
+    
+    this.toastService.showInfo('Redirigiendo a agregar próximo estreno...');
+  }
+
+  // ✅ MÉTODO getSystemStatus ACTUALIZADO
+  private getSystemStatus(): any {
+    return {
+      peliculas: this.totalMovies,
+      proximosEstrenos: this.totalComingSoon,
+      funciones: this.totalFunctions, // ✅ AGREGADO
+      usuarios: this.totalUsers,
+      productosBar: this.totalBarProducts,
+      estado: 'Operativo',
+      memoria: Math.floor(Math.random() * 40) + 20,
+      ultimaActualizacion: this.lastUpdate
+    };
+  }
+
+  // ✅ MÉTODO viewSystemStatus ACTUALIZADO
+  viewSystemStatus(): void {
+    const status = this.getSystemStatus();
+    
+    const mensaje = `Estado del Sistema:\n\n` +
+                   `• Películas: ${status.peliculas} registradas\n` +
+                   `• Próximos Estrenos: ${status.proximosEstrenos} programados\n` +
+                   `• Funciones: ${status.funciones} programadas\n` + // ✅ AGREGADO
+                   `• Usuarios: ${status.usuarios} activos\n` +
+                   `• Productos del Bar: ${status.productosBar} registrados\n` +
+                   `• Última actualización: ${this.lastUpdate}\n` +
+                   `• Estado: ${status.estado}\n` +
+                   `• Memoria: ${status.memoria}% usado`;
+    
+    alert(mensaje);
+    console.log('Estado del sistema:', status);
+  }
+
+  // ==================== RESTO DE MÉTODOS (SIN CAMBIOS) ====================
+
+  setCurrentSection(section: string): void {
+    this.currentSection = section;
+  }
+
+  getCurrentDateTime(): string {
+    return new Date().toLocaleString('es-ES', {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
+
+  getLastUpdate(): string {
+    return this.lastUpdate;
+  }
+
+  private updateLastUpdate(): void {
+    this.lastUpdate = new Date().toLocaleTimeString('es-ES', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
+
+  getDefaultAvatar(): string {
+    return 'https://ui-avatars.com/api/?name=Admin&background=dc3545&color=fff&size=128';
+  }
+
+  private reloadCurrentSectionData(): void {
+    window.dispatchEvent(new CustomEvent('adminDataRefresh', {
+      detail: { section: this.currentSection }
+    }));
+  }
+
+  logout(): void {
+    const confirmar = confirm('¿Estás seguro de que quieres cerrar sesión?');
+    
+    if (confirmar) {
+      this.authService.logout();
+      this.toastService.showInfo('Sesión cerrada. ¡Hasta pronto!');
+      this.router.navigate(['/home']);
+    }
+  }
+
+  quickAddMovie(): void {
+    this.router.navigate(['/admin/movies'], { 
+      queryParams: { action: 'add' } 
+    });
+    
+    this.toastService.showInfo('Redirigiendo a agregar película...');
+  }
+
+  quickAddBarProduct(): void {
+    this.router.navigate(['/admin/bar'], { 
+      queryParams: { action: 'add' } 
+    });
+    
+    this.toastService.showInfo('Redirigiendo a agregar producto del bar...');
+  }
+
   generateReport(): void {
     this.loading = true;
     
@@ -160,8 +303,10 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
           const reportData = {
             fechaGeneracion: new Date().toLocaleString('es-ES'),
             totalPeliculas: stats.totalPeliculas,
+            totalProximosEstrenos: this.totalComingSoon,
+            totalFunciones: this.totalFunctions, // ✅ AGREGADO
             totalUsuarios: stats.totalUsuarios,
-            totalProductosBar: this.totalBarProducts, // 🆕 AGREGAR BAR
+            totalProductosBar: this.totalBarProducts,
             ingresosMes: stats.ingresosMes,
             ventasRecientes: stats.ventasRecientes.length
           };
@@ -179,162 +324,10 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
     );
   }
 
-  /**
-   * Ver estado del sistema (CORREGIDO)
-   */
-  viewSystemStatus(): void {
-    const status = this.getSystemStatus();
-    
-    const mensaje = `Estado del Sistema:\n\n` +
-                   `• Películas: ${status.peliculas} registradas\n` +
-                   `• Usuarios: ${status.usuarios} activos\n` +
-                   `• Productos del Bar: ${status.productosBar} registrados\n` +
-                   `• Última actualización: ${this.lastUpdate}\n` +
-                   `• Estado: ${status.estado}\n` +
-                   `• Memoria: ${status.memoria}% usado`;
-    
-    alert(mensaje);
-    console.log('Estado del sistema:', status);
-  }
-
-  /**
-   * Obtener estado del sistema (CORREGIDO)
-   */
-  private getSystemStatus(): any {
-    return {
-      peliculas: this.totalMovies,
-      usuarios: this.totalUsers,
-      productosBar: this.totalBarProducts,
-      estado: 'Operativo',
-      memoria: Math.floor(Math.random() * 40) + 20,
-      ultimaActualizacion: this.lastUpdate
-    };
-  }
-
-  // ==================== RESTO DE MÉTODOS (SIN CAMBIOS) ====================
-
-  /**
-   * Actualizar sección actual basada en la URL
-   */
-  private updateCurrentSection(url: string): void {
-    if (url.includes('/admin/dashboard')) {
-      this.currentSection = 'Dashboard';
-    } else if (url.includes('/admin/movies')) {
-      this.currentSection = 'Gestión de Películas';
-    } else if (url.includes('/admin/bar')) {
-      this.currentSection = 'Gestión del Bar';
-    } else if (url.includes('/admin/users')) {
-      this.currentSection = 'Gestión de Usuarios';
-    } else if (url.includes('/admin/reports')) {
-      this.currentSection = 'Reportes';
-    } else if (url.includes('/admin/settings')) {
-      this.currentSection = 'Configuración';
-    } else if (url.includes('/admin/logs')) {
-      this.currentSection = 'Logs del Sistema';
-    } else {
-      this.currentSection = 'Dashboard';
-    }
-  }
-
-  /**
-   * Establecer sección actual manualmente
-   */
-  setCurrentSection(section: string): void {
-    this.currentSection = section;
-  }
-
-  /**
-   * Obtener fecha y hora actual
-   */
-  getCurrentDateTime(): string {
-    return new Date().toLocaleString('es-ES', {
-      weekday: 'short',
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  }
-
-  /**
-   * Obtener timestamp de última actualización
-   */
-  getLastUpdate(): string {
-    return this.lastUpdate;
-  }
-
-  /**
-   * Actualizar timestamp de última actualización
-   */
-  private updateLastUpdate(): void {
-    this.lastUpdate = new Date().toLocaleTimeString('es-ES', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  }
-
-  /**
-   * Obtener avatar por defecto
-   */
-  getDefaultAvatar(): string {
-    return 'https://ui-avatars.com/api/?name=Admin&background=dc3545&color=fff&size=128';
-  }
-
-  /**
-   * Recargar datos de la sección actual
-   */
-  private reloadCurrentSectionData(): void {
-    window.dispatchEvent(new CustomEvent('adminDataRefresh', {
-      detail: { section: this.currentSection }
-    }));
-  }
-
-  /**
-   * Logout del admin
-   */
-  logout(): void {
-    const confirmar = confirm('¿Estás seguro de que quieres cerrar sesión?');
-    
-    if (confirmar) {
-      this.authService.logout();
-      this.toastService.showInfo('Sesión cerrada. ¡Hasta pronto!');
-      this.router.navigate(['/home']);
-    }
-  }
-
-  /**
-   * Agregar película rápido
-   */
-  quickAddMovie(): void {
-    this.router.navigate(['/admin/movies'], { 
-      queryParams: { action: 'add' } 
-    });
-    
-    this.toastService.showInfo('Redirigiendo a agregar película...');
-  }
-
-  /**
-   * Agregar producto del bar rápido
-   */
-  quickAddBarProduct(): void {
-    this.router.navigate(['/admin/bar'], { 
-      queryParams: { action: 'add' } 
-    });
-    
-    this.toastService.showInfo('Redirigiendo a agregar producto del bar...');
-  }
-
-  /**
-   * Verificar si una ruta está activa
-   */
   isRouteActive(route: string): boolean {
     return this.router.url.includes(route);
   }
 
-  /**
-   * Navegar con loading
-   */
   navigateWithLoading(route: string[]): void {
     this.loading = true;
     
@@ -345,32 +338,20 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
     });
   }
 
-  /**
-   * Obtener clase CSS para enlaces activos
-   */
   getActiveClass(route: string): string {
     return this.isRouteActive(route) ? 'active bg-primary text-white' : '';
   }
 
-  /**
-   * Manejar clicks en el sidebar (móvil)
-   */
   onSidebarClick(): void {
     if (window.innerWidth < 768) {
       console.log('Click en sidebar móvil');
     }
   }
 
-  /**
-   * Manejar resize de ventana
-   */
   onWindowResize(): void {
     console.log('Ventana redimensionada');
   }
 
-  /**
-   * Mostrar información de debug (solo desarrollo)
-   */
   showDebugInfo(): void {
     const debugInfo = {
       usuario: this.authService.getCurrentUser(),
