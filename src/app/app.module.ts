@@ -47,6 +47,7 @@ import { RewardsComponent } from './components/rewards/rewards.component';
 import { FunctionAdminComponent } from './components/admin/function-admin/function-admin.component';
 import { FunctionListComponent } from './components/function-list/function-list.component';
 import { FunctionDetailComponent } from './components/function-detail/function-detail.component';
+// 🎬 COMPONENTE STANDALONE
 import { AdminComingSoonComponent } from './components/admin/admin-coming-soon/admin-coming-soon.component';
 
 @NgModule({
@@ -79,19 +80,20 @@ import { AdminComingSoonComponent } from './components/admin/admin-coming-soon/a
     BarDetailComponent, 
     FooterComponent,   
     RewardsComponent,
-    // 🎬 COMPONENTES DE FUNCIONES
+    // 🎬 COMPONENTES DE FUNCIONES (NO standalone)
     FunctionAdminComponent,
     FunctionListComponent,
-    FunctionDetailComponent,
-    AdminComingSoonComponent
+    FunctionDetailComponent
+    // ❌ AdminComingSoonComponent NO VA AQUÍ porque es standalone
   ],
   imports: [
     BrowserModule,
-    ReactiveFormsModule,
-    FormsModule,
     AppRoutingModule,
     BrowserAnimationsModule,
-    HttpClientModule
+    HttpClientModule,
+    ReactiveFormsModule,
+    FormsModule,
+    AdminComingSoonComponent  // ✅ COMPONENTE STANDALONE VA EN IMPORTS
   ],
   providers: [
     AuthService,

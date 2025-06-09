@@ -1,8 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { MovieService } from '../../services/movie.service';
+import { MovieService, ProximoEstreno } from '../../services/movie.service'; // 🔧 USAR INTERFAZ DEL SERVICE
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
-import { ProximoEstreno } from '../coming-soon/coming-soon.component';
 
 @Component({
   selector: 'app-coming-soon-detail',
@@ -30,22 +29,47 @@ export class ComingSoonDetailComponent implements OnInit {
 
   cargarEstreno(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
-    this.estreno = this.movieService.getProximoEstreno(id);
     
-    if (!this.estreno) {
-      this.router.navigate(['/coming-soon']);
-      return;
-    }
-    
-    // Sanitizar URL del trailer
-    if (this.estreno.trailer) {
-      this.trailerUrl = this.sanitizer.bypassSecurityTrustResourceUrl(
-        `https://www.youtube.com/embed/${this.estreno.trailer}?autoplay=0&rel=0`
-      );
-    }
-    
-    // Calcular días restantes
-    this.calcularDiasRestantes();
+    // 🔄 USAR MÉTODO HÍBRIDO API + FALLBACK LOCAL
+    this.movieService.getProximoEstrenoByIdFromAPI(id).subscribe(
+      estreno => {
+        if (estreno) {
+          this.estreno = estreno;
+          
+          // Sanitizar URL del trailer
+          if (this.estreno.trailer) {
+            this.trailerUrl = this.sanitizer.bypassSecurityTrustResourceUrl(
+              `https://www.youtube.com/embed/${this.estreno.trailer}?autoplay=0&rel=0`
+            );
+          }
+          
+          // Calcular días restantes
+          this.calcularDiasRestantes();
+        } else {
+          console.warn('No se encontró el estreno con ID:', id);
+          this.router.navigate(['/coming-soon']);
+        }
+      },
+      error => {
+        console.error('Error cargando estreno:', error);
+        
+        // 🔄 FALLBACK: Intentar con método local si falla API
+        const estrenoLocal = this.movieService.getProximoEstreno(id);
+        if (estrenoLocal) {
+          this.estreno = estrenoLocal;
+          
+          if (this.estreno.trailer) {
+            this.trailerUrl = this.sanitizer.bypassSecurityTrustResourceUrl(
+              `https://www.youtube.com/embed/${this.estreno.trailer}?autoplay=0&rel=0`
+            );
+          }
+          
+          this.calcularDiasRestantes();
+        } else {
+          this.router.navigate(['/coming-soon']);
+        }
+      }
+    );
   }
 
   calcularDiasRestantes(): void {

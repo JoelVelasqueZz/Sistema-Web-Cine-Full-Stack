@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
-import { MovieService } from '../../services/movie.service';
+import { MovieService, ProximoEstreno } from '../../services/movie.service'; // 🔧 USAR INTERFAZ DEL SERVICE
 
 @Component({
   selector: 'app-coming-soon',
@@ -24,8 +24,19 @@ export class ComingSoonComponent implements OnInit {
   }
 
   cargarEstrenos(): void {
-    this.estrenos = this.movieService.getProximosEstrenos();
-    this.organizarPorMes();
+    // 🔄 USAR MÉTODO HÍBRIDO API + FALLBACK LOCAL
+    this.movieService.getProximosEstrenosHybrid().subscribe(
+      estrenos => {
+        this.estrenos = estrenos;
+        this.organizarPorMes();
+      },
+      error => {
+        console.error('Error cargando estrenos:', error);
+        // Fallback a datos locales si falla
+        this.estrenos = this.movieService.getProximosEstrenos();
+        this.organizarPorMes();
+      }
+    );
   }
 
   organizarPorMes(): void {
@@ -52,8 +63,9 @@ export class ComingSoonComponent implements OnInit {
   }
 
   verDetalles(estreno: ProximoEstreno): void {
-    // Navegar a una página de detalles específica para estrenos
-    this.router.navigate(['/coming-soon', estreno.id]);
+    // Navegar usando id o idx para compatibilidad
+    const estrenoId = estreno.id || estreno.idx;
+    this.router.navigate(['/coming-soon', estrenoId]);
   }
 
   formatearFecha(fecha: string): string {
@@ -87,16 +99,4 @@ export class ComingSoonComponent implements OnInit {
   }
 }
 
-export interface ProximoEstreno {
-  id: number;
-  titulo: string;
-  sinopsis: string;
-  poster: string;
-  fechaEstreno: string;
-  estudio: string;
-  genero: string;
-  director: string;
-  trailer: string;
-  duracion: string;
-  actores: string[];
-}
+// 🚫 INTERFAZ ELIMINADA - AHORA SE USA LA DEL MovieService

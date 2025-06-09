@@ -1,12 +1,28 @@
+/* admin-coming-soon.component.css */
 
-/* Header Section */
-.header-section {
-  background: linear-gradient(135deg, #0d6efd 0%, #6610f2 100%);
+/* ==================== LOADING OVERLAY ==================== */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.9);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ==================== HEADER Y ESTADÍSTICAS ==================== */
+.welcome-card {
+  background: linear-gradient(135deg, #0d6efd 0%, #6610f2 100%) !important;
+  border: none;
   position: relative;
   overflow: hidden;
 }
 
-.header-section::before {
+.welcome-card::before {
   content: '';
   position: absolute;
   top: 0;
@@ -17,61 +33,279 @@
   pointer-events: none;
 }
 
-.text-shadow {
-  text-shadow: 2px 2px 8px rgba(0,0,0,0.3);
-}
-
-.header-stats {
-  min-width: 120px;
-}
-
-.month-section {
-  animation: fadeInUp 0.6s ease-out;
-}
-
-.coming-soon-card {
-  transition: all 0.3s ease;
-  overflow: hidden;
-  border-radius: 1rem;
-}
-
-.coming-soon-card:hover {
-  transform: translateY(-10px);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2) !important;
-}
-
-.poster-container {
+.welcome-card h4,
+.welcome-card p {
+  color: white !important;
   position: relative;
+  z-index: 1;
+}
+
+.welcome-card .opacity-75 {
+  opacity: 0.9 !important;
+}
+
+/* ==================== TARJETAS DE ESTADÍSTICAS ==================== */
+.stat-card {
+  transition: all 0.3s ease;
+  border-radius: 15px;
   overflow: hidden;
 }
 
-.poster-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  backdrop-filter: blur(5px);
+.stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
 }
 
-.poster-container:hover .poster-overlay {
-  opacity: 1;
+.stat-number {
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 5px;
 }
 
-.poster-container img {
-  transition: transform 0.3s ease;
+.stat-label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  opacity: 0.9;
 }
 
-.poster-container:hover img {
+.stat-icon {
+  opacity: 0.7;
+}
+
+/* ==================== FILTROS Y HERRAMIENTAS ==================== */
+.card-header {
+  background-color: #f8f9fa !important;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.btn-group .btn {
+  transition: all 0.2s ease;
+}
+
+.btn-group .btn:hover {
+  transform: translateY(-1px);
+}
+
+/* ==================== TABLA ==================== */
+.table-responsive {
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.table th {
+  background-color: #f8f9fa;
+  border-bottom: 2px solid #dee2e6;
+  font-weight: 600;
+  color: #495057;
+  padding: 15px;
+  vertical-align: middle;
+}
+
+.table td {
+  padding: 15px;
+  vertical-align: middle;
+  border-bottom: 1px solid #f1f3f4;
+}
+
+.table tbody tr {
+  transition: all 0.2s ease;
+}
+
+.table tbody tr:hover {
+  background-color: #f8f9fa;
+  transform: scale(1.01);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* ==================== IMÁGENES EN TABLA ==================== */
+.table img {
+  transition: all 0.3s ease;
+  border-radius: 8px;
+  border: 2px solid #dee2e6;
+}
+
+.table img:hover {
   transform: scale(1.1);
+  border-color: #0d6efd;
+  box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
 }
 
+/* ==================== BADGES ==================== */
+.badge {
+  font-weight: 500;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+}
+
+.badge.bg-purple {
+  background-color: #6f42c1 !important;
+}
+
+.badge.bg-orange {
+  background-color: #fd7e14 !important;
+}
+
+.badge.bg-indigo {
+  background-color: #6610f2 !important;
+}
+
+/* ==================== BOTONES DE ACCIÓN ==================== */
+.btn-group-sm .btn {
+  transition: all 0.2s ease;
+  margin: 0 2px;
+  border-radius: 6px;
+}
+
+.btn-group-sm .btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.btn-outline-info:hover {
+  transform: translateY(-2px) !important;
+}
+
+.btn-outline-primary:hover {
+  transform: translateY(-2px) !important;
+}
+
+.btn-outline-danger:hover {
+  transform: translateY(-2px) !important;
+}
+
+/* ==================== PAGINACIÓN ==================== */
+.pagination .page-link {
+  border-radius: 8px;
+  margin: 0 2px;
+  color: #0d6efd;
+  border: 1px solid #dee2e6;
+  transition: all 0.2s ease;
+}
+
+.pagination .page-link:hover {
+  background-color: #0d6efd;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(13, 110, 253, 0.3);
+}
+
+.pagination .page-item.active .page-link {
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+  box-shadow: 0 2px 4px rgba(13, 110, 253, 0.3);
+}
+
+/* ==================== FORMULARIOS ==================== */
+.form-control {
+  border-radius: 8px;
+  border: 1px solid #ced4da;
+  transition: all 0.2s ease;
+}
+
+.form-control:focus {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+  transform: translateY(-1px);
+}
+
+.form-select {
+  border-radius: 8px;
+  border: 1px solid #ced4da;
+  transition: all 0.2s ease;
+}
+
+.form-select:focus {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+/* ==================== VISTA PREVIA DE POSTER ==================== */
+.poster-preview-container img {
+  transition: all 0.3s ease;
+  border-radius: 8px;
+}
+
+.poster-preview-container img:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* ==================== MODAL ==================== */
+.modal-content {
+  border-radius: 15px;
+  border: none;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+  border-radius: 15px 15px 0 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.modal-footer {
+  border-top: 1px solid #dee2e6;
+  border-radius: 0 0 15px 15px;
+}
+
+/* ==================== ESTADOS SIN DATOS ==================== */
+.text-center .fa-calendar-times {
+  color: #6c757d;
+  margin-bottom: 20px;
+}
+
+/* ==================== RESPONSIVO ==================== */
+@media (max-width: 768px) {
+  .welcome-card {
+    text-align: center;
+  }
+  
+  .welcome-card .d-flex {
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  .stat-card {
+    margin-bottom: 15px;
+  }
+  
+  .table-responsive {
+    font-size: 0.9rem;
+  }
+  
+  .btn-group {
+    flex-direction: column;
+    gap: 5px;
+  }
+  
+  .btn-group .btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 576px) {
+  .stat-number {
+    font-size: 2rem;
+  }
+  
+  .stat-label {
+    font-size: 0.8rem;
+  }
+  
+  .table td,
+  .table th {
+    padding: 10px 8px;
+    font-size: 0.85rem;
+  }
+  
+  .table img {
+    width: 40px;
+    height: 60px;
+  }
+}
+
+/* ==================== ANIMACIONES ==================== */
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -83,25 +317,24 @@
   }
 }
 
-.movie-info {
-  font-size: 0.9rem;
+.card {
+  animation: fadeInUp 0.6s ease-out;
 }
 
-.card-footer {
-  background: rgba(248, 249, 250, 0.8);
+/* ==================== FONDO GRADIENTE PERSONALIZADO ==================== */
+.bg-gradient-primary {
+  background: linear-gradient(135deg, #0d6efd 0%, #6610f2 100%) !important;
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-  .display-4 {
-    font-size: 2rem;
-  }
-  
-  .header-section {
-    text-align: center;
-  }
-  
-  .header-section .d-flex {
-    flex-direction: column;
-  }
+/* ==================== BORDES Y SOMBRAS ==================== */
+.shadow-sm {
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+}
+
+.shadow-lg {
+  box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.175) !important;
+}
+
+.rounded-3 {
+  border-radius: 0.5rem !important;
 }

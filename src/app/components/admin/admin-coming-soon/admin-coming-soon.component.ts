@@ -1,7 +1,10 @@
 // src/app/components/admin/admin-coming-soon/admin-coming-soon.component.ts
 import { Component, OnInit, OnDestroy } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { RouterModule } from '@angular/router';
 import { Router, ActivatedRoute } from '@angular/router';
-import { MovieService, ProximoEstreno } from '../../../services/movie.service';
+import { MovieService, ProximoEstreno } from '../../../services/movie.service'; // 🔧 USAR INTERFAZ DEL SERVICE
 import { AdminService } from '../../../services/admin.service';
 import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
@@ -9,6 +12,13 @@ import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-admin-coming-soon',
+  standalone: true,  // ✅ CONVERTIDO A STANDALONE
+  imports: [         // ✅ IMPORTS NECESARIOS PARA STANDALONE
+    CommonModule,
+    FormsModule,
+    ReactiveFormsModule,
+    RouterModule
+  ],
   templateUrl: './admin-coming-soon.component.html',
   styleUrls: ['./admin-coming-soon.component.css']
 })
@@ -101,6 +111,7 @@ export class AdminComingSoonComponent implements OnInit, OnDestroy {
   cargarEstrenos(): void {
     this.cargando = true;
     
+    // 🔄 USAR MÉTODO HÍBRIDO API + FALLBACK LOCAL
     this.movieService.getProximosEstrenosHybrid().subscribe(
       estrenos => {
         console.log('📡 Próximos estrenos cargados:', estrenos.length);
@@ -179,6 +190,7 @@ export class AdminComingSoonComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // 🔧 USAR id O idx PARA COMPATIBILIDAD
     const estrenoId = estrenoSeleccionado.id || estrenoSeleccionado.idx;
     
     if (!estrenoId || estrenoId === 0) {
@@ -219,6 +231,7 @@ export class AdminComingSoonComponent implements OnInit, OnDestroy {
         return;
       }
 
+      // 🔧 USAR id O idx PARA COMPATIBILIDAD
       const estrenoId = estrenoSeleccionado.id || estrenoSeleccionado.idx;
       
       if (!estrenoId || estrenoId === 0) {
@@ -385,6 +398,7 @@ export class AdminComingSoonComponent implements OnInit, OnDestroy {
   }
 
   verEstreno(estreno: ProximoEstreno): void {
+    // 🔧 USAR id O idx PARA COMPATIBILIDAD
     const estrenoId = estreno.id || estreno.idx;
     
     if (estrenoId) {
