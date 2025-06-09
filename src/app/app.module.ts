@@ -47,6 +47,7 @@ import { RewardsComponent } from './components/rewards/rewards.component';
 import { FunctionAdminComponent } from './components/admin/function-admin/function-admin.component';
 import { FunctionListComponent } from './components/function-list/function-list.component';
 import { FunctionDetailComponent } from './components/function-detail/function-detail.component';
+import { AdminComingSoonComponent } from './components/admin/admin-coming-soon/admin-coming-soon.component';
 
 @NgModule({
   declarations: [
@@ -81,7 +82,8 @@ import { FunctionDetailComponent } from './components/function-detail/function-d
     // 🎬 COMPONENTES DE FUNCIONES
     FunctionAdminComponent,
     FunctionListComponent,
-    FunctionDetailComponent
+    FunctionDetailComponent,
+    AdminComingSoonComponent
   ],
   imports: [
     BrowserModule,

@@ -50,8 +50,11 @@ router.use('/functions', require('./functions'));
 // Rutas de favoritas
 router.use('/favorites', require('./favorites'));
 
-// 🆕 Rutas de historial
+// Rutas de historial
 router.use('/history', require('./history'));
+
+// 🆕 AGREGAR ESTA LÍNEA - Rutas de próximos estrenos
+router.use('/coming-soon', require('./comingSoon'));
 
 // Aquí iremos agregando las otras rutas (COMENTADAS)
 // router.use('/bar', require('./bar'));
