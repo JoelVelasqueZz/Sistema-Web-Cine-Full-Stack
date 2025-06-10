@@ -189,60 +189,171 @@ export class AdminBarComponent implements OnInit, OnDestroy {
   // ==================== CRUD DE PRODUCTOS ====================
 
   async guardarProducto(): Promise<void> {
-    const validacion = this.barService.validateProductoData(this.productoForm as ProductoBar);
+  console.log('🔍 Estado actual del formulario:', this.productoForm);
+  
+  // Validación mejorada
+  const validacion = this.barService.validateProductoData(this.productoForm as ProductoBar);
+  
+  if (!validacion.valid) {
+    console.log('❌ Errores de validación:', validacion.errors);
+    this.erroresValidacion = validacion.errors;
+    this.toastService.showError('Por favor corrige los errores en el formulario');
+    return;
+  }
+
+  // Limpiar datos antes de enviar
+  const productoParaEnviar = this.limpiarFormularioParaEnvio();
+  console.log('📤 Datos que se enviarán:', productoParaEnviar);
+
+  this.procesando = true;
+  this.erroresValidacion = [];
+
+  try {
+    const esAgregar = this.vistaActual === 'agregar';
     
-    if (!validacion.valid) {
-      this.erroresValidacion = validacion.errors;
-      this.toastService.showError('Por favor corrige los errores en el formulario');
-      return;
-    }
-
-    this.procesando = true;
-    this.erroresValidacion = [];
-
-    try {
-      const esAgregar = this.vistaActual === 'agregar';
+    if (esAgregar) {
+      console.log('➕ Creando nuevo producto...');
       
-      if (esAgregar) {
-        // Crear nuevo producto
-        const sub = this.barService.addProducto(this.productoForm as ProductoCreateRequest).subscribe({
-          next: (resultado) => {
-            if (resultado) {
-              this.toastService.showSuccess('Producto agregado exitosamente');
-              this.cargarProductos();
-              this.vistaActual = 'lista';
-              this.router.navigate(['/admin/bar']);
-            }
-            this.procesando = false;
-          },
-          error: (error) => {
-            console.error('Error al crear producto:', error);
-            this.toastService.showError('Error al crear el producto');
-            this.procesando = false;
+      const sub = this.barService.addProducto(productoParaEnviar).subscribe({
+        next: (resultado) => {
+          console.log('✅ Producto creado exitosamente:', resultado);
+          if (resultado) {
+            this.toastService.showSuccess('Producto agregado exitosamente');
+            this.cargarProductos();
+            this.vistaActual = 'lista';
+            this.router.navigate(['/admin/bar']);
           }
-        });
-        this.subscriptions.add(sub);
-        
-      } else {
-        // Actualizar producto existente
-        const resultado = this.barService.updateProducto(this.productoEditandoId, this.productoForm);
-        
-        if (resultado) {
-          this.toastService.showSuccess('Producto actualizado exitosamente');
-          this.cargarProductos();
-          this.vistaActual = 'lista';
-        } else {
-          this.toastService.showError('Error al actualizar el producto');
+          this.procesando = false;
+        },
+        error: (error) => {
+          console.error('❌ Error completo al crear producto:', error);
+          
+          let mensajeError = 'Error al crear el producto';
+          
+          // Manejar diferentes tipos de error
+          if (error.status === 400) {
+            if (error.error && error.error.errors) {
+              // Errores de validación del backend
+              if (Array.isArray(error.error.errors)) {
+                this.erroresValidacion = error.error.errors.map((err: any) => err.msg || err.message || err);
+              } else {
+                this.erroresValidacion = [error.error.errors];
+              }
+              mensajeError = 'Datos del formulario inválidos';
+            } else if (error.error && error.error.message) {
+              mensajeError = error.error.message;
+            }
+          } else if (error.status === 401) {
+            mensajeError = 'No tienes permisos para realizar esta acción';
+          } else if (error.status === 500) {
+            mensajeError = 'Error interno del servidor';
+          } else if (error.status === 0) {
+            mensajeError = 'No se puede conectar con el servidor';
+          }
+          
+          this.toastService.showError(mensajeError);
+          this.procesando = false;
         }
-        this.procesando = false;
-      }
+      });
+      this.subscriptions.add(sub);
       
-    } catch (error) {
-      console.error('Error al guardar producto:', error);
-      this.toastService.showError('Error inesperado al guardar el producto');
+    } else {
+      // Actualizar producto existente
+      console.log('✏️ Actualizando producto existente...');
+      const resultado = this.barService.updateProducto(this.productoEditandoId, productoParaEnviar);
+      
+      if (resultado) {
+        this.toastService.showSuccess('Producto actualizado exitosamente');
+        this.cargarProductos();
+        this.vistaActual = 'lista';
+      } else {
+        this.toastService.showError('Error al actualizar el producto');
+      }
       this.procesando = false;
     }
+    
+  } catch (error) {
+    console.error('❌ Error inesperado:', error);
+    this.toastService.showError('Error inesperado al guardar el producto');
+    this.procesando = false;
   }
+}
+private limpiarFormularioParaEnvio(): ProductoCreateRequest {
+  const form = this.productoForm;
+  
+  const resultado: any = {
+    nombre: (form.nombre || '').trim(),
+    descripcion: (form.descripcion || '').trim(),
+    precio: Number(form.precio) || 0,
+    categoria: (form.categoria || '').trim(),
+    disponible: Boolean(form.disponible !== false), // default true
+    es_combo: Boolean(form.es_combo)
+  };
+
+  // Solo incluir imagen si tiene valor
+  if (form.imagen && form.imagen.trim()) {
+    resultado.imagen = form.imagen.trim();
+  }
+
+  // Solo incluir descuento si es combo y tiene valor
+  if (form.es_combo && form.descuento !== undefined && Number(form.descuento) >= 0) {
+    resultado.descuento = Number(form.descuento);
+  }
+  
+  // 🔧 IMPORTANTE: Solo incluir arrays si tienen elementos válidos
+  const tamanosLimpios = this.limpiarTamanos(form.tamanos || []);
+  if (tamanosLimpios.length > 0) {
+    resultado.tamanos = tamanosLimpios;
+  }
+
+  const extrasLimpios = this.limpiarExtras(form.extras || []);
+  if (extrasLimpios.length > 0) {
+    resultado.extras = extrasLimpios;
+  }
+
+  const comboItemsLimpios = this.limpiarComboItems(form.combo_items || []);
+  if (comboItemsLimpios.length > 0) {
+    resultado.combo_items = comboItemsLimpios;
+  }
+
+  return resultado;
+}
+
+/**
+ * 🔧 MÉTODOS AUXILIARES para limpiar arrays
+ */
+private limpiarTamanos(tamanos: any[]): any[] {
+  if (!Array.isArray(tamanos)) return [];
+  
+  return tamanos
+    .filter(t => t && t.nombre && t.nombre.trim() && t.precio !== undefined && t.precio >= 0)
+    .map(t => ({
+      nombre: String(t.nombre).trim(),
+      precio: Number(t.precio)
+    }));
+}
+
+private limpiarExtras(extras: any[]): any[] {
+  if (!Array.isArray(extras)) return [];
+  
+  return extras
+    .filter(e => e && e.nombre && e.nombre.trim() && e.precio !== undefined && e.precio >= 0)
+    .map(e => ({
+      nombre: String(e.nombre).trim(),
+      precio: Number(e.precio)
+    }));
+}
+
+private limpiarComboItems(comboItems: any[]): any[] {
+  if (!Array.isArray(comboItems)) return [];
+  
+  return comboItems
+    .filter(c => c && c.item_nombre && c.item_nombre.trim())
+    .map(c => ({
+      item_nombre: String(c.item_nombre).trim()
+    }));
+}
+
 
   confirmarEliminarProducto(producto: ProductoBar): void {
     this.productoParaEliminar = producto.id;
@@ -387,22 +498,23 @@ export class AdminBarComponent implements OnInit, OnDestroy {
   // ==================== UTILIDADES ====================
 
   private resetearFormulario(): void {
-    this.productoForm = {
-      nombre: '',
-      descripcion: '',
-      precio: 0,
-      categoria: '',
-      imagen: '',
-      disponible: true,
-      es_combo: false,
-      tamanos: [],
-      extras: [],
-      combo_items: []
-    };
-    this.productoEditandoId = -1;
-    this.erroresValidacion = [];
-    this.resetearEstadosImagen();
-  }
+  this.productoForm = {
+    nombre: '',
+    descripcion: '',
+    precio: 0,
+    categoria: '',
+    imagen: '',
+    disponible: true,
+    es_combo: false,
+    descuento: 0,
+    tamanos: [],     // Array vacío, no undefined
+    extras: [],      // Array vacío, no undefined  
+    combo_items: []  // Array vacío, no undefined
+  };
+  this.productoEditandoId = -1;
+  this.erroresValidacion = [];
+  this.resetearEstadosImagen();
+}
 
   private resetearEstadosImagen(): void {
     this.imageError = false;
@@ -457,35 +569,37 @@ export class AdminBarComponent implements OnInit, OnDestroy {
 
   // ==================== GESTIÓN DE ARRAYS DINÁMICOS ====================
 
-  agregarTamano(): void {
-    if (!this.productoForm.tamanos) {
-      this.productoForm.tamanos = [];
-    }
-    this.productoForm.tamanos.push({ nombre: '', precio: 0 });
+ agregarTamano(): void {
+  if (!this.productoForm.tamanos) {
+    this.productoForm.tamanos = [];
   }
+  this.productoForm.tamanos.push({ nombre: '', precio: 0 });
+  console.log('➕ Tamaño agregado. Total:', this.productoForm.tamanos.length);
+}
 
   removerTamano(index: number): void {
     this.productoForm.tamanos?.splice(index, 1);
   }
 
-  agregarExtra(): void {
-    if (!this.productoForm.extras) {
-      this.productoForm.extras = [];
-    }
-    this.productoForm.extras.push({ nombre: '', precio: 0 });
+agregarExtra(): void {
+  if (!this.productoForm.extras) {
+    this.productoForm.extras = [];
   }
+  this.productoForm.extras.push({ nombre: '', precio: 0 });
+  console.log('➕ Extra agregado. Total:', this.productoForm.extras.length);
+}
 
   removerExtra(index: number): void {
     this.productoForm.extras?.splice(index, 1);
   }
 
-  agregarItemCombo(): void {
-    if (!this.productoForm.combo_items) {
-      this.productoForm.combo_items = [];
-    }
-    this.productoForm.combo_items.push({ item_nombre: '' });
+ agregarItemCombo(): void {
+  if (!this.productoForm.combo_items) {
+    this.productoForm.combo_items = [];
   }
-
+  this.productoForm.combo_items.push({ item_nombre: '' });
+  console.log('➕ Item combo agregado. Total:', this.productoForm.combo_items.length);
+}
   removerItemCombo(index: number): void {
     this.productoForm.combo_items?.splice(index, 1);
   }

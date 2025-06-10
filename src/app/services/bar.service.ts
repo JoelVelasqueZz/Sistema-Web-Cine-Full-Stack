@@ -235,29 +235,134 @@ export class BarService {
    * Crear nuevo producto (solo admin)
    */
   addProducto(producto: ProductoCreateRequest): Observable<boolean> {
-    if (!this.authService.isAdmin()) {
-      return throwError(() => new Error('No tienes permisos de administrador'));
-    }
-
-    const headers = this.getAuthHeaders();
-
-    return this.http.post<APIResponse<ProductoBar>>(this.API_URL, producto, { headers }).pipe(
-      map(response => {
-        if (response.success) {
-          // Actualizar cache local
-          const nuevoProducto = this.adaptarProductoDesdeAPI(response.data);
-          this.productosCache.push(nuevoProducto);
-          this.productosSubject.next(this.productosCache);
-          
-          this.toastService.showSuccess(`Producto "${nuevoProducto.nombre}" creado exitosamente`);
-          return true;
-        }
-        throw new Error(response.message || 'Error al crear producto');
-      }),
-      catchError(this.handleError('Error al crear producto'))
-    );
+  if (!this.authService.isAdmin()) {
+    return throwError(() => new Error('No tienes permisos de administrador'));
   }
 
+  // 🔧 LIMPIEZA Y VALIDACIÓN DE DATOS ANTES DE ENVIAR
+  const productoLimpio = this.limpiarDatosParaBackend(producto);
+  
+  console.log('📤 Datos que se enviarán al backend:', productoLimpio);
+
+  const headers = this.getAuthHeaders();
+
+  return this.http.post<APIResponse<ProductoBar>>(this.API_URL, productoLimpio, { headers }).pipe(
+    tap(response => {
+      console.log('✅ Respuesta del servidor:', response);
+    }),
+    map(response => {
+      if (response.success) {
+        // Actualizar cache local
+        const nuevoProducto = this.adaptarProductoDesdeAPI(response.data);
+        this.productosCache.push(nuevoProducto);
+        this.productosSubject.next(this.productosCache);
+        
+        this.toastService.showSuccess(`Producto "${nuevoProducto.nombre}" creado exitosamente`);
+        return true;
+      }
+      throw new Error(response.message || 'Error al crear producto');
+    }),
+    catchError(error => {
+      console.error('❌ Error completo:', error);
+      
+      // Mostrar detalles específicos del error
+      if (error.status === 400) {
+        console.error('📋 Detalles del error 400:', error.error);
+        
+        if (error.error && error.error.errors) {
+          console.error('🔍 Errores de validación:', error.error.errors);
+        }
+      }
+      
+      return this.handleError('Error al crear producto')(error);
+    })
+  );
+}
+private limpiarDatosParaBackend(producto: ProductoCreateRequest): any {
+  console.log('🧹 Limpiando datos de entrada:', producto);
+  
+  // Crear objeto base con campos requeridos
+  const productoLimpio: any = {
+    nombre: String(producto.nombre || '').trim(),
+    descripcion: String(producto.descripcion || '').trim(),
+    precio: Number(producto.precio) || 0,
+    categoria: String(producto.categoria || '').trim(),
+    disponible: Boolean(producto.disponible !== false), // default true
+    es_combo: Boolean(producto.es_combo)
+  };
+
+  // Solo incluir campos opcionales si tienen valor válido
+  if (producto.imagen && String(producto.imagen).trim()) {
+    productoLimpio.imagen = String(producto.imagen).trim();
+  }
+
+  // Solo incluir descuento si es combo y tiene valor
+  if (producto.es_combo && producto.descuento !== undefined && Number(producto.descuento) >= 0) {
+    productoLimpio.descuento = Number(producto.descuento);
+  }
+
+  // 🔧 IMPORTANTE: Solo incluir arrays si tienen elementos válidos
+  // NO enviar arrays vacíos al backend
+  
+  if (producto.tamanos && Array.isArray(producto.tamanos)) {
+    const tamanosValidos = producto.tamanos.filter(t => 
+      t && 
+      typeof t === 'object' && 
+      t.nombre && 
+      String(t.nombre).trim() && 
+      t.precio !== undefined && 
+      Number(t.precio) >= 0
+    );
+    
+    if (tamanosValidos.length > 0) {
+      productoLimpio.tamanos = tamanosValidos.map(t => ({
+        nombre: String(t.nombre).trim(),
+        precio: Number(t.precio)
+      }));
+    }
+    // Si no hay tamaños válidos, NO incluir el campo en absoluto
+  }
+
+  if (producto.extras && Array.isArray(producto.extras)) {
+    const extrasValidos = producto.extras.filter(e => 
+      e && 
+      typeof e === 'object' && 
+      e.nombre && 
+      String(e.nombre).trim() && 
+      e.precio !== undefined && 
+      Number(e.precio) >= 0
+    );
+    
+    if (extrasValidos.length > 0) {
+      productoLimpio.extras = extrasValidos.map(e => ({
+        nombre: String(e.nombre).trim(),
+        precio: Number(e.precio)
+      }));
+    }
+    // Si no hay extras válidos, NO incluir el campo
+  }
+
+  if (producto.combo_items && Array.isArray(producto.combo_items)) {
+    const comboItemsValidos = producto.combo_items.filter(c => 
+      c && 
+      typeof c === 'object' && 
+      c.item_nombre && 
+      String(c.item_nombre).trim()
+    );
+    
+    if (comboItemsValidos.length > 0) {
+      productoLimpio.combo_items = comboItemsValidos.map(c => ({
+        item_nombre: String(c.item_nombre).trim()
+      }));
+    }
+    // Si no hay items válidos, NO incluir el campo
+  }
+
+  console.log('✅ Datos limpiados para enviar:', productoLimpio);
+  console.log('📊 Campos incluidos:', Object.keys(productoLimpio));
+  
+  return productoLimpio;
+}
   /**
    * Actualizar producto existente (solo admin)
    */
@@ -350,41 +455,65 @@ export class BarService {
    * Validar datos de producto
    */
   validateProductoData(producto: Partial<ProductoBar>): { valid: boolean; errors: string[] } {
-    const errors: string[] = [];
+  const errors: string[] = [];
 
-    // Validaciones requeridas
-    if (!producto.nombre?.trim()) {
-      errors.push('El nombre es requerido');
+  // Validaciones básicas que coinciden con el backend
+  if (!producto.nombre || !String(producto.nombre).trim()) {
+    errors.push('El nombre es requerido');
+  } else if (String(producto.nombre).trim().length < 2) {
+    errors.push('El nombre debe tener al menos 2 caracteres');
+  }
+
+  if (!producto.descripcion || !String(producto.descripcion).trim()) {
+    errors.push('La descripción es requerida');
+  }
+
+  if (!producto.categoria || !String(producto.categoria).trim()) {
+    errors.push('La categoría es requerida');
+  }
+
+  if (!producto.precio || Number(producto.precio) <= 0) {
+    errors.push('El precio debe ser mayor a 0');
+  }
+
+  // Validaciones opcionales solo si los campos existen
+  if (producto.imagen && String(producto.imagen).trim()) {
+    const imagen = String(producto.imagen).trim();
+    if (!this.isValidImageUrl(imagen)) {
+      errors.push('La URL de la imagen no es válida');
     }
+  }
 
-    if (!producto.descripcion?.trim()) {
-      errors.push('La descripción es requerida');
-    }
-
-    if (!producto.categoria?.trim()) {
-      errors.push('La categoría es requerida');
-    }
-
-    if (!producto.precio || producto.precio <= 0) {
-      errors.push('El precio debe ser mayor a 0');
-    }
-
-    // Validar categorías disponibles
-    const categoriasValidas = ['bebidas', 'snacks', 'dulces', 'combos', 'comida', 'helados', 'otros'];
-    if (producto.categoria && !categoriasValidas.includes(producto.categoria.toLowerCase())) {
-      errors.push('La categoría seleccionada no es válida');
-    }
-
-    // Validar descuento para combos
-    if (producto.es_combo && producto.descuento && producto.descuento > producto.precio!) {
+  // Validar descuento solo si es combo
+  if (producto.es_combo && producto.descuento !== undefined) {
+    const descuento = Number(producto.descuento);
+    if (descuento < 0) {
+      errors.push('El descuento no puede ser negativo');
+    } else if (descuento > Number(producto.precio || 0)) {
       errors.push('El descuento no puede ser mayor al precio base');
     }
-
-    return {
-      valid: errors.length === 0,
-      errors
-    };
   }
+
+  return {
+    valid: errors.length === 0,
+    errors
+  };
+}
+private isValidImageUrl(url: string): boolean {
+  try {
+    // Verificar si es una ruta local válida
+    if (url.startsWith('assets/')) {
+      const validExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+      return validExtensions.some(ext => url.toLowerCase().endsWith(ext));
+    }
+    
+    // Verificar si es una URL válida
+    const urlObj = new URL(url);
+    return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
 
   // ==================== MÉTODOS AUXILIARES ====================
 
