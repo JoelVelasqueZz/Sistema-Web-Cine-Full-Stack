@@ -11,7 +11,6 @@ const productValidation = [
     .isLength({ min: 2, max: 255 })
     .withMessage('El nombre debe tener entre 2 y 255 caracteres'),
   
-  // 🔧 CAMBIO: descripcion es REQUERIDA, no opcional
   body('descripcion')
     .trim()
     .isLength({ min: 1, max: 1000 })
@@ -26,19 +25,16 @@ const productValidation = [
     .isLength({ min: 2, max: 100 })
     .withMessage('La categoría debe tener entre 2 y 100 caracteres'),
   
-  // 🔧 CAMBIO: imagen no debe validar URL estricta (permite assets/)
   body('imagen')
     .optional()
     .trim()
     .custom((value) => {
-      if (!value) return true; // Permitir vacío
+      if (!value) return true;
       
-      // Permitir rutas locales como assets/
       if (value.startsWith('assets/')) {
         return true;
       }
       
-      // Validar URLs normales
       try {
         new URL(value);
         return true;
@@ -57,13 +53,11 @@ const productValidation = [
     .isBoolean()
     .withMessage('Es combo debe ser verdadero o falso'),
   
-  // 🔧 CAMBIO: descuento debe permitir valores monetarios, no porcentajes
   body('descuento')
     .optional()
     .isFloat({ min: 0, max: 999.99 })
     .withMessage('El descuento debe estar entre 0 y 999.99'),
   
-  // 🔧 VALIDACIONES MEJORADAS PARA ARRAYS - Solo validar si existen y no están vacíos
   body('tamanos')
     .optional()
     .custom((value) => {
@@ -123,7 +117,7 @@ const productValidation = [
     .withMessage('El nombre del item del combo es requerido y no puede exceder 255 caracteres')
 ];
 
-// 🆕 VALIDACIONES MÁS PERMISIVAS PARA TESTING (usar temporalmente)
+// 🆕 VALIDACIONES MÁS PERMISIVAS PARA TESTING
 const productValidationPermissive = [
   body('nombre')
     .trim()
@@ -161,28 +155,51 @@ router.get('/:id', BarController.getProductById);
 // RUTAS PROTEGIDAS (requieren autenticación de admin)
 // ============================================
 
-// 🔧 CAMBIO TEMPORAL: Usar validaciones más permisivas para debugging
-// Una vez que funcione, cambiar de vuelta a productValidation
+// Crear producto
 router.post('/', 
   authenticateToken, 
   requireAdmin, 
-  productValidationPermissive,  // 🔧 CAMBIO TEMPORAL
+  productValidationPermissive,
   BarController.createProduct
 );
 
+// Actualizar producto
 router.put('/:id', 
   authenticateToken, 
   requireAdmin, 
-  productValidationPermissive,  // 🔧 CAMBIO TEMPORAL
+  productValidationPermissive,
   BarController.updateProduct
 );
 
+// 🆕 NUEVA RUTA: Cambiar disponibilidad (activar/desactivar)
+router.patch('/:id/toggle-disponibilidad', 
+  authenticateToken, 
+  requireAdmin, 
+  BarController.toggleDisponibilidad
+);
+
+// 🆕 MODIFICADA: Eliminar producto (soft delete)
 router.delete('/:id', 
   authenticateToken, 
   requireAdmin, 
   BarController.deleteProduct
 );
 
+// 🆕 NUEVA RUTA: Restaurar producto eliminado
+router.patch('/:id/restore', 
+  authenticateToken, 
+  requireAdmin, 
+  BarController.restoreProduct
+);
+
+// 🆕 NUEVA RUTA: Obtener productos eliminados (papelera)
+router.get('/admin/deleted', 
+  authenticateToken, 
+  requireAdmin, 
+  BarController.getDeletedProducts
+);
+
+// Eliminar permanentemente (hard delete)
 router.delete('/:id/hard', 
   authenticateToken, 
   requireAdmin, 

@@ -21,9 +21,10 @@ export class AdminBarComponent implements OnInit, OnDestroy {
   // Datos principales
   productos: ProductoBar[] = [];
   productosFiltrados: ProductoBar[] = [];
+  productosEliminados: ProductoBar[] = []; // 🆕 NUEVA PROPIEDAD
   
   // Estados de vista
-  vistaActual: 'lista' | 'agregar' | 'editar' = 'lista';
+  vistaActual: 'lista' | 'agregar' | 'editar' | 'papelera' = 'lista'; // 🆕 AGREGADA VISTA PAPELERA
   cargando = true;
   procesando = false;
   
@@ -45,6 +46,7 @@ export class AdminBarComponent implements OnInit, OnDestroy {
   // Modal de confirmación
   mostrarModalConfirmacion = false;
   productoParaEliminar = -1;
+  tipoEliminacion: 'soft' | 'hard' | 'restore' = 'soft'; // 🆕 NUEVO
   
   private subscriptions = new Subscription();
   
@@ -54,6 +56,7 @@ export class AdminBarComponent implements OnInit, OnDestroy {
     disponibles: 0,
     noDisponibles: 0,
     combos: 0,
+    eliminados: 0, // 🆕 NUEVA ESTADÍSTICA
     porCategoria: {} as { [key: string]: number }
   };
   
@@ -79,6 +82,7 @@ export class AdminBarComponent implements OnInit, OnDestroy {
     }
 
     this.cargarProductos();
+    this.cargarProductosEliminados(); // 🆕 CARGAR PAPELERA
     this.suscribirQueryParams();
   }
 
@@ -144,14 +148,33 @@ export class AdminBarComponent implements OnInit, OnDestroy {
     this.subscriptions.add(sub);
   }
 
+  // 🆕 NUEVO MÉTODO: Cargar productos eliminados
+  private cargarProductosEliminados(): void {
+    const sub = this.barService.getProductosEliminados().subscribe({
+      next: (eliminados) => {
+        this.productosEliminados = eliminados;
+        this.estadisticas.eliminados = eliminados.length;
+        console.log('Productos eliminados cargados:', eliminados.length);
+      },
+      error: (error) => {
+        console.error('Error al cargar productos eliminados:', error);
+        this.productosEliminados = [];
+      }
+    });
+    
+    this.subscriptions.add(sub);
+  }
+
   // ==================== GESTIÓN DE VISTA ====================
 
-  cambiarVista(vista: 'lista' | 'agregar' | 'editar'): void {
+  cambiarVista(vista: 'lista' | 'agregar' | 'editar' | 'papelera'): void {
     this.vistaActual = vista;
     
     if (vista === 'lista') {
       this.resetearFormulario();
       this.router.navigate(['/admin/bar']);
+    } else if (vista === 'papelera') {
+      this.cargarProductosEliminados(); // Recargar papelera
     }
   }
 
@@ -189,177 +212,182 @@ export class AdminBarComponent implements OnInit, OnDestroy {
   // ==================== CRUD DE PRODUCTOS ====================
 
   async guardarProducto(): Promise<void> {
-  console.log('🔍 Estado actual del formulario:', this.productoForm);
-  
-  // Validación mejorada
-  const validacion = this.barService.validateProductoData(this.productoForm as ProductoBar);
-  
-  if (!validacion.valid) {
-    console.log('❌ Errores de validación:', validacion.errors);
-    this.erroresValidacion = validacion.errors;
-    this.toastService.showError('Por favor corrige los errores en el formulario');
-    return;
-  }
-
-  // Limpiar datos antes de enviar
-  const productoParaEnviar = this.limpiarFormularioParaEnvio();
-  console.log('📤 Datos que se enviarán:', productoParaEnviar);
-
-  this.procesando = true;
-  this.erroresValidacion = [];
-
-  try {
-    const esAgregar = this.vistaActual === 'agregar';
+    console.log('🔍 Estado actual del formulario:', this.productoForm);
     
-    if (esAgregar) {
-      console.log('➕ Creando nuevo producto...');
+    // Validación mejorada
+    const validacion = this.barService.validateProductoData(this.productoForm as ProductoBar);
+    
+    if (!validacion.valid) {
+      console.log('❌ Errores de validación:', validacion.errors);
+      this.erroresValidacion = validacion.errors;
+      this.toastService.showError('Por favor corrige los errores en el formulario');
+      return;
+    }
+
+    // Limpiar datos antes de enviar
+    const productoParaEnviar = this.limpiarFormularioParaEnvio();
+    console.log('📤 Datos que se enviarán:', productoParaEnviar);
+
+    this.procesando = true;
+    this.erroresValidacion = [];
+
+    try {
+      const esAgregar = this.vistaActual === 'agregar';
       
-      const sub = this.barService.addProducto(productoParaEnviar).subscribe({
-        next: (resultado) => {
-          console.log('✅ Producto creado exitosamente:', resultado);
-          if (resultado) {
-            this.toastService.showSuccess('Producto agregado exitosamente');
-            this.cargarProductos();
-            this.vistaActual = 'lista';
-            this.router.navigate(['/admin/bar']);
-          }
-          this.procesando = false;
-        },
-        error: (error) => {
-          console.error('❌ Error completo al crear producto:', error);
-          
-          let mensajeError = 'Error al crear el producto';
-          
-          // Manejar diferentes tipos de error
-          if (error.status === 400) {
-            if (error.error && error.error.errors) {
-              // Errores de validación del backend
-              if (Array.isArray(error.error.errors)) {
-                this.erroresValidacion = error.error.errors.map((err: any) => err.msg || err.message || err);
-              } else {
-                this.erroresValidacion = [error.error.errors];
-              }
-              mensajeError = 'Datos del formulario inválidos';
-            } else if (error.error && error.error.message) {
-              mensajeError = error.error.message;
+      if (esAgregar) {
+        console.log('➕ Creando nuevo producto...');
+        
+        const sub = this.barService.addProducto(productoParaEnviar).subscribe({
+          next: (resultado) => {
+            console.log('✅ Producto creado exitosamente:', resultado);
+            if (resultado) {
+              this.toastService.showSuccess('Producto agregado exitosamente');
+              this.cargarProductos();
+              this.vistaActual = 'lista';
+              this.router.navigate(['/admin/bar']);
             }
-          } else if (error.status === 401) {
-            mensajeError = 'No tienes permisos para realizar esta acción';
-          } else if (error.status === 500) {
-            mensajeError = 'Error interno del servidor';
-          } else if (error.status === 0) {
-            mensajeError = 'No se puede conectar con el servidor';
+            this.procesando = false;
+          },
+          error: (error) => {
+            console.error('❌ Error completo al crear producto:', error);
+            
+            let mensajeError = 'Error al crear el producto';
+            
+            if (error.status === 400) {
+              if (error.error && error.error.errors) {
+                if (Array.isArray(error.error.errors)) {
+                  this.erroresValidacion = error.error.errors.map((err: any) => err.msg || err.message || err);
+                } else {
+                  this.erroresValidacion = [error.error.errors];
+                }
+                mensajeError = 'Datos del formulario inválidos';
+              } else if (error.error && error.error.message) {
+                mensajeError = error.error.message;
+              }
+            } else if (error.status === 401) {
+              mensajeError = 'No tienes permisos para realizar esta acción';
+            } else if (error.status === 500) {
+              mensajeError = 'Error interno del servidor';
+            } else if (error.status === 0) {
+              mensajeError = 'No se puede conectar con el servidor';
+            }
+            
+            this.toastService.showError(mensajeError);
+            this.procesando = false;
           }
-          
-          this.toastService.showError(mensajeError);
-          this.procesando = false;
-        }
-      });
-      this.subscriptions.add(sub);
-      
-    } else {
-      // Actualizar producto existente
-      console.log('✏️ Actualizando producto existente...');
-      const resultado = this.barService.updateProducto(this.productoEditandoId, productoParaEnviar);
-      
-      if (resultado) {
-        this.toastService.showSuccess('Producto actualizado exitosamente');
-        this.cargarProductos();
-        this.vistaActual = 'lista';
+        });
+        this.subscriptions.add(sub);
+        
       } else {
-        this.toastService.showError('Error al actualizar el producto');
+        // Actualizar producto existente
+        console.log('✏️ Actualizando producto existente...');
+        const resultado = this.barService.updateProducto(this.productoEditandoId, productoParaEnviar);
+        
+        if (resultado) {
+          this.toastService.showSuccess('Producto actualizado exitosamente');
+          this.cargarProductos();
+          this.vistaActual = 'lista';
+        } else {
+          this.toastService.showError('Error al actualizar el producto');
+        }
+        this.procesando = false;
       }
+      
+    } catch (error) {
+      console.error('❌ Error inesperado:', error);
+      this.toastService.showError('Error inesperado al guardar el producto');
       this.procesando = false;
     }
+  }
+
+  private limpiarFormularioParaEnvio(): ProductoCreateRequest {
+    const form = this.productoForm;
     
-  } catch (error) {
-    console.error('❌ Error inesperado:', error);
-    this.toastService.showError('Error inesperado al guardar el producto');
-    this.procesando = false;
-  }
-}
-private limpiarFormularioParaEnvio(): ProductoCreateRequest {
-  const form = this.productoForm;
-  
-  const resultado: any = {
-    nombre: (form.nombre || '').trim(),
-    descripcion: (form.descripcion || '').trim(),
-    precio: Number(form.precio) || 0,
-    categoria: (form.categoria || '').trim(),
-    disponible: Boolean(form.disponible !== false), // default true
-    es_combo: Boolean(form.es_combo)
-  };
+    const resultado: any = {
+      nombre: (form.nombre || '').trim(),
+      descripcion: (form.descripcion || '').trim(),
+      precio: Number(form.precio) || 0,
+      categoria: (form.categoria || '').trim(),
+      disponible: Boolean(form.disponible !== false), // default true
+      es_combo: Boolean(form.es_combo)
+    };
 
-  // Solo incluir imagen si tiene valor
-  if (form.imagen && form.imagen.trim()) {
-    resultado.imagen = form.imagen.trim();
-  }
+    // Solo incluir imagen si tiene valor
+    if (form.imagen && form.imagen.trim()) {
+      resultado.imagen = form.imagen.trim();
+    }
 
-  // Solo incluir descuento si es combo y tiene valor
-  if (form.es_combo && form.descuento !== undefined && Number(form.descuento) >= 0) {
-    resultado.descuento = Number(form.descuento);
-  }
-  
-  // 🔧 IMPORTANTE: Solo incluir arrays si tienen elementos válidos
-  const tamanosLimpios = this.limpiarTamanos(form.tamanos || []);
-  if (tamanosLimpios.length > 0) {
-    resultado.tamanos = tamanosLimpios;
-  }
+    // Solo incluir descuento si es combo y tiene valor
+    if (form.es_combo && form.descuento !== undefined && Number(form.descuento) >= 0) {
+      resultado.descuento = Number(form.descuento);
+    }
+    
+    // Solo incluir arrays si tienen elementos válidos
+    const tamanosLimpios = this.limpiarTamanos(form.tamanos || []);
+    if (tamanosLimpios.length > 0) {
+      resultado.tamanos = tamanosLimpios;
+    }
 
-  const extrasLimpios = this.limpiarExtras(form.extras || []);
-  if (extrasLimpios.length > 0) {
-    resultado.extras = extrasLimpios;
-  }
+    const extrasLimpios = this.limpiarExtras(form.extras || []);
+    if (extrasLimpios.length > 0) {
+      resultado.extras = extrasLimpios;
+    }
 
-  const comboItemsLimpios = this.limpiarComboItems(form.combo_items || []);
-  if (comboItemsLimpios.length > 0) {
-    resultado.combo_items = comboItemsLimpios;
+    const comboItemsLimpios = this.limpiarComboItems(form.combo_items || []);
+    if (comboItemsLimpios.length > 0) {
+      resultado.combo_items = comboItemsLimpios;
+    }
+
+    return resultado;
   }
 
-  return resultado;
-}
+  private limpiarTamanos(tamanos: any[]): any[] {
+    if (!Array.isArray(tamanos)) return [];
+    
+    return tamanos
+      .filter(t => t && t.nombre && t.nombre.trim() && t.precio !== undefined && t.precio >= 0)
+      .map(t => ({
+        nombre: String(t.nombre).trim(),
+        precio: Number(t.precio)
+      }));
+  }
 
-/**
- * 🔧 MÉTODOS AUXILIARES para limpiar arrays
- */
-private limpiarTamanos(tamanos: any[]): any[] {
-  if (!Array.isArray(tamanos)) return [];
-  
-  return tamanos
-    .filter(t => t && t.nombre && t.nombre.trim() && t.precio !== undefined && t.precio >= 0)
-    .map(t => ({
-      nombre: String(t.nombre).trim(),
-      precio: Number(t.precio)
-    }));
-}
+  private limpiarExtras(extras: any[]): any[] {
+    if (!Array.isArray(extras)) return [];
+    
+    return extras
+      .filter(e => e && e.nombre && e.nombre.trim() && e.precio !== undefined && e.precio >= 0)
+      .map(e => ({
+        nombre: String(e.nombre).trim(),
+        precio: Number(e.precio)
+      }));
+  }
 
-private limpiarExtras(extras: any[]): any[] {
-  if (!Array.isArray(extras)) return [];
-  
-  return extras
-    .filter(e => e && e.nombre && e.nombre.trim() && e.precio !== undefined && e.precio >= 0)
-    .map(e => ({
-      nombre: String(e.nombre).trim(),
-      precio: Number(e.precio)
-    }));
-}
+  private limpiarComboItems(comboItems: any[]): any[] {
+    if (!Array.isArray(comboItems)) return [];
+    
+    return comboItems
+      .filter(c => c && c.item_nombre && c.item_nombre.trim())
+      .map(c => ({
+        item_nombre: String(c.item_nombre).trim()
+      }));
+  }
 
-private limpiarComboItems(comboItems: any[]): any[] {
-  if (!Array.isArray(comboItems)) return [];
-  
-  return comboItems
-    .filter(c => c && c.item_nombre && c.item_nombre.trim())
-    .map(c => ({
-      item_nombre: String(c.item_nombre).trim()
-    }));
-}
-
-
-  confirmarEliminarProducto(producto: ProductoBar): void {
+  // 🆕 MODIFICADO: Confirmar eliminación con diferentes tipos
+  confirmarEliminarProducto(producto: ProductoBar, tipo: 'soft' | 'hard' = 'soft'): void {
     this.productoParaEliminar = producto.id;
+    this.tipoEliminacion = tipo;
     this.mostrarModalConfirmacion = true;
   }
 
+  // 🆕 NUEVO: Confirmar restauración
+  confirmarRestaurarProducto(producto: ProductoBar): void {
+    this.productoParaEliminar = producto.id;
+    this.tipoEliminacion = 'restore';
+    this.mostrarModalConfirmacion = true;
+  }
+
+  // 🆕 MODIFICADO: Eliminar con diferentes tipos
   async eliminarProducto(): Promise<void> {
     if (this.productoParaEliminar <= 0) return;
     
@@ -368,39 +396,78 @@ private limpiarComboItems(comboItems: any[]): any[] {
     try {
       await this.delay(1000);
       
-      const resultado = this.barService.deleteProducto(this.productoParaEliminar);
+      let resultado = false;
       
-      if (resultado) {
-        this.toastService.showSuccess('Producto eliminado exitosamente');
-        this.cargarProductos();
-      } else {
-        this.toastService.showError('Error al eliminar el producto');
+      switch (this.tipoEliminacion) {
+        case 'soft':
+          resultado = this.barService.deleteProducto(this.productoParaEliminar);
+          if (resultado) {
+            this.toastService.showSuccess('Producto eliminado exitosamente');
+            this.cargarProductos();
+            this.cargarProductosEliminados();
+          }
+          break;
+          
+        case 'restore':
+          const sub = this.barService.restoreProducto(this.productoParaEliminar).subscribe({
+            next: (success) => {
+              if (success) {
+                this.cargarProductos();
+                this.cargarProductosEliminados();
+              }
+              this.procesando = false;
+            },
+            error: (error) => {
+              console.error('Error al restaurar:', error);
+              this.procesando = false;
+            }
+          });
+          this.subscriptions.add(sub);
+          break;
+          
+        case 'hard':
+          const hardSub = this.barService.hardDeleteProducto(this.productoParaEliminar).subscribe({
+            next: (success) => {
+              if (success) {
+                this.cargarProductosEliminados();
+              }
+              this.procesando = false;
+            },
+            error: (error) => {
+              console.error('Error al eliminar permanentemente:', error);
+              this.procesando = false;
+            }
+          });
+          this.subscriptions.add(hardSub);
+          break;
       }
+      
+      if (this.tipoEliminacion === 'soft') {
+        this.procesando = false;
+      }
+      
     } catch (error) {
-      console.error('Error al eliminar producto:', error);
-      this.toastService.showError('Error inesperado al eliminar el producto');
+      console.error('Error al procesar eliminación:', error);
+      this.toastService.showError('Error inesperado al procesar la acción');
+      this.procesando = false;
     } finally {
       this.cerrarModalConfirmacion();
-      this.procesando = false;
     }
   }
 
   cerrarModalConfirmacion(): void {
     this.mostrarModalConfirmacion = false;
     this.productoParaEliminar = -1;
+    this.tipoEliminacion = 'soft';
   }
 
+  // 🆕 MODIFICADO: Toggle disponibilidad usando nuevo método
   toggleDisponibilidad(producto: ProductoBar): void {
     const exito = this.barService.toggleDisponibilidad(producto.id);
     
     if (exito) {
-      const estado = producto.disponible ? 'habilitado' : 'deshabilitado';
-      this.toastService.showSuccess(`Producto ${estado} exitosamente`);
-      
       // Recargar productos para reflejar cambios
       setTimeout(() => this.cargarProductos(), 500);
-    } else {
-      this.toastService.showError('Error al cambiar disponibilidad del producto');
     }
   }
 
@@ -489,6 +556,7 @@ private limpiarComboItems(comboItems: any[]): any[] {
       disponibles: 0,
       noDisponibles: 0,
       combos: 0,
+      eliminados: this.estadisticas.eliminados, // Mantener el valor actual
       porCategoria: {} as { [key: string]: number }
     });
 
@@ -498,23 +566,23 @@ private limpiarComboItems(comboItems: any[]): any[] {
   // ==================== UTILIDADES ====================
 
   private resetearFormulario(): void {
-  this.productoForm = {
-    nombre: '',
-    descripcion: '',
-    precio: 0,
-    categoria: '',
-    imagen: '',
-    disponible: true,
-    es_combo: false,
-    descuento: 0,
-    tamanos: [],     // Array vacío, no undefined
-    extras: [],      // Array vacío, no undefined  
-    combo_items: []  // Array vacío, no undefined
-  };
-  this.productoEditandoId = -1;
-  this.erroresValidacion = [];
-  this.resetearEstadosImagen();
-}
+    this.productoForm = {
+      nombre: '',
+      descripcion: '',
+      precio: 0,
+      categoria: '',
+      imagen: '',
+      disponible: true,
+      es_combo: false,
+      descuento: 0,
+      tamanos: [],
+      extras: [],
+      combo_items: []
+    };
+    this.productoEditandoId = -1;
+    this.erroresValidacion = [];
+    this.resetearEstadosImagen();
+  }
 
   private resetearEstadosImagen(): void {
     this.imageError = false;
@@ -569,43 +637,82 @@ private limpiarComboItems(comboItems: any[]): any[] {
 
   // ==================== GESTIÓN DE ARRAYS DINÁMICOS ====================
 
- agregarTamano(): void {
-  if (!this.productoForm.tamanos) {
-    this.productoForm.tamanos = [];
+  agregarTamano(): void {
+    if (!this.productoForm.tamanos) {
+      this.productoForm.tamanos = [];
+    }
+    this.productoForm.tamanos.push({ nombre: '', precio: 0 });
   }
-  this.productoForm.tamanos.push({ nombre: '', precio: 0 });
-  console.log('➕ Tamaño agregado. Total:', this.productoForm.tamanos.length);
-}
 
   removerTamano(index: number): void {
     this.productoForm.tamanos?.splice(index, 1);
   }
 
-agregarExtra(): void {
-  if (!this.productoForm.extras) {
-    this.productoForm.extras = [];
+  agregarExtra(): void {
+    if (!this.productoForm.extras) {
+      this.productoForm.extras = [];
+    }
+    this.productoForm.extras.push({ nombre: '', precio: 0 });
   }
-  this.productoForm.extras.push({ nombre: '', precio: 0 });
-  console.log('➕ Extra agregado. Total:', this.productoForm.extras.length);
-}
 
   removerExtra(index: number): void {
     this.productoForm.extras?.splice(index, 1);
   }
 
- agregarItemCombo(): void {
-  if (!this.productoForm.combo_items) {
-    this.productoForm.combo_items = [];
+  agregarItemCombo(): void {
+    if (!this.productoForm.combo_items) {
+      this.productoForm.combo_items = [];
+    }
+    this.productoForm.combo_items.push({ item_nombre: '' });
   }
-  this.productoForm.combo_items.push({ item_nombre: '' });
-  console.log('➕ Item combo agregado. Total:', this.productoForm.combo_items.length);
-}
+
   removerItemCombo(index: number): void {
     this.productoForm.combo_items?.splice(index, 1);
   }
 
   trackProductoFn(index: number, producto: ProductoBar): number {
     return producto.id;
+  }
+
+  // 🆕 NUEVOS MÉTODOS PARA OBTENER MENSAJES DE CONFIRMACIÓN
+  getTituloModal(): string {
+    switch (this.tipoEliminacion) {
+      case 'soft': return 'Confirmar Eliminación';
+      case 'hard': return 'Eliminar Permanentemente';
+      case 'restore': return 'Confirmar Restauración';
+      default: return 'Confirmar Acción';
+    }
+  }
+
+  getMensajeModal(): string {
+    switch (this.tipoEliminacion) {
+      case 'soft': 
+        return '¿Estás seguro de que deseas eliminar este producto? Se moverá a la papelera pero podrás restaurarlo después.';
+      case 'hard': 
+        return '¿Estás seguro de que deseas eliminar este producto PERMANENTEMENTE? Esta acción no se puede deshacer.';
+      case 'restore': 
+        return '¿Estás seguro de que deseas restaurar este producto? Volverá a estar disponible en la lista principal.';
+      default: 
+        return '¿Estás seguro de que deseas realizar esta acción?';
+    }
+  }
+
+  getTextoBotonModal(): string {
+    switch (this.tipoEliminacion) {
+      case 'soft': return 'Eliminar';
+      case 'hard': return 'Eliminar Permanentemente';
+      case 'restore': return 'Restaurar';
+      default: return 'Confirmar';
+    }
+  }
+
+  getClaseBotonModal(): string {
+    switch (this.tipoEliminacion) {
+      case 'soft': return 'btn-warning';
+      case 'hard': return 'btn-danger';
+      case 'restore': return 'btn-success';
+      default: return 'btn-primary';
+    }
   }
 
   // ==================== MÉTODOS AUXILIARES PRIVADOS ====================

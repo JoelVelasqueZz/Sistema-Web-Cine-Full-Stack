@@ -120,7 +120,29 @@ class BarController {
     });
   });
 
-  // Eliminar producto (soft delete)
+  // 🆕 NUEVO: Cambiar disponibilidad del producto
+  static toggleDisponibilidad = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    
+    if (!id || isNaN(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de producto inválido'
+      });
+    }
+
+    const updatedProduct = await BarProduct.toggleDisponibilidad(parseInt(id));
+
+    const estado = updatedProduct.disponible ? 'disponible' : 'no disponible';
+    
+    res.status(200).json({
+      success: true,
+      message: `Producto marcado como ${estado}`,
+      data: updatedProduct
+    });
+  });
+
+  // 🆕 MODIFICADO: Eliminar producto (soft delete)
   static deleteProduct = asyncHandler(async (req, res) => {
     const { id } = req.params;
     
@@ -137,6 +159,38 @@ class BarController {
       success: true,
       message: 'Producto eliminado exitosamente',
       data: deletedProduct
+    });
+  });
+
+  // 🆕 NUEVO: Restaurar producto eliminado
+  static restoreProduct = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    
+    if (!id || isNaN(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de producto inválido'
+      });
+    }
+
+    const restoredProduct = await BarProduct.restore(parseInt(id));
+
+    res.status(200).json({
+      success: true,
+      message: 'Producto restaurado exitosamente',
+      data: restoredProduct
+    });
+  });
+
+  // 🆕 NUEVO: Obtener productos eliminados (papelera)
+  static getDeletedProducts = asyncHandler(async (req, res) => {
+    const deletedProducts = await BarProduct.getDeleted();
+
+    res.status(200).json({
+      success: true,
+      message: 'Productos eliminados obtenidos exitosamente',
+      data: deletedProducts,
+      total: deletedProducts.length
     });
   });
 
@@ -235,7 +289,7 @@ class BarController {
       FROM productos_bar pb
       LEFT JOIN producto_tamanos pt ON pb.id = pt.producto_id
       LEFT JOIN producto_extras pe ON pb.id = pe.producto_id
-      WHERE pb.disponible = true
+      WHERE pb.eliminado = false
     `;
     
     const params = [];

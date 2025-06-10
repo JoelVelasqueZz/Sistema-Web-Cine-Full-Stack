@@ -39,7 +39,7 @@ class BarProduct {
         LEFT JOIN producto_tamanos pt ON pb.id = pt.producto_id
         LEFT JOIN producto_extras pe ON pb.id = pe.producto_id
         LEFT JOIN combo_items ci ON pb.id = ci.producto_id
-        WHERE pb.disponible = true
+        WHERE pb.eliminado = false
         GROUP BY pb.id
         ORDER BY pb.categoria, pb.nombre
       `;
@@ -89,7 +89,7 @@ class BarProduct {
         LEFT JOIN producto_tamanos pt ON pb.id = pt.producto_id
         LEFT JOIN producto_extras pe ON pb.id = pe.producto_id
         LEFT JOIN combo_items ci ON pb.id = ci.producto_id
-        WHERE pb.id = $1
+        WHERE pb.id = $1 AND pb.eliminado = false
         GROUP BY pb.id
       `;
       
@@ -106,8 +106,8 @@ class BarProduct {
       const productQuery = `
         INSERT INTO productos_bar (
           nombre, descripcion, precio, categoria, imagen, 
-          disponible, es_combo, descuento
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          disponible, es_combo, descuento, eliminado
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         RETURNING *
       `;
       
@@ -119,7 +119,8 @@ class BarProduct {
         productData.imagen || null,
         productData.disponible !== false, // Default true
         productData.es_combo || false,
-        productData.descuento || 0
+        productData.descuento || 0,
+        false // eliminado = false por defecto
       ];
       
       const productResult = await query(productQuery, productValues);
@@ -177,7 +178,7 @@ class BarProduct {
           es_combo = COALESCE($7, es_combo),
           descuento = COALESCE($8, descuento),
           fecha_actualizacion = CURRENT_TIMESTAMP
-        WHERE id = $9
+        WHERE id = $9 AND eliminado = false
         RETURNING *
       `;
       
@@ -195,7 +196,7 @@ class BarProduct {
       
       const productResult = await query(productQuery, productValues);
       if (productResult.rows.length === 0) {
-        throw new Error('Producto no encontrado');
+        throw new Error('Producto no encontrado o ya eliminado');
       }
       
       // Actualizar tamaños si se proporcionan
@@ -254,25 +255,120 @@ class BarProduct {
     }
   }
 
-  static async delete(id) {
+  // 🆕 NUEVO MÉTODO: Cambiar disponibilidad (para activar/desactivar producto)
+  static async toggleDisponibilidad(id) {
     try {
-      // Soft delete - cambiar disponible a false
       const queryText = `
         UPDATE productos_bar 
-        SET disponible = false, fecha_actualizacion = CURRENT_TIMESTAMP
-        WHERE id = $1
+        SET disponible = NOT disponible, fecha_actualizacion = CURRENT_TIMESTAMP
+        WHERE id = $1 AND eliminado = false
         RETURNING *
       `;
       
       const result = await query(queryText, [id]);
       
       if (result.rows.length === 0) {
-        throw new Error('Producto no encontrado');
+        throw new Error('Producto no encontrado o ya eliminado');
+      }
+      
+      return result.rows[0];
+    } catch (error) {
+      throw new Error(`Error al cambiar disponibilidad: ${error.message}`);
+    }
+  }
+
+  // 🆕 MODIFICADO: Soft delete (cambiar eliminado a true)
+  static async delete(id) {
+    try {
+      const queryText = `
+        UPDATE productos_bar 
+        SET eliminado = true, fecha_actualizacion = CURRENT_TIMESTAMP
+        WHERE id = $1 AND eliminado = false
+        RETURNING *
+      `;
+      
+      const result = await query(queryText, [id]);
+      
+      if (result.rows.length === 0) {
+        throw new Error('Producto no encontrado o ya eliminado');
       }
       
       return result.rows[0];
     } catch (error) {
       throw new Error(`Error al eliminar producto: ${error.message}`);
+    }
+  }
+
+  // 🆕 NUEVO MÉTODO: Restaurar producto eliminado
+  static async restore(id) {
+    try {
+      const queryText = `
+        UPDATE productos_bar 
+        SET eliminado = false, fecha_actualizacion = CURRENT_TIMESTAMP
+        WHERE id = $1 AND eliminado = true
+        RETURNING *
+      `;
+      
+      const result = await query(queryText, [id]);
+      
+      if (result.rows.length === 0) {
+        throw new Error('Producto no encontrado en la papelera');
+      }
+      
+      return result.rows[0];
+    } catch (error) {
+      throw new Error(`Error al restaurar producto: ${error.message}`);
+    }
+  }
+
+  // 🆕 NUEVO MÉTODO: Obtener productos eliminados (papelera)
+  static async getDeleted() {
+    try {
+      const queryText = `
+        SELECT 
+          pb.*,
+          COALESCE(
+            json_agg(
+              json_build_object(
+                'id', pt.id,
+                'nombre', pt.nombre,
+                'precio', pt.precio
+              )
+            ) FILTER (WHERE pt.id IS NOT NULL), 
+            '[]'
+          ) as tamanos,
+          COALESCE(
+            json_agg(
+              json_build_object(
+                'id', pe.id,
+                'nombre', pe.nombre,
+                'precio', pe.precio
+              )
+            ) FILTER (WHERE pe.id IS NOT NULL), 
+            '[]'
+          ) as extras,
+          COALESCE(
+            json_agg(
+              json_build_object(
+                'id', ci.id,
+                'item_nombre', ci.item_nombre
+              )
+            ) FILTER (WHERE ci.id IS NOT NULL), 
+            '[]'
+          ) as combo_items
+        FROM productos_bar pb
+        LEFT JOIN producto_tamanos pt ON pb.id = pt.producto_id
+        LEFT JOIN producto_extras pe ON pb.id = pe.producto_id
+        LEFT JOIN combo_items ci ON pb.id = ci.producto_id
+        WHERE pb.eliminado = true
+        GROUP BY pb.id
+        ORDER BY pb.fecha_actualizacion DESC
+      `;
+      
+      const result = await query(queryText);
+      return result.rows;
+    } catch (error) {
+      throw new Error(`Error al obtener productos eliminados: ${error.message}`);
     }
   }
 
@@ -320,7 +416,7 @@ class BarProduct {
         FROM productos_bar pb
         LEFT JOIN producto_tamanos pt ON pb.id = pt.producto_id
         LEFT JOIN producto_extras pe ON pb.id = pe.producto_id
-        WHERE pb.categoria = $1 AND pb.disponible = true
+        WHERE pb.categoria = $1 AND pb.eliminado = false
         GROUP BY pb.id
         ORDER BY pb.nombre
       `;
@@ -348,7 +444,7 @@ class BarProduct {
           ) as combo_items
         FROM productos_bar pb
         LEFT JOIN combo_items ci ON pb.id = ci.producto_id
-        WHERE pb.es_combo = true AND pb.disponible = true
+        WHERE pb.es_combo = true AND pb.eliminado = false
         GROUP BY pb.id
         ORDER BY pb.nombre
       `;
@@ -365,7 +461,7 @@ class BarProduct {
       const queryText = `
         SELECT DISTINCT categoria, COUNT(*) as total_productos
         FROM productos_bar 
-        WHERE disponible = true
+        WHERE eliminado = false
         GROUP BY categoria
         ORDER BY categoria
       `;

@@ -16,6 +16,7 @@ export interface ProductoBar {
   disponible: boolean;
   es_combo: boolean;
   descuento?: number;
+  eliminado?: boolean; // 🆕 NUEVA PROPIEDAD
   fecha_creacion?: string;
   fecha_actualizacion?: string;
   tamanos?: TamañoProducto[];
@@ -100,7 +101,6 @@ export class BarService {
    * Obtener todos los productos desde la API
    */
   getProductos(): ProductoBar[] {
-    // Retornar cache si existe, sino cargar
     if (this.productosCache.length === 0) {
       this.cargarProductosDesdeAPI();
     }
@@ -166,7 +166,6 @@ export class BarService {
     return this.http.get<APIResponse<CategoriaCount[]>>(`${this.API_URL}/categories`).pipe(
       map(response => {
         if (response.success) {
-          // Actualizar cache de categorías
           this.categoriasCache = ['Todas', ...response.data.map(cat => cat.categoria)];
           this.categoriasSubject.next(this.categoriasCache);
           return response.data;
@@ -235,134 +234,32 @@ export class BarService {
    * Crear nuevo producto (solo admin)
    */
   addProducto(producto: ProductoCreateRequest): Observable<boolean> {
-  if (!this.authService.isAdmin()) {
-    return throwError(() => new Error('No tienes permisos de administrador'));
-  }
+    if (!this.authService.isAdmin()) {
+      return throwError(() => new Error('No tienes permisos de administrador'));
+    }
 
-  // 🔧 LIMPIEZA Y VALIDACIÓN DE DATOS ANTES DE ENVIAR
-  const productoLimpio = this.limpiarDatosParaBackend(producto);
-  
-  console.log('📤 Datos que se enviarán al backend:', productoLimpio);
+    const productoLimpio = this.limpiarDatosParaBackend(producto);
+    const headers = this.getAuthHeaders();
 
-  const headers = this.getAuthHeaders();
-
-  return this.http.post<APIResponse<ProductoBar>>(this.API_URL, productoLimpio, { headers }).pipe(
-    tap(response => {
-      console.log('✅ Respuesta del servidor:', response);
-    }),
-    map(response => {
-      if (response.success) {
-        // Actualizar cache local
-        const nuevoProducto = this.adaptarProductoDesdeAPI(response.data);
-        this.productosCache.push(nuevoProducto);
-        this.productosSubject.next(this.productosCache);
-        
-        this.toastService.showSuccess(`Producto "${nuevoProducto.nombre}" creado exitosamente`);
-        return true;
-      }
-      throw new Error(response.message || 'Error al crear producto');
-    }),
-    catchError(error => {
-      console.error('❌ Error completo:', error);
-      
-      // Mostrar detalles específicos del error
-      if (error.status === 400) {
-        console.error('📋 Detalles del error 400:', error.error);
-        
-        if (error.error && error.error.errors) {
-          console.error('🔍 Errores de validación:', error.error.errors);
+    return this.http.post<APIResponse<ProductoBar>>(this.API_URL, productoLimpio, { headers }).pipe(
+      map(response => {
+        if (response.success) {
+          const nuevoProducto = this.adaptarProductoDesdeAPI(response.data);
+          this.productosCache.push(nuevoProducto);
+          this.productosSubject.next(this.productosCache);
+          
+          this.toastService.showSuccess(`Producto "${nuevoProducto.nombre}" creado exitosamente`);
+          return true;
         }
-      }
-      
-      return this.handleError('Error al crear producto')(error);
-    })
-  );
-}
-private limpiarDatosParaBackend(producto: ProductoCreateRequest): any {
-  console.log('🧹 Limpiando datos de entrada:', producto);
-  
-  // Crear objeto base con campos requeridos
-  const productoLimpio: any = {
-    nombre: String(producto.nombre || '').trim(),
-    descripcion: String(producto.descripcion || '').trim(),
-    precio: Number(producto.precio) || 0,
-    categoria: String(producto.categoria || '').trim(),
-    disponible: Boolean(producto.disponible !== false), // default true
-    es_combo: Boolean(producto.es_combo)
-  };
-
-  // Solo incluir campos opcionales si tienen valor válido
-  if (producto.imagen && String(producto.imagen).trim()) {
-    productoLimpio.imagen = String(producto.imagen).trim();
-  }
-
-  // Solo incluir descuento si es combo y tiene valor
-  if (producto.es_combo && producto.descuento !== undefined && Number(producto.descuento) >= 0) {
-    productoLimpio.descuento = Number(producto.descuento);
-  }
-
-  // 🔧 IMPORTANTE: Solo incluir arrays si tienen elementos válidos
-  // NO enviar arrays vacíos al backend
-  
-  if (producto.tamanos && Array.isArray(producto.tamanos)) {
-    const tamanosValidos = producto.tamanos.filter(t => 
-      t && 
-      typeof t === 'object' && 
-      t.nombre && 
-      String(t.nombre).trim() && 
-      t.precio !== undefined && 
-      Number(t.precio) >= 0
+        throw new Error(response.message || 'Error al crear producto');
+      }),
+      catchError(error => {
+        console.error('❌ Error completo:', error);
+        return this.handleError('Error al crear producto')(error);
+      })
     );
-    
-    if (tamanosValidos.length > 0) {
-      productoLimpio.tamanos = tamanosValidos.map(t => ({
-        nombre: String(t.nombre).trim(),
-        precio: Number(t.precio)
-      }));
-    }
-    // Si no hay tamaños válidos, NO incluir el campo en absoluto
   }
 
-  if (producto.extras && Array.isArray(producto.extras)) {
-    const extrasValidos = producto.extras.filter(e => 
-      e && 
-      typeof e === 'object' && 
-      e.nombre && 
-      String(e.nombre).trim() && 
-      e.precio !== undefined && 
-      Number(e.precio) >= 0
-    );
-    
-    if (extrasValidos.length > 0) {
-      productoLimpio.extras = extrasValidos.map(e => ({
-        nombre: String(e.nombre).trim(),
-        precio: Number(e.precio)
-      }));
-    }
-    // Si no hay extras válidos, NO incluir el campo
-  }
-
-  if (producto.combo_items && Array.isArray(producto.combo_items)) {
-    const comboItemsValidos = producto.combo_items.filter(c => 
-      c && 
-      typeof c === 'object' && 
-      c.item_nombre && 
-      String(c.item_nombre).trim()
-    );
-    
-    if (comboItemsValidos.length > 0) {
-      productoLimpio.combo_items = comboItemsValidos.map(c => ({
-        item_nombre: String(c.item_nombre).trim()
-      }));
-    }
-    // Si no hay items válidos, NO incluir el campo
-  }
-
-  console.log('✅ Datos limpiados para enviar:', productoLimpio);
-  console.log('📊 Campos incluidos:', Object.keys(productoLimpio));
-  
-  return productoLimpio;
-}
   /**
    * Actualizar producto existente (solo admin)
    */
@@ -377,7 +274,6 @@ private limpiarDatosParaBackend(producto: ProductoCreateRequest): any {
     this.http.put<APIResponse<ProductoBar>>(`${this.API_URL}/${id}`, producto, { headers }).pipe(
       map(response => {
         if (response.success) {
-          // Actualizar cache local
           const index = this.productosCache.findIndex(p => p.id === id);
           if (index !== -1) {
             this.productosCache[index] = this.adaptarProductoDesdeAPI(response.data);
@@ -392,11 +288,41 @@ private limpiarDatosParaBackend(producto: ProductoCreateRequest): any {
       catchError(this.handleError('Error al actualizar producto'))
     ).subscribe();
 
-    return true; // Para compatibilidad con el código existente
+    return true;
+  }
+
+  // 🆕 NUEVO MÉTODO: Cambiar disponibilidad del producto
+  toggleDisponibilidad(id: number): boolean {
+    if (!this.authService.isAdmin()) {
+      this.toastService.showError('No tienes permisos de administrador');
+      return false;
+    }
+
+    const headers = this.getAuthHeaders();
+
+    this.http.patch<APIResponse<ProductoBar>>(`${this.API_URL}/${id}/toggle-disponibilidad`, {}, { headers }).pipe(
+      map(response => {
+        if (response.success) {
+          const index = this.productosCache.findIndex(p => p.id === id);
+          if (index !== -1) {
+            this.productosCache[index] = this.adaptarProductoDesdeAPI(response.data);
+            this.productosSubject.next(this.productosCache);
+          }
+          
+          const estado = response.data.disponible ? 'disponible' : 'no disponible';
+          this.toastService.showSuccess(`Producto marcado como ${estado}`);
+          return true;
+        }
+        throw new Error(response.message || 'Error al cambiar disponibilidad');
+      }),
+      catchError(this.handleError('Error al cambiar disponibilidad'))
+    ).subscribe();
+
+    return true;
   }
 
   /**
-   * Eliminar producto (solo admin)
+   * Eliminar producto (soft delete - solo admin)
    */
   deleteProducto(id: number): boolean {
     if (!this.authService.isAdmin()) {
@@ -421,112 +347,137 @@ private limpiarDatosParaBackend(producto: ProductoCreateRequest): any {
       catchError(this.handleError('Error al eliminar producto'))
     ).subscribe();
 
-    return true; // Para compatibilidad
+    return true;
   }
 
-  /**
-   * Cambiar disponibilidad de producto (solo admin)
-   */
-  toggleDisponibilidad(id: number): boolean {
+  // 🆕 NUEVO MÉTODO: Restaurar producto eliminado
+  restoreProducto(id: number): Observable<boolean> {
     if (!this.authService.isAdmin()) {
-      this.toastService.showError('No tienes permisos de administrador');
-      return false;
+      return throwError(() => new Error('No tienes permisos de administrador'));
     }
 
-    const producto = this.getProducto(id);
-    if (!producto) {
-      this.toastService.showError('Producto no encontrado');
-      return false;
+    const headers = this.getAuthHeaders();
+
+    return this.http.patch<APIResponse<ProductoBar>>(`${this.API_URL}/${id}/restore`, {}, { headers }).pipe(
+      map(response => {
+        if (response.success) {
+          const productoRestaurado = this.adaptarProductoDesdeAPI(response.data);
+          this.productosCache.push(productoRestaurado);
+          this.productosSubject.next(this.productosCache);
+          
+          this.toastService.showSuccess(`Producto "${productoRestaurado.nombre}" restaurado exitosamente`);
+          return true;
+        }
+        throw new Error(response.message || 'Error al restaurar producto');
+      }),
+      catchError(this.handleError('Error al restaurar producto'))
+    );
+  }
+
+  // 🆕 NUEVO MÉTODO: Obtener productos eliminados (papelera)
+  getProductosEliminados(): Observable<ProductoBar[]> {
+    if (!this.authService.isAdmin()) {
+      return throwError(() => new Error('No tienes permisos de administrador'));
     }
 
-    // Actualizar disponibilidad localmente primero para UI responsiva
-    producto.disponible = !producto.disponible;
-    this.productosSubject.next(this.productosCache);
+    const headers = this.getAuthHeaders();
 
-    // Enviar actualización al backend
-    this.updateProducto(id, { disponible: producto.disponible });
+    return this.http.get<APIResponse<ProductoBar[]>>(`${this.API_URL}/admin/deleted`, { headers }).pipe(
+      map(response => {
+        if (response.success) {
+          return this.adaptarProductosDesdeAPI(response.data);
+        }
+        throw new Error(response.message || 'Error al obtener productos eliminados');
+      }),
+      catchError(this.handleError('Error al cargar papelera'))
+    );
+  }
 
-    return true;
+  // 🆕 NUEVO MÉTODO: Eliminar permanentemente
+  hardDeleteProducto(id: number): Observable<boolean> {
+    if (!this.authService.isAdmin()) {
+      return throwError(() => new Error('No tienes permisos de administrador'));
+    }
+
+    const headers = this.getAuthHeaders();
+
+    return this.http.delete<APIResponse<any>>(`${this.API_URL}/${id}/hard`, { headers }).pipe(
+      map(response => {
+        if (response.success) {
+          this.toastService.showSuccess('Producto eliminado permanentemente');
+          return true;
+        }
+        throw new Error(response.message || 'Error al eliminar permanentemente');
+      }),
+      catchError(this.handleError('Error al eliminar permanentemente'))
+    );
   }
 
   // ==================== MÉTODOS DE VALIDACIÓN ====================
 
-  /**
-   * Validar datos de producto
-   */
   validateProductoData(producto: Partial<ProductoBar>): { valid: boolean; errors: string[] } {
-  const errors: string[] = [];
+    const errors: string[] = [];
 
-  // Validaciones básicas que coinciden con el backend
-  if (!producto.nombre || !String(producto.nombre).trim()) {
-    errors.push('El nombre es requerido');
-  } else if (String(producto.nombre).trim().length < 2) {
-    errors.push('El nombre debe tener al menos 2 caracteres');
+    if (!producto.nombre || !String(producto.nombre).trim()) {
+      errors.push('El nombre es requerido');
+    } else if (String(producto.nombre).trim().length < 2) {
+      errors.push('El nombre debe tener al menos 2 caracteres');
+    }
+
+    if (!producto.descripcion || !String(producto.descripcion).trim()) {
+      errors.push('La descripción es requerida');
+    }
+
+    if (!producto.categoria || !String(producto.categoria).trim()) {
+      errors.push('La categoría es requerida');
+    }
+
+    if (!producto.precio || Number(producto.precio) <= 0) {
+      errors.push('El precio debe ser mayor a 0');
+    }
+
+    if (producto.imagen && String(producto.imagen).trim()) {
+      const imagen = String(producto.imagen).trim();
+      if (!this.isValidImageUrl(imagen)) {
+        errors.push('La URL de la imagen no es válida');
+      }
+    }
+
+    if (producto.es_combo && producto.descuento !== undefined) {
+      const descuento = Number(producto.descuento);
+      if (descuento < 0) {
+        errors.push('El descuento no puede ser negativo');
+      } else if (descuento > Number(producto.precio || 0)) {
+        errors.push('El descuento no puede ser mayor al precio base');
+      }
+    }
+
+    return {
+      valid: errors.length === 0,
+      errors
+    };
   }
 
-  if (!producto.descripcion || !String(producto.descripcion).trim()) {
-    errors.push('La descripción es requerida');
-  }
-
-  if (!producto.categoria || !String(producto.categoria).trim()) {
-    errors.push('La categoría es requerida');
-  }
-
-  if (!producto.precio || Number(producto.precio) <= 0) {
-    errors.push('El precio debe ser mayor a 0');
-  }
-
-  // Validaciones opcionales solo si los campos existen
-  if (producto.imagen && String(producto.imagen).trim()) {
-    const imagen = String(producto.imagen).trim();
-    if (!this.isValidImageUrl(imagen)) {
-      errors.push('La URL de la imagen no es válida');
+  private isValidImageUrl(url: string): boolean {
+    try {
+      if (url.startsWith('assets/')) {
+        const validExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+        return validExtensions.some(ext => url.toLowerCase().endsWith(ext));
+      }
+      
+      const urlObj = new URL(url);
+      return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
+    } catch {
+      return false;
     }
   }
-
-  // Validar descuento solo si es combo
-  if (producto.es_combo && producto.descuento !== undefined) {
-    const descuento = Number(producto.descuento);
-    if (descuento < 0) {
-      errors.push('El descuento no puede ser negativo');
-    } else if (descuento > Number(producto.precio || 0)) {
-      errors.push('El descuento no puede ser mayor al precio base');
-    }
-  }
-
-  return {
-    valid: errors.length === 0,
-    errors
-  };
-}
-private isValidImageUrl(url: string): boolean {
-  try {
-    // Verificar si es una ruta local válida
-    if (url.startsWith('assets/')) {
-      const validExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
-      return validExtensions.some(ext => url.toLowerCase().endsWith(ext));
-    }
-    
-    // Verificar si es una URL válida
-    const urlObj = new URL(url);
-    return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
-  } catch {
-    return false;
-  }
-}
 
   // ==================== MÉTODOS AUXILIARES ====================
 
-  /**
-   * Verificar si un producto tiene opciones (tamaños o extras)
-   */
   tieneOpciones(producto: ProductoBar): boolean {
     return !!(producto.tamanos?.length || producto.extras?.length);
   }
 
-  /**
-   * Calcular precio con descuento para combos
-   */
   calcularPrecioConDescuento(producto: ProductoBar): number {
     if (producto.es_combo && producto.descuento) {
       return producto.precio - producto.descuento;
@@ -534,9 +485,6 @@ private isValidImageUrl(url: string): boolean {
     return producto.precio;
   }
 
-  /**
-   * Contar productos por categoría
-   */
   contarProductosPorCategoria(categoria: string): number {
     if (categoria === 'Todas') {
       return this.productosCache.length;
@@ -548,9 +496,6 @@ private isValidImageUrl(url: string): boolean {
 
   // ==================== MÉTODOS PRIVADOS ====================
 
-  /**
-   * Cargar productos iniciales
-   */
   private cargarProductosIniciales(): void {
     this.getProductosObservable().subscribe({
       next: (productos) => {
@@ -572,30 +517,77 @@ private isValidImageUrl(url: string): boolean {
     });
   }
 
-  /**
-   * Cargar productos desde API (método síncrono)
-   */
   private cargarProductosDesdeAPI(): void {
     this.getProductosObservable().subscribe();
   }
 
-  /**
-   * Cargar categorías desde API
-   */
   private cargarCategoriasDesdeAPI(): void {
     this.getCategoriasObservable().subscribe();
   }
 
-  /**
-   * Adaptar productos desde API al formato local
-   */
+  private limpiarDatosParaBackend(producto: ProductoCreateRequest): any {
+    const productoLimpio: any = {
+      nombre: String(producto.nombre || '').trim(),
+      descripcion: String(producto.descripcion || '').trim(),
+      precio: Number(producto.precio) || 0,
+      categoria: String(producto.categoria || '').trim(),
+      disponible: Boolean(producto.disponible !== false),
+      es_combo: Boolean(producto.es_combo)
+    };
+
+    if (producto.imagen && String(producto.imagen).trim()) {
+      productoLimpio.imagen = String(producto.imagen).trim();
+    }
+
+    if (producto.es_combo && producto.descuento !== undefined && Number(producto.descuento) >= 0) {
+      productoLimpio.descuento = Number(producto.descuento);
+    }
+
+    if (producto.tamanos && Array.isArray(producto.tamanos)) {
+      const tamanosValidos = producto.tamanos.filter(t => 
+        t && t.nombre && String(t.nombre).trim() && t.precio !== undefined && Number(t.precio) >= 0
+      );
+      
+      if (tamanosValidos.length > 0) {
+        productoLimpio.tamanos = tamanosValidos.map(t => ({
+          nombre: String(t.nombre).trim(),
+          precio: Number(t.precio)
+        }));
+      }
+    }
+
+    if (producto.extras && Array.isArray(producto.extras)) {
+      const extrasValidos = producto.extras.filter(e => 
+        e && e.nombre && String(e.nombre).trim() && e.precio !== undefined && Number(e.precio) >= 0
+      );
+      
+      if (extrasValidos.length > 0) {
+        productoLimpio.extras = extrasValidos.map(e => ({
+          nombre: String(e.nombre).trim(),
+          precio: Number(e.precio)
+        }));
+      }
+    }
+
+    if (producto.combo_items && Array.isArray(producto.combo_items)) {
+      const comboItemsValidos = producto.combo_items.filter(c => 
+        c && c.item_nombre && String(c.item_nombre).trim()
+      );
+      
+      if (comboItemsValidos.length > 0) {
+        productoLimpio.combo_items = comboItemsValidos.map(c => ({
+          item_nombre: String(c.item_nombre).trim()
+        }));
+      }
+    }
+
+    return productoLimpio;
+  }
+
   private adaptarProductosDesdeAPI(productos: any[]): ProductoBar[] {
     return productos.map(p => this.adaptarProductoDesdeAPI(p));
   }
 
-  /**
-   * Adaptar un producto desde API al formato local
-   */
   private adaptarProductoDesdeAPI(producto: any): ProductoBar {
     return {
       id: producto.id,
@@ -607,6 +599,7 @@ private isValidImageUrl(url: string): boolean {
       disponible: producto.disponible,
       es_combo: producto.es_combo,
       descuento: producto.descuento ? parseFloat(producto.descuento) : undefined,
+      eliminado: producto.eliminado || false, // 🆕 NUEVA PROPIEDAD
       fecha_creacion: producto.fecha_creacion,
       fecha_actualizacion: producto.fecha_actualizacion,
       tamanos: this.limpiarDuplicados(producto.tamanos || []),
@@ -615,9 +608,6 @@ private isValidImageUrl(url: string): boolean {
     };
   }
 
-  /**
-   * Limpiar duplicados de arrays (solución temporal para duplicados en BD)
-   */
   private limpiarDuplicados<T extends { id?: number; nombre?: string; item_nombre?: string }>(items: T[]): T[] {
     if (!Array.isArray(items)) return [];
     
@@ -630,9 +620,6 @@ private isValidImageUrl(url: string): boolean {
     });
   }
 
-  /**
-   * Obtener headers con autenticación
-   */
   private getAuthHeaders(): HttpHeaders {
     const token = this.authService.getToken();
     return new HttpHeaders({
@@ -641,9 +628,6 @@ private isValidImageUrl(url: string): boolean {
     });
   }
 
-  /**
-   * Manejo de errores
-   */
   private handleError(mensaje: string) {
     return (error: any): Observable<never> => {
       console.error(mensaje, error);
@@ -660,16 +644,10 @@ private isValidImageUrl(url: string): boolean {
     };
   }
 
-  /**
-   * Verificar si está cargando
-   */
   isCargando(): boolean {
     return this.cargando;
   }
 
-  /**
-   * Limpiar cache
-   */
   limpiarCache(): void {
     this.productosCache = [];
     this.categoriasCache = [];
@@ -677,9 +655,6 @@ private isValidImageUrl(url: string): boolean {
     this.categoriasSubject.next([]);
   }
 
-  /**
-   * Recargar datos desde API
-   */
   recargar(): Observable<ProductoBar[]> {
     this.limpiarCache();
     return this.getProductosObservable();

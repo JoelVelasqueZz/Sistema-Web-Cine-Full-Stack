@@ -27,6 +27,10 @@
               <p class="mb-0 opacity-75">
                 <i class="fas fa-cubes me-2"></i>
                 {{ estadisticas.total }} productos en total • {{ estadisticas.disponibles }} disponibles
+                <!-- 🆕 MOSTRAR PRODUCTOS ELIMINADOS -->
+                <span *ngIf="estadisticas.eliminados > 0">
+                  • {{ estadisticas.eliminados }} en papelera
+                </span>
               </p>
             </div>
             <div class="d-none d-md-block">
@@ -39,7 +43,7 @@
 
     <!-- Estadísticas rápidas -->
     <div class="row mb-4 g-3">
-      <div class="col-lg-3 col-md-6">
+      <div class="col-lg-2 col-md-4 col-sm-6">
         <div class="card stat-card bg-warning text-dark h-100 border-0 shadow">
           <div class="card-body">
             <div class="d-flex justify-content-between align-items-center">
@@ -55,7 +59,7 @@
         </div>
       </div>
       
-      <div class="col-lg-3 col-md-6">
+      <div class="col-lg-2 col-md-4 col-sm-6">
         <div class="card stat-card bg-success text-white h-100 border-0 shadow">
           <div class="card-body">
             <div class="d-flex justify-content-between align-items-center">
@@ -71,13 +75,13 @@
         </div>
       </div>
       
-      <div class="col-lg-3 col-md-6">
+      <div class="col-lg-2 col-md-4 col-sm-6">
         <div class="card stat-card bg-danger text-white h-100 border-0 shadow">
           <div class="card-body">
             <div class="d-flex justify-content-between align-items-center">
               <div>
                 <div class="stat-number">{{ estadisticas.combos }}</div>
-                <div class="stat-label">Combos Especiales</div>
+                <div class="stat-label">Combos</div>
               </div>
               <div class="stat-icon">
                 <i class="fas fa-gift fa-2x"></i>
@@ -87,7 +91,7 @@
         </div>
       </div>
       
-      <div class="col-lg-3 col-md-6">
+      <div class="col-lg-2 col-md-4 col-sm-6">
         <div class="card stat-card bg-secondary text-white h-100 border-0 shadow">
           <div class="card-body">
             <div class="d-flex justify-content-between align-items-center">
@@ -97,6 +101,47 @@
               </div>
               <div class="stat-icon">
                 <i class="fas fa-times-circle fa-2x"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 🆕 NUEVA TARJETA: Productos eliminados -->
+      <div class="col-lg-2 col-md-4 col-sm-6">
+        <div class="card stat-card h-100 border-0 shadow cursor-pointer" 
+             [class.bg-dark]="estadisticas.eliminados > 0"
+             [class.bg-light]="estadisticas.eliminados === 0"
+             [class.text-white]="estadisticas.eliminados > 0"
+             [class.text-dark]="estadisticas.eliminados === 0"
+             (click)="cambiarVista('papelera')"
+             title="Ver papelera de productos eliminados">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <div class="stat-number">{{ estadisticas.eliminados }}</div>
+                <div class="stat-label">Papelera</div>
+              </div>
+              <div class="stat-icon">
+                <i class="fas fa-trash fa-2x"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 🆕 NUEVA TARJETA: Acceso rápido a agregar -->
+      <div class="col-lg-2 col-md-4 col-sm-6">
+        <div class="card stat-card bg-primary text-white h-100 border-0 shadow cursor-pointer"
+             (click)="mostrarFormularioAgregar()"
+             title="Agregar nuevo producto">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <div class="stat-number">
+                  <i class="fas fa-plus fa-2x"></i>
+                </div>
+                <div class="stat-label">Nuevo Producto</div>
               </div>
             </div>
           </div>
@@ -117,6 +162,13 @@
               <div class="btn-group" role="group">
                 <button class="btn btn-success btn-sm" (click)="mostrarFormularioAgregar()">
                   <i class="fas fa-plus me-1"></i>Nuevo Producto
+                </button>
+                <!-- 🆕 BOTÓN PARA PAPELERA -->
+                <button class="btn btn-dark btn-sm" 
+                        (click)="cambiarVista('papelera')"
+                        [disabled]="estadisticas.eliminados === 0">
+                  <i class="fas fa-trash me-1"></i>
+                  Papelera ({{ estadisticas.eliminados }})
                 </button>
                 <button class="btn btn-outline-secondary btn-sm" (click)="exportarProductos()">
                   <i class="fas fa-download me-1"></i>Exportar
@@ -264,12 +316,12 @@
                     <!-- Precio -->
                     <td>
                       <div>
-                        <span class="fw-bold text-success">{{ formatearPrecio(producto.precio) }}</span>
+                        <span class="fw-bold text-success">${{ formatearPrecio(producto.precio) }}</span>
                         <div *ngIf="producto.es_combo && producto.descuento" class="small">
                           <span class="text-decoration-line-through text-muted">
-                            {{ formatearPrecio(producto.precio + producto.descuento) }}
+                            ${{ formatearPrecio(producto.precio + producto.descuento) }}
                           </span>
-                          <small class="text-danger ms-1">-{{ formatearPrecio(producto.descuento) }}</small>
+                          <small class="text-danger ms-1">-${{ formatearPrecio(producto.descuento) }}</small>
                         </div>
                       </div>
                     </td>
@@ -312,9 +364,10 @@
                                 title="Editar producto">
                           <i class="fas fa-edit"></i>
                         </button>
-                        <button class="btn btn-outline-danger" 
-                                (click)="confirmarEliminarProducto(producto)"
-                                title="Eliminar producto">
+                        <!-- 🆕 MODIFICADO: Soft delete -->
+                        <button class="btn btn-outline-warning" 
+                                (click)="confirmarEliminarProducto(producto, 'soft')"
+                                title="Mover a papelera">
                           <i class="fas fa-trash"></i>
                         </button>
                       </div>
@@ -390,6 +443,119 @@
             </nav>
           </div>
           
+        </div>
+      </div>
+    </div>
+
+  </ng-container>
+
+  <!-- ========== 🆕 NUEVA VISTA: PAPELERA ========== -->
+  <ng-container *ngIf="vistaActual === 'papelera' && !cargando">
+    
+    <!-- Header de la papelera -->
+    <div class="row mb-4">
+      <div class="col-12">
+        <div class="card border-dark">
+          <div class="card-header bg-dark text-white">
+            <div class="d-flex justify-content-between align-items-center">
+              <h5 class="mb-0">
+                <i class="fas fa-trash me-2"></i>
+                Papelera de Productos Eliminados
+              </h5>
+              <button class="btn btn-outline-light btn-sm" (click)="cambiarVista('lista')">
+                <i class="fas fa-arrow-left me-1"></i>Volver a la Lista
+              </button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="alert alert-info" role="alert">
+              <i class="fas fa-info-circle me-2"></i>
+              <strong>Papelera:</strong> Aquí puedes ver los productos eliminados. Puedes restaurarlos o eliminarlos permanentemente.
+              <span *ngIf="productosEliminados.length === 0" class="d-block mt-2">
+                <i class="fas fa-check-circle me-1"></i> No hay productos en la papelera.
+              </span>
+            </div>
+            
+            <!-- Lista de productos eliminados -->
+            <div *ngIf="productosEliminados.length > 0">
+              <div class="table-responsive">
+                <table class="table table-hover">
+                  <thead class="bg-light">
+                    <tr>
+                      <th>ID</th>
+                      <th>Producto</th>
+                      <th>Categoría</th>
+                      <th>Precio</th>
+                      <th>Fecha Eliminación</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let producto of productosEliminados" class="align-middle">
+                      
+                      <!-- ID -->
+                      <td>
+                        <span class="badge bg-dark">{{ producto.id }}</span>
+                      </td>
+                      
+                      <!-- Producto -->
+                      <td>
+                        <div class="d-flex align-items-center opacity-75">
+                          <img [src]="producto.imagen" 
+                               class="rounded me-3" 
+                               width="40" height="40"
+                               [alt]="producto.nombre"
+                               style="object-fit: cover; filter: grayscale(100%);">
+                          <div>
+                            <h6 class="mb-1 fw-bold text-muted">{{ producto.nombre }}</h6>
+                            <small class="text-muted">
+                              {{ producto.descripcion | slice:0:40 }}{{ producto.descripcion.length > 40 ? '...' : '' }}
+                            </small>
+                          </div>
+                        </div>
+                      </td>
+                      
+                      <!-- Categoría -->
+                      <td>
+                        <span class="badge bg-secondary">{{ producto.categoria }}</span>
+                      </td>
+                      
+                      <!-- Precio -->
+                      <td>
+                        <span class="text-muted">${{ formatearPrecio(producto.precio) }}</span>
+                      </td>
+                      
+                      <!-- Fecha eliminación -->
+                      <td>
+                        <small class="text-muted">
+                          {{ producto.fecha_actualizacion | date:'dd/MM/yyyy HH:mm' }}
+                        </small>
+                      </td>
+                      
+                      <!-- Acciones -->
+                      <td>
+                        <div class="btn-group btn-group-sm" role="group">
+                          <!-- 🆕 BOTÓN RESTAURAR -->
+                          <button class="btn btn-outline-success" 
+                                  (click)="confirmarRestaurarProducto(producto)"
+                                  title="Restaurar producto">
+                            <i class="fas fa-undo"></i>
+                          </button>
+                          <!-- 🆕 BOTÓN ELIMINAR PERMANENTEMENTE -->
+                          <button class="btn btn-outline-danger" 
+                                  (click)="confirmarEliminarProducto(producto, 'hard')"
+                                  title="Eliminar permanentemente">
+                            <i class="fas fa-times"></i>
+                          </button>
+                        </div>
+                      </td>
+                      
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -652,36 +818,36 @@
                   
                   <!-- Items incluidos en el combo -->
                   <div class="col-12">
-  <label class="form-label fw-semibold">
-    <i class="fas fa-list me-1 text-danger"></i>
-    Items Incluidos en el Combo
-  </label>
-  
-  <div class="combo-items">
-    <div class="row g-2 mb-2" *ngFor="let item of productoForm.combo_items; let i = index">
-      <div class="col-10">
-        <input type="text" 
-               class="form-control" 
-               [(ngModel)]="productoForm.combo_items![i].item_nombre"
-               [name]="'combo_item_' + i"
-               placeholder="Ej: Palomitas medianas">
-      </div>
-      <div class="col-2">
-        <button type="button" 
-                class="btn btn-outline-danger w-100"
-                (click)="removerItemCombo(i)">
-          <i class="fas fa-trash"></i>
-        </button>
-      </div>
-    </div>
-    
-    <button type="button" 
-            class="btn btn-outline-success btn-sm"
-            (click)="agregarItemCombo()">
-      <i class="fas fa-plus me-1"></i>Agregar Item al Combo
-    </button>
-  </div>
-</div>
+                    <label class="form-label fw-semibold">
+                      <i class="fas fa-list me-1 text-danger"></i>
+                      Items Incluidos en el Combo
+                    </label>
+                    
+                    <div class="combo-items">
+                      <div class="row g-2 mb-2" *ngFor="let item of productoForm.combo_items; let i = index">
+                        <div class="col-10">
+                          <input type="text" 
+                                 class="form-control" 
+                                 [(ngModel)]="productoForm.combo_items![i].item_nombre"
+                                 [name]="'combo_item_' + i"
+                                 placeholder="Ej: Palomitas medianas">
+                        </div>
+                        <div class="col-2">
+                          <button type="button" 
+                                  class="btn btn-outline-danger w-100"
+                                  (click)="removerItemCombo(i)">
+                            <i class="fas fa-trash"></i>
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <button type="button" 
+                              class="btn btn-outline-success btn-sm"
+                              (click)="agregarItemCombo()">
+                        <i class="fas fa-plus me-1"></i>Agregar Item al Combo
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </ng-container>
 
@@ -812,25 +978,36 @@
 
 </div>
 
-<!-- Modal de confirmación para eliminar -->
+<!-- 🆕 MODAL DE CONFIRMACIÓN MEJORADO -->
 <div class="modal fade" [class.show]="mostrarModalConfirmacion" 
      [style.display]="mostrarModalConfirmacion ? 'block' : 'none'"
      *ngIf="mostrarModalConfirmacion">
   <div class="modal-dialog">
     <div class="modal-content">
-      <div class="modal-header bg-danger text-white">
+      <div class="modal-header" 
+           [ngClass]="{
+             'bg-warning text-dark': tipoEliminacion === 'soft',
+             'bg-danger text-white': tipoEliminacion === 'hard',
+             'bg-success text-white': tipoEliminacion === 'restore'
+           }">
         <h5 class="modal-title">
-          <i class="fas fa-exclamation-triangle me-2"></i>
-          Confirmar Eliminación
+          <i class="fas me-2"
+             [ngClass]="{
+               'fa-exclamation-triangle': tipoEliminacion === 'soft',
+               'fa-times-circle': tipoEliminacion === 'hard',
+               'fa-undo': tipoEliminacion === 'restore'
+             }"></i>
+          {{ getTituloModal() }}
         </h5>
       </div>
       <div class="modal-body">
         <p class="mb-3">
-          <strong>¿Estás seguro de que deseas eliminar este producto del bar?</strong>
+          <strong>{{ getMensajeModal() }}</strong>
         </p>
-        <p class="text-muted mb-0">
-          Esta acción no se puede deshacer. El producto será eliminado permanentemente del sistema.
-        </p>
+        <div *ngIf="tipoEliminacion === 'hard'" class="alert alert-danger">
+          <i class="fas fa-exclamation-triangle me-2"></i>
+          <strong>¡ATENCIÓN!</strong> Esta acción es irreversible.
+        </div>
       </div>
       <div class="modal-footer">
         <button type="button" 
@@ -840,12 +1017,18 @@
           Cancelar
         </button>
         <button type="button" 
-                class="btn btn-danger"
+                [class]="'btn ' + getClaseBotonModal()"
                 (click)="eliminarProducto()"
                 [disabled]="procesando">
           <span *ngIf="procesando" class="spinner-border spinner-border-sm me-2"></span>
-          <i class="fas fa-trash me-1" *ngIf="!procesando"></i>
-          Eliminar
+          <i class="fas me-1" 
+             [ngClass]="{
+               'fa-trash': tipoEliminacion === 'soft',
+               'fa-times': tipoEliminacion === 'hard',
+               'fa-undo': tipoEliminacion === 'restore'
+             }" 
+             *ngIf="!procesando"></i>
+          {{ getTextoBotonModal() }}
         </button>
       </div>
     </div>
@@ -854,3 +1037,28 @@
 
 <!-- Backdrop del modal -->
 <div class="modal-backdrop fade show" *ngIf="mostrarModalConfirmacion"></div>
+
+<style>
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.cursor-pointer:hover {
+  transform: translateY(-2px);
+  transition: transform 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  transition: all 0.2s ease;
+}
+
+.papelera-item {
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.papelera-item:hover {
+  opacity: 1;
+}
+</style>
