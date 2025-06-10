@@ -1,7 +1,7 @@
 // src/app/components/admin/admin-bar/admin-bar.component.ts
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
-import { ProductoBar, BarService } from '../../../services/bar.service';
+import { ProductoBar, BarService, ProductoCreateRequest } from '../../../services/bar.service';
 import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
 import { Subscription } from 'rxjs';
@@ -28,7 +28,7 @@ export class AdminBarComponent implements OnInit, OnDestroy {
   procesando = false;
   
   // Formulario de producto
-  productoForm: Partial<ProductoBar> = {};
+  productoForm: Partial<ProductoCreateRequest> = {};
   productoEditandoId = -1;
   erroresValidacion: string[] = [];
   
@@ -46,7 +46,7 @@ export class AdminBarComponent implements OnInit, OnDestroy {
   mostrarModalConfirmacion = false;
   productoParaEliminar = -1;
   
-  private routeSubscription = new Subscription();
+  private subscriptions = new Subscription();
   
   // Estadísticas
   estadisticas = {
@@ -59,7 +59,7 @@ export class AdminBarComponent implements OnInit, OnDestroy {
   
   // Categorías disponibles
   readonly categoriasDisponibles = [
-    'Bebidas', 'Snacks', 'Dulces', 'Combos', 'Helados'
+    'bebidas', 'snacks', 'dulces', 'combos', 'helados', 'comida', 'otros'
   ];
 
   constructor(
@@ -83,7 +83,7 @@ export class AdminBarComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.routeSubscription?.unsubscribe();
+    this.subscriptions.unsubscribe();
   }
 
   // ==================== MANEJO DE IMAGEN ====================
@@ -107,7 +107,7 @@ export class AdminBarComponent implements OnInit, OnDestroy {
   // ==================== INICIALIZACIÓN ====================
 
   private suscribirQueryParams(): void {
-    this.routeSubscription = this.route.queryParams.subscribe(params => {
+    const sub = this.route.queryParams.subscribe(params => {
       if (params['action'] === 'add') {
         setTimeout(() => {
           this.mostrarFormularioAgregar();
@@ -115,22 +115,33 @@ export class AdminBarComponent implements OnInit, OnDestroy {
         }, 800);
       }
     });
+    this.subscriptions.add(sub);
   }
 
   private cargarProductos(): void {
     this.cargando = true;
     
-    try {
-      this.productos = this.barService.getProductos();
-      this.aplicarFiltros();
-      this.calcularEstadisticas();
-      console.log('Productos del bar cargados:', this.productos.length);
-    } catch (error) {
-      console.error('Error al cargar productos:', error);
-      this.toastService.showError('Error al cargar los productos del bar');
-    } finally {
-      this.cargando = false;
-    }
+    const sub = this.barService.getProductosObservable().subscribe({
+      next: (productos) => {
+        this.productos = productos;
+        this.aplicarFiltros();
+        this.calcularEstadisticas();
+        this.cargando = false;
+        console.log('Productos del bar cargados:', this.productos.length);
+      },
+      error: (error) => {
+        console.error('Error al cargar productos:', error);
+        this.toastService.showError('Error al cargar los productos del bar');
+        this.cargando = false;
+        
+        // Fallback a datos locales si falla la API
+        this.productos = this.barService.getProductos();
+        this.aplicarFiltros();
+        this.calcularEstadisticas();
+      }
+    });
+    
+    this.subscriptions.add(sub);
   }
 
   // ==================== GESTIÓN DE VISTA ====================
@@ -151,7 +162,21 @@ export class AdminBarComponent implements OnInit, OnDestroy {
   }
 
   mostrarFormularioEditar(producto: ProductoBar): void {
-    this.productoForm = { ...producto };
+    // Convertir ProductoBar a ProductoCreateRequest
+    this.productoForm = {
+      nombre: producto.nombre,
+      descripcion: producto.descripcion,
+      precio: producto.precio,
+      categoria: producto.categoria,
+      imagen: producto.imagen || undefined,
+      disponible: producto.disponible,
+      es_combo: producto.es_combo,
+      descuento: producto.descuento,
+      tamanos: producto.tamanos?.map(t => ({ nombre: t.nombre, precio: t.precio })) || [],
+      extras: producto.extras?.map(e => ({ nombre: e.nombre, precio: e.precio })) || [],
+      combo_items: producto.combo_items?.map(c => ({ item_nombre: c.item_nombre })) || []
+    };
+    
     this.productoEditandoId = producto.id;
     this.vistaActual = 'editar';
     this.erroresValidacion = [];
@@ -164,7 +189,7 @@ export class AdminBarComponent implements OnInit, OnDestroy {
   // ==================== CRUD DE PRODUCTOS ====================
 
   async guardarProducto(): Promise<void> {
-    const validacion = this.barService.validateProductoData(this.productoForm);
+    const validacion = this.barService.validateProductoData(this.productoForm as ProductoBar);
     
     if (!validacion.valid) {
       this.erroresValidacion = validacion.errors;
@@ -176,31 +201,45 @@ export class AdminBarComponent implements OnInit, OnDestroy {
     this.erroresValidacion = [];
 
     try {
-      await this.delay(1000); // Simular delay de procesamiento
-      
       const esAgregar = this.vistaActual === 'agregar';
-      const resultado = esAgregar 
-        ? this.barService.addProducto(this.productoForm as Omit<ProductoBar, 'id'>)
-        : this.barService.updateProducto(this.productoEditandoId, this.productoForm);
       
-      if (resultado) {
-        const mensaje = esAgregar ? 'Producto agregado exitosamente' : 'Producto actualizado exitosamente';
-        this.toastService.showSuccess(mensaje);
-        this.cargarProductos();
-        this.vistaActual = 'lista';
+      if (esAgregar) {
+        // Crear nuevo producto
+        const sub = this.barService.addProducto(this.productoForm as ProductoCreateRequest).subscribe({
+          next: (resultado) => {
+            if (resultado) {
+              this.toastService.showSuccess('Producto agregado exitosamente');
+              this.cargarProductos();
+              this.vistaActual = 'lista';
+              this.router.navigate(['/admin/bar']);
+            }
+            this.procesando = false;
+          },
+          error: (error) => {
+            console.error('Error al crear producto:', error);
+            this.toastService.showError('Error al crear el producto');
+            this.procesando = false;
+          }
+        });
+        this.subscriptions.add(sub);
         
-        if (esAgregar) {
-          this.router.navigate(['/admin/bar']);
-        }
       } else {
-        const mensajeError = esAgregar ? 'Error al agregar el producto' : 'Error al actualizar el producto';
-        this.toastService.showError(mensajeError);
+        // Actualizar producto existente
+        const resultado = this.barService.updateProducto(this.productoEditandoId, this.productoForm);
+        
+        if (resultado) {
+          this.toastService.showSuccess('Producto actualizado exitosamente');
+          this.cargarProductos();
+          this.vistaActual = 'lista';
+        } else {
+          this.toastService.showError('Error al actualizar el producto');
+        }
+        this.procesando = false;
       }
       
     } catch (error) {
       console.error('Error al guardar producto:', error);
       this.toastService.showError('Error inesperado al guardar el producto');
-    } finally {
       this.procesando = false;
     }
   }
@@ -246,7 +285,9 @@ export class AdminBarComponent implements OnInit, OnDestroy {
     if (exito) {
       const estado = producto.disponible ? 'habilitado' : 'deshabilitado';
       this.toastService.showSuccess(`Producto ${estado} exitosamente`);
-      this.cargarProductos();
+      
+      // Recargar productos para reflejar cambios
+      setTimeout(() => this.cargarProductos(), 500);
     } else {
       this.toastService.showError('Error al cambiar disponibilidad del producto');
     }
@@ -275,7 +316,7 @@ export class AdminBarComponent implements OnInit, OnDestroy {
   }
 
   private cumpleFiltroCategoria(producto: ProductoBar): boolean {
-    return !this.filtroCategoria || producto.categoria === this.filtroCategoria;
+    return !this.filtroCategoria || producto.categoria.toLowerCase() === this.filtroCategoria.toLowerCase();
   }
 
   private cumpleFiltroDisponibilidad(producto: ProductoBar): boolean {
@@ -327,7 +368,7 @@ export class AdminBarComponent implements OnInit, OnDestroy {
       acc.total++;
       if (producto.disponible) acc.disponibles++;
       else acc.noDisponibles++;
-      if (producto.esCombo) acc.combos++;
+      if (producto.es_combo) acc.combos++;
       
       acc.porCategoria[producto.categoria] = (acc.porCategoria[producto.categoria] || 0) + 1;
       
@@ -353,7 +394,10 @@ export class AdminBarComponent implements OnInit, OnDestroy {
       categoria: '',
       imagen: '',
       disponible: true,
-      esCombo: false
+      es_combo: false,
+      tamanos: [],
+      extras: [],
+      combo_items: []
     };
     this.productoEditandoId = -1;
     this.erroresValidacion = [];
@@ -376,18 +420,19 @@ export class AdminBarComponent implements OnInit, OnDestroy {
 
   getCategoriaClass(categoria: string): string {
     const clases: Record<string, string> = {
-      'Bebidas': 'bg-primary',
-      'Snacks': 'bg-warning',
-      'Dulces': 'bg-info',
-      'Combos': 'bg-danger',
-      'Helados': 'bg-success'
+      'bebidas': 'bg-primary',
+      'snacks': 'bg-warning',
+      'dulces': 'bg-info',
+      'combos': 'bg-danger',
+      'helados': 'bg-success',
+      'comida': 'bg-secondary'
     };
     
-    return clases[categoria] || 'bg-secondary';
+    return clases[categoria.toLowerCase()] || 'bg-secondary';
   }
 
   formatearPrecio(precio: number): string {
-    return `$${precio.toFixed(2)}`;
+    return `${precio.toFixed(2)}`;
   }
 
   exportarProductos(): void {
@@ -396,8 +441,8 @@ export class AdminBarComponent implements OnInit, OnDestroy {
         fechaExportacion: new Date().toISOString(),
         totalProductos: this.productos.length,
         estadisticas: this.estadisticas,
-        productos: this.productos.map(({ id, nombre, categoria, precio, disponible, esCombo }) => ({
-          id, nombre, categoria, precio, disponible, esCombo
+        productos: this.productos.map(({ id, nombre, categoria, precio, disponible, es_combo }) => ({
+          id, nombre, categoria, precio, disponible, es_combo
         }))
       };
       
@@ -413,7 +458,9 @@ export class AdminBarComponent implements OnInit, OnDestroy {
   // ==================== GESTIÓN DE ARRAYS DINÁMICOS ====================
 
   agregarTamano(): void {
-    this.productoForm.tamanos ??= [];
+    if (!this.productoForm.tamanos) {
+      this.productoForm.tamanos = [];
+    }
     this.productoForm.tamanos.push({ nombre: '', precio: 0 });
   }
 
@@ -422,7 +469,9 @@ export class AdminBarComponent implements OnInit, OnDestroy {
   }
 
   agregarExtra(): void {
-    this.productoForm.extras ??= [];
+    if (!this.productoForm.extras) {
+      this.productoForm.extras = [];
+    }
     this.productoForm.extras.push({ nombre: '', precio: 0 });
   }
 
@@ -431,12 +480,14 @@ export class AdminBarComponent implements OnInit, OnDestroy {
   }
 
   agregarItemCombo(): void {
-    this.productoForm.incluye ??= [];
-    this.productoForm.incluye.push('');
+    if (!this.productoForm.combo_items) {
+      this.productoForm.combo_items = [];
+    }
+    this.productoForm.combo_items.push({ item_nombre: '' });
   }
 
   removerItemCombo(index: number): void {
-    this.productoForm.incluye?.splice(index, 1);
+    this.productoForm.combo_items?.splice(index, 1);
   }
 
   trackProductoFn(index: number, producto: ProductoBar): number {

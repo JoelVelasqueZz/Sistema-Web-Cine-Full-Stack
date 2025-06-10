@@ -265,7 +265,7 @@
                     <td>
                       <div>
                         <span class="fw-bold text-success">{{ formatearPrecio(producto.precio) }}</span>
-                        <div *ngIf="producto.esCombo && producto.descuento" class="small">
+                        <div *ngIf="producto.es_combo && producto.descuento" class="small">
                           <span class="text-decoration-line-through text-muted">
                             {{ formatearPrecio(producto.precio + producto.descuento) }}
                           </span>
@@ -292,7 +292,7 @@
                     <!-- Tipo -->
                     <td>
                       <div class="d-flex flex-column gap-1">
-                        <span class="badge bg-info" *ngIf="producto.esCombo">
+                        <span class="badge bg-info" *ngIf="producto.es_combo">
                           <i class="fas fa-gift me-1"></i>Combo
                         </span>
                         <span class="badge bg-secondary" *ngIf="producto.tamanos?.length">
@@ -609,7 +609,7 @@
                   <div class="form-check form-switch">
                     <input class="form-check-input" 
                            type="checkbox" 
-                           [(ngModel)]="productoForm.esCombo"
+                           [(ngModel)]="productoForm.es_combo"
                            name="esCombo"
                            id="esComboCheck">
                     <label class="form-check-label fw-semibold" for="esComboCheck">
@@ -621,7 +621,7 @@
               </div>
 
               <!-- Configuración de combo -->
-              <ng-container *ngIf="productoForm.esCombo">
+              <ng-container *ngIf="productoForm.es_combo">
                 <div class="row g-3 mb-4">
                   <div class="col-12">
                     <h6 class="text-danger border-bottom pb-2">
@@ -652,36 +652,36 @@
                   
                   <!-- Items incluidos en el combo -->
                   <div class="col-12">
-                    <label class="form-label fw-semibold">
-                      <i class="fas fa-list me-1 text-danger"></i>
-                      Items Incluidos en el Combo
-                    </label>
-                    
-                    <div class="combo-items">
-                      <div class="row g-2 mb-2" *ngFor="let item of productoForm.incluye; let i = index">
-                        <div class="col-10">
-                          <input type="text" 
-                                 class="form-control" 
-                                 [(ngModel)]="productoForm.incluye![i]"
-                                 [name]="'combo_item_' + i"
-                                 placeholder="Ej: Palomitas medianas">
-                        </div>
-                        <div class="col-2">
-                          <button type="button" 
-                                  class="btn btn-outline-danger w-100"
-                                  (click)="removerItemCombo(i)">
-                            <i class="fas fa-trash"></i>
-                          </button>
-                        </div>
-                      </div>
-                      
-                      <button type="button" 
-                              class="btn btn-outline-success btn-sm"
-                              (click)="agregarItemCombo()">
-                        <i class="fas fa-plus me-1"></i>Agregar Item al Combo
-                      </button>
-                    </div>
-                  </div>
+  <label class="form-label fw-semibold">
+    <i class="fas fa-list me-1 text-danger"></i>
+    Items Incluidos en el Combo
+  </label>
+  
+  <div class="combo-items">
+    <div class="row g-2 mb-2" *ngFor="let item of productoForm.combo_items; let i = index">
+      <div class="col-10">
+        <input type="text" 
+               class="form-control" 
+               [(ngModel)]="productoForm.combo_items![i].item_nombre"
+               [name]="'combo_item_' + i"
+               placeholder="Ej: Palomitas medianas">
+      </div>
+      <div class="col-2">
+        <button type="button" 
+                class="btn btn-outline-danger w-100"
+                (click)="removerItemCombo(i)">
+          <i class="fas fa-trash"></i>
+        </button>
+      </div>
+    </div>
+    
+    <button type="button" 
+            class="btn btn-outline-success btn-sm"
+            (click)="agregarItemCombo()">
+      <i class="fas fa-plus me-1"></i>Agregar Item al Combo
+    </button>
+  </div>
+</div>
                 </div>
               </ng-container>
 

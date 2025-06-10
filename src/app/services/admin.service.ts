@@ -493,7 +493,7 @@ export class AdminService {
 
     const precios = productos.map(p => p.precio).sort((a, b) => a - b);
     const precioPromedio = precios.length > 0 ? precios.reduce((sum, p) => sum + p, 0) / precios.length : 0;
-    const combos = productos.filter(p => p.esCombo);
+    const combos = productos.filter(p => p.es_combo);
     const ahorroTotalCombos = combos.reduce((sum, c) => sum + (c.descuento || 0), 0);
 
     return {
@@ -713,7 +713,7 @@ export class AdminService {
       categoria,
       cantidad: prods.length,
       disponibles: prods.filter(p => p.disponible).length,
-      combos: prods.filter(p => p.esCombo).length,
+      combos: prods.filter(p => p.es_combo).length,
       precioPromedio: Math.round((prods.reduce((sum, p) => sum + p.precio, 0) / prods.length) * 100) / 100,
       precioMinimo: Math.min(...prods.map(p => p.precio)),
       precioMaximo: Math.max(...prods.map(p => p.precio)),
@@ -739,7 +739,7 @@ export class AdminService {
         precioUnitario: producto.precio,
         total: producto.precio * cantidad,
         fecha: fecha.toISOString().split('T')[0],
-        esCombo: producto.esCombo,
+        esCombo: producto.es_combo,
         cliente: this.getRandomCliente(),
         metodoPago: this.getRandomMetodoPago()
       });
@@ -757,7 +757,7 @@ export class AdminService {
       ventasSimuladas: Math.floor(Math.random() * 200) + 50,
       ingresoSimulado: (Math.floor(Math.random() * 200) + 50) * p.precio,
       disponible: p.disponible,
-      esCombo: p.esCombo,
+      esCombo: p.es_combo,
       precio: p.precio
     })).sort((a, b) => b.ventasSimuladas - a.ventasSimuladas).slice(0, 10);
   }

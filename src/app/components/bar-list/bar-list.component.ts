@@ -1,9 +1,10 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import { ProductoBar, BarService } from '../../services/bar.service';
 import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../services/toast.service';
 import { CartService } from '../../services/cart.service';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-bar-list',
@@ -11,7 +12,7 @@ import { CartService } from '../../services/cart.service';
   templateUrl: './bar-list.component.html',
   styleUrl: './bar-list.component.css'
 })
-export class BarListComponent implements OnInit {
+export class BarListComponent implements OnInit, OnDestroy {
 
   productos: ProductoBar[] = [];
   productosOriginales: ProductoBar[] = [];
@@ -22,8 +23,10 @@ export class BarListComponent implements OnInit {
   categoriasDisponibles: string[] = [];
 
   // Estados del componente
-  cargando: boolean = false;
+  cargando: boolean = true;
   mostrandoSoloDisponibles: boolean = true;
+  
+  private subscriptions = new Subscription();
 
   constructor(
     private barService: BarService,
@@ -31,29 +34,61 @@ export class BarListComponent implements OnInit {
     private route: ActivatedRoute,
     public authService: AuthService,
     private toastService: ToastService,
-    public cartService: CartService // 🔧 Hacer público para usar en template
+    public cartService: CartService
   ) {}
 
   ngOnInit(): void {
     this.cargando = true;
-    
-    // Cargar productos
-    this.productosOriginales = this.barService.getProductos();
-    this.productos = [...this.productosOriginales];
-    this.productosFiltrados = [...this.productos];
-    
-    // Cargar categorías
-    this.categoriasDisponibles = this.barService.getCategorias();
-    
-    // Verificar parámetros URL
+    this.cargarProductos();
+    this.cargarCategorias();
     this.verificarParametrosURL();
+  }
+
+  ngOnDestroy(): void {
+    this.subscriptions.unsubscribe();
+  }
+
+  // ==================== INICIALIZACIÓN ====================
+
+  private cargarProductos(): void {
+    const sub = this.barService.getProductosObservable().subscribe({
+      next: (productos) => {
+        this.productosOriginales = productos;
+        this.productos = [...this.productosOriginales];
+        this.productosFiltrados = [...this.productos];
+        this.aplicarFiltroDisponibles();
+        this.cargando = false;
+        console.log('Productos del bar cargados:', this.productos.length);
+      },
+      error: (error) => {
+        console.error('Error al cargar productos:', error);
+        this.toastService.showError('Error al cargar productos del bar');
+        
+        // Fallback a datos locales
+        this.productosOriginales = this.barService.getProductos();
+        this.productos = [...this.productosOriginales];
+        this.productosFiltrados = [...this.productos];
+        this.aplicarFiltroDisponibles();
+        this.cargando = false;
+      }
+    });
     
-    // Aplicar filtro de disponibles por defecto
-    this.aplicarFiltroDisponibles();
+    this.subscriptions.add(sub);
+  }
+
+  private cargarCategorias(): void {
+    const sub = this.barService.getCategoriasObservable().subscribe({
+      next: (categorias) => {
+        this.categoriasDisponibles = ['Todas', ...categorias.map(c => c.categoria)];
+      },
+      error: (error) => {
+        console.error('Error al cargar categorías:', error);
+        // Fallback a categorías por defecto
+        this.categoriasDisponibles = ['Todas', 'bebidas', 'snacks', 'dulces', 'combos', 'helados'];
+      }
+    });
     
-    this.cargando = false;
-    
-    console.log('Productos del bar cargados:', this.productos.length);
+    this.subscriptions.add(sub);
   }
 
   // ==================== MÉTODOS DE FILTRADO ====================
@@ -104,8 +139,8 @@ export class BarListComponent implements OnInit {
         break;
       case 'combos':
         this.productos = productosBase.sort((a, b) => {
-          if (a.esCombo && !b.esCombo) return -1;
-          if (!a.esCombo && b.esCombo) return 1;
+          if (a.es_combo && !b.es_combo) return -1;
+          if (!a.es_combo && b.es_combo) return 1;
           return 0;
         });
         break;
@@ -165,11 +200,12 @@ export class BarListComponent implements OnInit {
    * Verificar parámetros URL
    */
   verificarParametrosURL(): void {
-    this.route.queryParams.subscribe(params => {
+    const sub = this.route.queryParams.subscribe(params => {
       if (params['category']) {
         this.filtrarPorCategoria(params['category']);
       }
     });
+    this.subscriptions.add(sub);
   }
 
   // ==================== MÉTODOS DE CARRITO ====================
@@ -210,21 +246,6 @@ export class BarListComponent implements OnInit {
     }
   }
 
-  /**
-   * Agregar combo al carrito (ir a detalles para configurar)
-   */
-  agregarComboAlCarrito(producto: ProductoBar, event: Event): void {
-    event.stopPropagation();
-
-    if (!producto.disponible) {
-      this.toastService.showWarning('Este combo no está disponible');
-      return;
-    }
-
-    this.toastService.showInfo('Configura tu combo en la página de detalles');
-    this.verProducto(producto.id);
-  }
-
   // ==================== MÉTODOS DE ADMINISTRACIÓN ====================
 
   /**
@@ -244,8 +265,8 @@ export class BarListComponent implements OnInit {
       const estado = producto.disponible ? 'habilitado' : 'deshabilitado';
       this.toastService.showSuccess(`Producto ${estado} exitosamente`);
       
-      // Actualizar la vista
-      this.aplicarFiltrosCombinados();
+      // Recargar productos para reflejar cambios
+      setTimeout(() => this.cargarProductos(), 500);
     } else {
       this.toastService.showError('Error al cambiar disponibilidad del producto');
     }
@@ -263,7 +284,7 @@ export class BarListComponent implements OnInit {
     }
 
     // Redirigir a admin con el ID del producto
-    this.router.navigate(['/admin/bar', producto.id]);
+    this.router.navigate(['/admin/bar'], { queryParams: { edit: producto.id } });
   }
 
   /**
@@ -287,9 +308,7 @@ export class BarListComponent implements OnInit {
       
       if (exito) {
         this.toastService.showSuccess(`"${producto.nombre}" eliminado exitosamente`);
-        
-        // Recargar productos
-        this.recargarProductos();
+        this.cargarProductos();
       } else {
         this.toastService.showError('Error al eliminar el producto');
       }
@@ -297,14 +316,6 @@ export class BarListComponent implements OnInit {
   }
 
   // ==================== MÉTODOS AUXILIARES ====================
-
-  /**
-   * Recargar productos desde el servicio
-   */
-  private recargarProductos(): void {
-    this.productosOriginales = this.barService.getProductos();
-    this.aplicarFiltrosCombinados();
-  }
 
   /**
    * Contar productos por categoría
@@ -338,7 +349,7 @@ export class BarListComponent implements OnInit {
    * Verificar si es un combo
    */
   esCombo(producto: ProductoBar): boolean {
-    return producto.esCombo;
+    return producto.es_combo;
   }
 
   /**
@@ -349,7 +360,7 @@ export class BarListComponent implements OnInit {
   }
 
   /**
-   * 🔧 NUEVO: Obtener precio original (sin descuento)
+   * Obtener precio original (sin descuento)
    */
   getPrecioOriginal(producto: ProductoBar): number {
     return producto.precio;
@@ -359,7 +370,7 @@ export class BarListComponent implements OnInit {
    * Verificar si el producto tiene descuento
    */
   tieneDescuento(producto: ProductoBar): boolean {
-    return producto.esCombo && !!producto.descuento;
+    return producto.es_combo && !!producto.descuento;
   }
 
   /**
@@ -367,20 +378,6 @@ export class BarListComponent implements OnInit {
    */
   tieneOpciones(producto: ProductoBar): boolean {
     return this.barService.tieneOpciones(producto);
-  }
-
-  /**
-   * 🔧 NUEVO: Verificar si el producto tiene tamaños
-   */
-  tieneTamanos(producto: ProductoBar): boolean {
-    return !!(producto.tamanos && producto.tamanos.length > 0);
-  }
-
-  /**
-   * 🔧 NUEVO: Verificar si el producto tiene extras
-   */
-  tieneExtras(producto: ProductoBar): boolean {
-    return !!(producto.extras && producto.extras.length > 0);
   }
 
   /**

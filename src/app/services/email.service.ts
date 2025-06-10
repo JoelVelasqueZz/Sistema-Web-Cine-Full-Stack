@@ -126,7 +126,7 @@ export class EmailService {
           }
         }
 
-        if (item.barProduct!.esCombo) {
+        if (item.barProduct!.es_combo) {
           details += '\n   🎁 COMBO ESPECIAL';
         }
 

@@ -114,12 +114,12 @@
                         [class.disabled]="contarProductosPorCategoria(categoria) === 0 && categoriaSeleccionada !== categoria"
                         (click)="filtrarPorCategoria(categoria)">
                   <i class="fas" 
-                     [class.fa-cocktail]="categoria === 'Bebidas'"
-                     [class.fa-cookie-bite]="categoria === 'Snacks'"
-                     [class.fa-candy-cane]="categoria === 'Dulces'"
-                     [class.fa-gift]="categoria === 'Combos'"
-                     [class.fa-ice-cream]="categoria === 'Helados'"
-                     [class.fa-tag]="!['Bebidas','Snacks','Dulces','Combos','Helados'].includes(categoria)"
+                     [class.fa-cocktail]="categoria.toLowerCase() === 'bebidas'"
+                     [class.fa-cookie-bite]="categoria.toLowerCase() === 'snacks'"
+                     [class.fa-candy-cane]="categoria.toLowerCase() === 'dulces'"
+                     [class.fa-gift]="categoria.toLowerCase() === 'combos'"
+                     [class.fa-ice-cream]="categoria.toLowerCase() === 'helados'"
+                     [class.fa-tag]="!['bebidas','snacks','dulces','combos','helados'].includes(categoria.toLowerCase())"
                      class="me-1"></i>
                   {{ categoria }}
                   <span class="badge ms-2"
@@ -222,18 +222,19 @@
           <!-- Category Badge -->
           <div class="position-absolute top-0 start-0 m-2">
             <span class="badge category-badge"
-                  [class.bg-primary]="producto.categoria === 'Bebidas'"
-                  [class.bg-warning]="producto.categoria === 'Snacks'"
-                  [class.bg-info]="producto.categoria === 'Dulces'"
-                  [class.bg-danger]="producto.categoria === 'Combos'"
-                  [class.bg-secondary]="!['Bebidas','Snacks','Dulces','Combos'].includes(producto.categoria)">
+                  [class.bg-primary]="producto.categoria.toLowerCase() === 'bebidas'"
+                  [class.bg-warning]="producto.categoria.toLowerCase() === 'snacks'"
+                  [class.bg-info]="producto.categoria.toLowerCase() === 'dulces'"
+                  [class.bg-danger]="producto.categoria.toLowerCase() === 'combos'"
+                  [class.bg-success]="producto.categoria.toLowerCase() === 'helados'"
+                  [class.bg-secondary]="!['bebidas','snacks','dulces','combos','helados'].includes(producto.categoria.toLowerCase())">
               <i class="fas me-1"
-                 [class.fa-cocktail]="producto.categoria === 'Bebidas'"
-                 [class.fa-cookie-bite]="producto.categoria === 'Snacks'"
-                 [class.fa-candy-cane]="producto.categoria === 'Dulces'"
-                 [class.fa-gift]="producto.categoria === 'Combos'"
-                 [class.fa-ice-cream]="producto.categoria === 'Helados'"
-                 [class.fa-tag]="!['Bebidas','Snacks','Dulces','Combos','Helados'].includes(producto.categoria)"></i>
+                 [class.fa-cocktail]="producto.categoria.toLowerCase() === 'bebidas'"
+                 [class.fa-cookie-bite]="producto.categoria.toLowerCase() === 'snacks'"
+                 [class.fa-candy-cane]="producto.categoria.toLowerCase() === 'dulces'"
+                 [class.fa-gift]="producto.categoria.toLowerCase() === 'combos'"
+                 [class.fa-ice-cream]="producto.categoria.toLowerCase() === 'helados'"
+                 [class.fa-tag]="!['bebidas','snacks','dulces','combos','helados'].includes(producto.categoria.toLowerCase())"></i>
               {{producto.categoria}}
             </span>
           </div>
@@ -264,11 +265,12 @@
         <!-- Product Info -->
         <div class="card-body d-flex flex-column bg-light">
           <h5 class="card-title fw-bold mb-2"
-              [class.text-warning]="producto.categoria === 'Snacks'"
-              [class.text-primary]="producto.categoria === 'Bebidas'"
-              [class.text-info]="producto.categoria === 'Dulces'"
-              [class.text-danger]="producto.categoria === 'Combos'"
-              [class.text-secondary]="!['Bebidas','Snacks','Dulces','Combos'].includes(producto.categoria)">
+              [class.text-warning]="producto.categoria.toLowerCase() === 'snacks'"
+              [class.text-primary]="producto.categoria.toLowerCase() === 'bebidas'"
+              [class.text-info]="producto.categoria.toLowerCase() === 'dulces'"
+              [class.text-danger]="producto.categoria.toLowerCase() === 'combos'"
+              [class.text-success]="producto.categoria.toLowerCase() === 'helados'"
+              [class.text-secondary]="!['bebidas','snacks','dulces','combos','helados'].includes(producto.categoria.toLowerCase())">
             {{producto.nombre}}
           </h5>
           
@@ -287,7 +289,7 @@
                 <i class="fas fa-plus me-1"></i>Extras disponibles
               </span>
               <span class="badge bg-light text-dark border" *ngIf="esCombo(producto)">
-                <i class="fas fa-star me-1"></i>Incluye: {{producto.incluye?.length || 0}} items
+                <i class="fas fa-star me-1"></i>Incluye: {{producto.combo_items?.length || 0}} items
               </span>
             </div>
           </div>

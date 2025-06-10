@@ -68,20 +68,21 @@
           <div class="position-absolute top-0 start-0 m-2">
             <span class="badge fs-6 px-3 py-2"
                   [ngClass]="{
-                    'bg-primary': producto.categoria === 'Bebidas',
-                    'bg-warning': producto.categoria === 'Snacks',
-                    'bg-info': producto.categoria === 'Dulces',
-                    'bg-danger': producto.categoria === 'Combos',
-                    'bg-secondary': !['Bebidas','Snacks','Dulces','Combos'].includes(producto.categoria)
+                    'bg-primary': producto.categoria.toLowerCase() === 'bebidas',
+                    'bg-warning': producto.categoria.toLowerCase() === 'snacks',
+                    'bg-info': producto.categoria.toLowerCase() === 'dulces',
+                    'bg-danger': producto.categoria.toLowerCase() === 'combos',
+                    'bg-success': producto.categoria.toLowerCase() === 'helados',
+                    'bg-secondary': !['bebidas','snacks','dulces','combos','helados'].includes(producto.categoria.toLowerCase())
                   }">
               <i class="fas me-1"
                  [ngClass]="{
-                   'fa-cocktail': producto.categoria === 'Bebidas',
-                   'fa-cookie-bite': producto.categoria === 'Snacks',
-                   'fa-candy-cane': producto.categoria === 'Dulces',
-                   'fa-gift': producto.categoria === 'Combos',
-                   'fa-ice-cream': producto.categoria === 'Helados',
-                   'fa-tag': !['Bebidas','Snacks','Dulces','Combos','Helados'].includes(producto.categoria)
+                   'fa-cocktail': producto.categoria.toLowerCase() === 'bebidas',
+                   'fa-cookie-bite': producto.categoria.toLowerCase() === 'snacks',
+                   'fa-candy-cane': producto.categoria.toLowerCase() === 'dulces',
+                   'fa-gift': producto.categoria.toLowerCase() === 'combos',
+                   'fa-ice-cream': producto.categoria.toLowerCase() === 'helados',
+                   'fa-tag': !['bebidas','snacks','dulces','combos','helados'].includes(producto.categoria.toLowerCase())
                  }"></i>
               {{producto.categoria}}
             </span>
@@ -95,7 +96,7 @@
         </div>
         
         <div class="card-body p-3">
-          <div class="text-center mb-3" *ngIf="producto.esCombo">
+          <div class="text-center mb-3" *ngIf="producto.es_combo">
             <span class="badge bg-gradient bg-danger text-white fs-5 px-4 py-2">
               <i class="fas fa-gift me-2"></i>COMBO ESPECIAL
             </span>
@@ -115,7 +116,7 @@
                 </h6>
                 <small class="text-muted d-block">ID: {{ producto.id }}</small>
                 <small class="text-muted d-block">Disponible: {{ producto.disponible ? 'Sí' : 'No' }}</small>
-                <small class="text-muted d-block">Es Combo: {{ producto.esCombo ? 'Sí' : 'No' }}</small>
+                <small class="text-muted d-block">Es Combo: {{ producto.es_combo ? 'Sí' : 'No' }}</small>
               </div>
             </div>
           </div>
@@ -140,27 +141,28 @@
         <div class="mb-4">
           <h3 class="h2 fw-bold mb-3"
               [ngClass]="{
-                'text-warning': producto.categoria === 'Snacks',
-                'text-primary': producto.categoria === 'Bebidas',
-                'text-info': producto.categoria === 'Dulces',
-                'text-danger': producto.categoria === 'Combos',
-                'text-secondary': !['Bebidas','Snacks','Dulces','Combos'].includes(producto.categoria)
+                'text-warning': producto.categoria.toLowerCase() === 'snacks',
+                'text-primary': producto.categoria.toLowerCase() === 'bebidas',
+                'text-info': producto.categoria.toLowerCase() === 'dulces',
+                'text-danger': producto.categoria.toLowerCase() === 'combos',
+                'text-success': producto.categoria.toLowerCase() === 'helados',
+                'text-secondary': !['bebidas','snacks','dulces','combos','helados'].includes(producto.categoria.toLowerCase())
               }">
             {{ producto.nombre }}
           </h3>
           <p class="lead text-muted lh-lg">{{ producto.descripcion }}</p>
         </div>
 
-        <div class="combo-info mb-4" *ngIf="producto.esCombo && producto.incluye">
+        <div class="combo-info mb-4" *ngIf="producto.es_combo && producto.combo_items">
           <h5 class="text-danger mb-3">
             <i class="fas fa-gift me-2"></i>Este combo incluye:
           </h5>
           <div class="card border-danger">
             <div class="card-body">
               <ul class="list-unstyled mb-0">
-                <li *ngFor="let item of producto.incluye" class="mb-2">
+                <li *ngFor="let item of producto.combo_items" class="mb-2">
                   <i class="fas fa-check-circle text-success me-2"></i>
-                  <span class="fw-semibold">{{ item }}</span>
+                  <span class="fw-semibold">{{ item.item_nombre }}</span>
                 </li>
               </ul>
             </div>
@@ -378,11 +380,12 @@
                 <label class="form-label">Categoría *</label>
                 <select class="form-control" name="categoria" [(ngModel)]="productoEditando.categoria" required>
                   <option value="">Seleccionar categoría</option>
-                  <option value="Bebidas">Bebidas</option>
-                  <option value="Snacks">Snacks</option>
-                  <option value="Dulces">Dulces</option>
-                  <option value="Combos">Combos</option>
-                  <option value="Helados">Helados</option>
+                  <option value="bebidas">Bebidas</option>
+                  <option value="snacks">Snacks</option>
+                  <option value="dulces">Dulces</option>
+                  <option value="combos">Combos</option>
+                  <option value="helados">Helados</option>
+                  <option value="comida">Comida</option>
                 </select>
               </div>
               
@@ -395,7 +398,7 @@
 
               <div class="mb-3">
                 <div class="form-check">
-                  <input class="form-check-input" type="checkbox" name="esCombo" [(ngModel)]="productoEditando.esCombo">
+                  <input class="form-check-input" type="checkbox" name="es_combo" [(ngModel)]="productoEditando.es_combo">
                   <label class="form-check-label">Es un combo especial</label>
                 </div>
               </div>
@@ -416,7 +419,7 @@
                 </div>
               </div>
 
-              <div class="mb-3" *ngIf="productoEditando.esCombo">
+              <div class="mb-3" *ngIf="productoEditando.es_combo">
                 <label class="form-label">Descuento del combo</label>
                 <div class="input-group">
                   <span class="input-group-text">$</span>

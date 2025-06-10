@@ -1,9 +1,10 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { ProductoBar, TamañoProducto, ExtraProducto, BarService } from '../../services/bar.service';
+import { ProductoBar, TamañoProducto, ExtraProducto, BarService, ProductoCreateRequest } from '../../services/bar.service';
 import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../services/toast.service';
 import { CartService } from '../../services/cart.service';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-bar-detail',
@@ -11,7 +12,7 @@ import { CartService } from '../../services/cart.service';
   templateUrl: './bar-detail.component.html',
   styleUrl: './bar-detail.component.css'
 })
-export class BarDetailComponent implements OnInit {
+export class BarDetailComponent implements OnInit, OnDestroy {
 
   producto: ProductoBar | null = null;
   productoId: number = -1;
@@ -32,6 +33,8 @@ export class BarDetailComponent implements OnInit {
   cantidad = 1;
   notasEspeciales = '';
 
+  private subscriptions = new Subscription();
+
   constructor(
     private activatedRoute: ActivatedRoute,
     private barService: BarService,
@@ -48,18 +51,38 @@ export class BarDetailComponent implements OnInit {
 
   ngOnInit(): void {}
 
+  ngOnDestroy(): void {
+    this.subscriptions.unsubscribe();
+  }
+
   private cargarProducto(): void {
     this.cargando = true;
+
+    // Intentar cargar desde cache primero
     this.producto = this.barService.getProducto(this.productoId);
     
-    if (!this.producto) {
-      this.toastService.showError('Producto no encontrado');
-      this.router.navigate(['/bar']);
+    if (this.producto) {
+      this.inicializarSelecciones();
+      this.cargando = false;
       return;
     }
 
-    this.inicializarSelecciones();
-    this.cargando = false;
+    // Si no está en cache, cargar desde API
+    const sub = this.barService.getProductoDesdeAPI(this.productoId).subscribe({
+      next: (producto) => {
+        this.producto = producto;
+        this.inicializarSelecciones();
+        this.cargando = false;
+      },
+      error: (error) => {
+        console.error('Error al cargar producto:', error);
+        this.toastService.showError('Producto no encontrado');
+        this.router.navigate(['/bar']);
+        this.cargando = false;
+      }
+    });
+
+    this.subscriptions.add(sub);
   }
 
   private inicializarSelecciones(): void {
@@ -94,7 +117,9 @@ export class BarDetailComponent implements OnInit {
   getPrecioBase(): number {
     if (!this.producto) return 0;
     if (this.tamanoSeleccionado) return this.tamanoSeleccionado.precio;
-    return this.producto.esCombo && this.producto.descuento 
+    
+    // Usar es_combo en lugar de esCombo
+    return this.producto.es_combo && this.producto.descuento 
       ? this.producto.precio - this.producto.descuento 
       : this.producto.precio;
   }
@@ -112,7 +137,8 @@ export class BarDetailComponent implements OnInit {
   }
 
   tieneDescuento(): boolean {
-    return !!(this.producto?.esCombo && this.producto?.descuento);
+    // Cambiar esCombo por es_combo
+    return !!(this.producto?.es_combo && this.producto?.descuento);
   }
 
   getPrecioOriginal(): number {
@@ -185,6 +211,7 @@ export class BarDetailComponent implements OnInit {
   editarProducto(): void {
     if (!this.validarAdmin() || !this.producto) return;
 
+    // Crear una copia compatible con el formulario de edición
     this.productoEditando = { ...this.producto };
     this.resetearMensajes();
   }
@@ -211,8 +238,31 @@ export class BarDetailComponent implements OnInit {
       return;
     }
 
+    // Convertir a formato de backend para la actualización
+    const productoParaActualizar: Partial<ProductoCreateRequest> = {
+      nombre: this.productoEditando.nombre,
+      descripcion: this.productoEditando.descripcion,
+      precio: this.productoEditando.precio,
+      categoria: this.productoEditando.categoria,
+      imagen: this.productoEditando.imagen || undefined,
+      disponible: this.productoEditando.disponible,
+      es_combo: this.productoEditando.es_combo,
+      descuento: this.productoEditando.descuento,
+      tamanos: this.productoEditando.tamanos?.map(t => ({ 
+        nombre: t.nombre, 
+        precio: t.precio 
+      })) || [],
+      extras: this.productoEditando.extras?.map(e => ({ 
+        nombre: e.nombre, 
+        precio: e.precio 
+      })) || [],
+      combo_items: this.productoEditando.combo_items?.map(c => ({ 
+        item_nombre: c.item_nombre 
+      })) || []
+    };
+
     setTimeout(() => {
-      const exito = this.barService.updateProducto(this.productoId, this.productoEditando!);
+      const exito = this.barService.updateProducto(this.productoId, productoParaActualizar);
       
       if (exito) {
         this.exitoEdicion = `Producto "${this.productoEditando!.nombre}" actualizado exitosamente`;
@@ -267,7 +317,20 @@ export class BarDetailComponent implements OnInit {
   }
 
   private recargarProducto(): void {
-    this.producto = this.barService.getProducto(this.productoId);
+    // Recargar desde la API para obtener los datos más recientes
+    const sub = this.barService.getProductoDesdeAPI(this.productoId).subscribe({
+      next: (producto) => {
+        this.producto = producto;
+        this.inicializarSelecciones();
+      },
+      error: (error) => {
+        console.error('Error al recargar producto:', error);
+        // Fallback al cache local
+        this.producto = this.barService.getProducto(this.productoId);
+      }
+    });
+
+    this.subscriptions.add(sub);
   }
 
   private resetearEdicion(): void {
