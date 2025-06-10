@@ -8,7 +8,7 @@
         <ol class="breadcrumb">
           <li class="breadcrumb-item">
             <a [routerLink]="['/home']">Inicio</a>
-          </li>
+          </li> 
           <li class="breadcrumb-item">
             <a [routerLink]="['/coming-soon']">Próximos Estrenos</a>
           </li>
@@ -41,6 +41,9 @@
         <button class="btn btn-outline-secondary" (click)="volver()">
           <i class="fas fa-arrow-left me-2"></i>
           Volver a Estrenos
+        </button>
+        <button class="btn btn-outline-danger" *ngIf="authService.isAdmin()" (click)="irAAdminEstreno()">
+              <i class="fas fa-cogs me-2"></i>Panel Admin
         </button>
       </div>
     </div>

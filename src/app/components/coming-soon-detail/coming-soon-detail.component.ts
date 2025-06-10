@@ -2,6 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MovieService, ProximoEstreno } from '../../services/movie.service'; // 🔧 USAR INTERFAZ DEL SERVICE
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { AuthService } from '../../services/auth.service';
+import { ToastService } from '../../services/toast.service';
 
 @Component({
   selector: 'app-coming-soon-detail',
@@ -20,7 +22,9 @@ export class ComingSoonDetailComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private movieService: MovieService,
-    private sanitizer: DomSanitizer
+    private sanitizer: DomSanitizer,
+    public authService: AuthService,
+    private toastService: ToastService
   ) {}
 
   ngOnInit(): void {
@@ -71,6 +75,19 @@ export class ComingSoonDetailComponent implements OnInit {
       }
     );
   }
+  
+    irAAdminEstreno(): void {
+      if (this.validarAdmin()) {
+        this.router.navigate(['/admin/coming-soon']);
+      }
+    }
+  private validarAdmin(): boolean {
+      if (!this.authService.isAdmin()) {
+        this.toastService.showError('No tienes permisos para realizar esta acción');
+        return false; 
+      }
+      return true;
+    }
 
   calcularDiasRestantes(): void {
     if (this.estreno) {
@@ -94,7 +111,7 @@ export class ComingSoonDetailComponent implements OnInit {
   agregarRecordatorio(): void {
     // Aquí podrías implementar funcionalidad para agregar a favoritos o enviar recordatorio
     alert(`¡Te recordaremos cuando "${this.estreno?.titulo}" esté disponible!`);
-  }
+  } 
 
   compartir(): void {
     if (navigator.share && this.estreno) {

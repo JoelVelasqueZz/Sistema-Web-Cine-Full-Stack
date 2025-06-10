@@ -96,6 +96,9 @@
                     (click)="verEstadisticas()">
               <i class="fas fa-chart-bar me-2"></i>Estadísticas
             </button>
+            <button class="btn btn-outline-danger" *ngIf="authService.isAdmin()" (click)="irAAdminMovie()">
+              <i class="fas fa-cogs me-2"></i>Panel Admin
+            </button>
           </div>
         </div>
       </div>
@@ -194,7 +197,7 @@
       </h5>
       <button class="btn btn-sm btn-outline-light" 
               (click)="showFunctionAdmin = false">
-        <i class="fas fa-times"></i>
+        <i class="fas fa-times"></i> 
       </button>
     </div>
     <div class="card-body p-0">

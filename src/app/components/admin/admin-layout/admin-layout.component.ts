@@ -196,6 +196,14 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
     this.toastService.showInfo('Redirigiendo a agregar próximo estreno...');
   }
 
+  quickAddFuncion(): void {
+    this.router.navigate(['/admin/functions'], { 
+      queryParams: { action: 'add' } 
+    });
+    
+    this.toastService.showInfo('Redirigiendo a agregar función...');
+  }
+
   // ✅ MÉTODO getSystemStatus ACTUALIZADO
   private getSystemStatus(): any {
     return {

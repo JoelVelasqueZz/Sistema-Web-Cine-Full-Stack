@@ -53,11 +53,13 @@ router.use('/favorites', require('./favorites'));
 // Rutas de historial
 router.use('/history', require('./history'));
 
-// 🆕 AGREGAR ESTA LÍNEA - Rutas de próximos estrenos
+// Rutas de próximos estrenos
 router.use('/coming-soon', require('./comingSoon'));
 
+// 🆕 NUEVA LÍNEA - Rutas de productos del bar
+router.use('/bar', require('./bar'));
+
 // Aquí iremos agregando las otras rutas (COMENTADAS)
-// router.use('/bar', require('./bar'));
 // router.use('/orders', require('./orders'));
 // router.use('/points', require('./points'));
 // router.use('/rewards', require('./rewards'));

@@ -92,7 +92,7 @@ private cargarConteoFunciones(): void {
         console.log('⚠️ Película no encontrada');
         this.peliculaNoEncontrada = true;
         this.cargando = false;
-        
+         
         setTimeout(() => {
           this.router.navigate(['/movies']);
           this.toastService.showError('Película no encontrada');
@@ -111,7 +111,18 @@ private cargarConteoFunciones(): void {
     }
   );
 }
-
+irAAdminMovie(): void {
+    if (this.validarAdmin()) {
+      this.router.navigate(['/admin/movies']);
+    }
+  }
+private validarAdmin(): boolean {
+    if (!this.authService.isAdmin()) {
+      this.toastService.showError('No tienes permisos para realizar esta acción');
+      return false; 
+    }
+    return true;
+  }
   // MÉTODO: Configurar URL del trailer
   private configurarTrailer(): void {
     if (this.pelicula && this.pelicula.trailer) {
