@@ -50,31 +50,33 @@ export class BarListComponent implements OnInit, OnDestroy {
 
   // ==================== INICIALIZACIÓN ====================
 
-  private cargarProductos(): void {
-    const sub = this.barService.getProductosObservable().subscribe({
-      next: (productos) => {
-        this.productosOriginales = productos;
-        this.productos = [...this.productosOriginales];
-        this.productosFiltrados = [...this.productos];
-        this.aplicarFiltroDisponibles();
-        this.cargando = false;
-        console.log('Productos del bar cargados:', this.productos.length);
-      },
-      error: (error) => {
-        console.error('Error al cargar productos:', error);
-        this.toastService.showError('Error al cargar productos del bar');
-        
-        // Fallback a datos locales
-        this.productosOriginales = this.barService.getProductos();
-        this.productos = [...this.productosOriginales];
-        this.productosFiltrados = [...this.productos];
-        this.aplicarFiltroDisponibles();
-        this.cargando = false;
-      }
-    });
-    
-    this.subscriptions.add(sub);
-  }
+ private cargarProductos(): void {
+  const sub = this.barService.getProductosObservable().subscribe({
+    next: (productos) => {
+      this.productosOriginales = productos;
+      this.productos = [...this.productosOriginales];
+      this.productosFiltrados = [...this.productos];
+      
+      // 🔧 FIX: Solo aplicar filtros sin cambiar el estado del toggle
+      this.aplicarFiltrosCombinados();
+      this.cargando = false;
+      console.log('Productos del bar cargados:', this.productos.length);
+    },
+    error: (error) => {
+      console.error('Error al cargar productos:', error);
+      this.toastService.showError('Error al cargar productos del bar');
+      
+      // Fallback a datos locales
+      this.productosOriginales = this.barService.getProductos();
+      this.productos = [...this.productosOriginales];
+      this.productosFiltrados = [...this.productos];
+      this.aplicarFiltrosCombinados();
+      this.cargando = false;
+    }
+  });
+  
+  this.subscriptions.add(sub);
+}
 
   private cargarCategorias(): void {
     const sub = this.barService.getCategoriasObservable().subscribe({
@@ -105,51 +107,53 @@ export class BarListComponent implements OnInit, OnDestroy {
    * Aplicar todos los filtros combinados
    */
   private aplicarFiltrosCombinados(): void {
-    let productosBase: ProductoBar[];
+  let productosBase: ProductoBar[];
 
-    // Filtro base por categoría
-    if (this.categoriaSeleccionada === 'Todas') {
-      productosBase = [...this.productosOriginales];
-    } else {
-      productosBase = this.barService.getProductosPorCategoria(this.categoriaSeleccionada);
-    }
-
-    // Filtro por disponibilidad
-    if (this.mostrandoSoloDisponibles) {
-      productosBase = productosBase.filter(producto => producto.disponible);
-    }
-
-    // Aplicar filtros de ordenamiento
-    switch (this.filtroActivo) {
-      case 'precio-menor':
-        this.productos = productosBase.sort((a, b) => a.precio - b.precio);
-        break;
-      case 'precio-mayor':
-        this.productos = productosBase.sort((a, b) => b.precio - a.precio);
-        break;
-      case 'alfabetico':
-        this.productos = productosBase.sort((a, b) => 
-          a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' })
-        );
-        break;
-      case 'categoria':
-        this.productos = productosBase.sort((a, b) => 
-          a.categoria.localeCompare(b.categoria, 'es', { sensitivity: 'base' })
-        );
-        break;
-      case 'combos':
-        this.productos = productosBase.sort((a, b) => {
-          if (a.es_combo && !b.es_combo) return -1;
-          if (!a.es_combo && b.es_combo) return 1;
-          return 0;
-        });
-        break;
-      default:
-        this.productos = productosBase;
-    }
-    
-    this.productosFiltrados = [...this.productos];
+  // Filtro base por categoría
+  if (this.categoriaSeleccionada === 'Todas') {
+    productosBase = [...this.productosOriginales];
+  } else {
+    productosBase = this.productosOriginales.filter(p => 
+      p.categoria.toLowerCase() === this.categoriaSeleccionada.toLowerCase()
+    );
   }
+
+  // 🔧 FIX: Filtro por disponibilidad (solo si está activado)
+  if (this.mostrandoSoloDisponibles) {
+    productosBase = productosBase.filter(producto => producto.disponible);
+  }
+
+  // Aplicar filtros de ordenamiento
+  switch (this.filtroActivo) {
+    case 'precio-menor':
+      this.productos = productosBase.sort((a, b) => a.precio - b.precio);
+      break;
+    case 'precio-mayor':
+      this.productos = productosBase.sort((a, b) => b.precio - a.precio);
+      break;
+    case 'alfabetico':
+      this.productos = productosBase.sort((a, b) => 
+        a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' })
+      );
+      break;
+    case 'categoria':
+      this.productos = productosBase.sort((a, b) => 
+        a.categoria.localeCompare(b.categoria, 'es', { sensitivity: 'base' })
+      );
+      break;
+    case 'combos':
+      this.productos = productosBase.sort((a, b) => {
+        if (a.es_combo && !b.es_combo) return -1;
+        if (!a.es_combo && b.es_combo) return 1;
+        return 0;
+      });
+      break;
+    default:
+      this.productos = productosBase;
+  }
+  
+  this.productosFiltrados = [...this.productos];
+}
 
   /**
    * Aplicar filtro de ordenamiento
@@ -163,21 +167,20 @@ export class BarListComponent implements OnInit, OnDestroy {
    * Aplicar filtro de solo disponibles
    */
   aplicarFiltroDisponibles(): void {
-    this.mostrandoSoloDisponibles = !this.mostrandoSoloDisponibles;
-    this.aplicarFiltrosCombinados();
-  }
+  // Solo cambiar el estado cuando el usuario hace clic manualmente
+  this.mostrandoSoloDisponibles = !this.mostrandoSoloDisponibles;
+  this.aplicarFiltrosCombinados();
+}
 
   /**
    * Limpiar todos los filtros
    */
   limpiarFiltros(): void {
-    this.filtroActivo = 'ninguno';
-    this.categoriaSeleccionada = 'Todas';
-    this.mostrandoSoloDisponibles = true;
-    this.productos = [...this.productosOriginales];
-    this.aplicarFiltroDisponibles();
-  }
-
+  this.filtroActivo = 'ninguno';
+  this.categoriaSeleccionada = 'Todas';
+  this.mostrandoSoloDisponibles = true; // Reset a valor por defecto
+  this.aplicarFiltrosCombinados();
+}
   /**
    * Verificar si hay filtros activos
    */
@@ -252,24 +255,40 @@ export class BarListComponent implements OnInit, OnDestroy {
    * Cambiar disponibilidad de producto (solo admin)
    */
   toggleDisponibilidad(producto: ProductoBar, event: Event): void {
-    event.stopPropagation();
+  event.stopPropagation();
 
-    if (!this.authService.isAdmin()) {
-      this.toastService.showError('No tienes permisos para realizar esta acción');
-      return;
-    }
+  if (!this.authService.isAdmin()) {
+    this.toastService.showError('No tienes permisos para realizar esta acción');
+    return;
+  }
 
-    const exito = this.barService.toggleDisponibilidad(producto.id);
-    
-    if (exito) {
-      const estado = producto.disponible ? 'habilitado' : 'deshabilitado';
+  const exito = this.barService.toggleDisponibilidad(producto.id);
+  
+  if (exito) {
+    // 🔧 FIX: Actualizar inmediatamente en el array local
+    const index = this.productosOriginales.findIndex(p => p.id === producto.id);
+    if (index !== -1) {
+      // Actualizar en los datos originales
+      this.productosOriginales[index].disponible = !this.productosOriginales[index].disponible;
+      
+      // También actualizar en el array filtrado actual
+      const indexFiltrado = this.productos.findIndex(p => p.id === producto.id);
+      if (indexFiltrado !== -1) {
+        this.productos[indexFiltrado].disponible = this.productosOriginales[index].disponible;
+      }
+      
+      const estado = this.productosOriginales[index].disponible ? 'habilitado' : 'deshabilitado';
       this.toastService.showSuccess(`Producto ${estado} exitosamente`);
       
-      // Recargar productos para reflejar cambios
-      setTimeout(() => this.cargarProductos(), 500);
-    } else {
-      this.toastService.showError('Error al cambiar disponibilidad del producto');
+      // 🔧 FIX: Reaplicar filtros sin cambiar el estado del toggle
+      this.aplicarFiltrosCombinados();
     }
+    
+    // Recargar en segundo plano para sincronizar con el servidor
+    setTimeout(() => this.cargarProductos(), 1000);
+  } else {
+    this.toastService.showError('Error al cambiar disponibilidad del producto');
+  }
   }
 
   /**

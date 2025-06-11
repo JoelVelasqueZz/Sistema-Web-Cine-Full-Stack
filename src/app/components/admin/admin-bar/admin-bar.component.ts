@@ -388,72 +388,100 @@ export class AdminBarComponent implements OnInit, OnDestroy {
   }
 
   // 🆕 MODIFICADO: Eliminar con diferentes tipos
-  async eliminarProducto(): Promise<void> {
-    if (this.productoParaEliminar <= 0) return;
+ async eliminarProducto(): Promise<void> {
+  if (this.productoParaEliminar <= 0) return;
+  
+  this.procesando = true;
+  
+  try {
+    await this.delay(1000);
     
-    this.procesando = true;
+    let resultado = false;
     
-    try {
-      await this.delay(1000);
-      
-      let resultado = false;
-      
-      switch (this.tipoEliminacion) {
-        case 'soft':
-          resultado = this.barService.deleteProducto(this.productoParaEliminar);
-          if (resultado) {
-            this.toastService.showSuccess('Producto eliminado exitosamente');
+    switch (this.tipoEliminacion) {
+      case 'soft':
+        resultado = this.barService.deleteProducto(this.productoParaEliminar);
+        if (resultado) {
+          // 🔧 FIX: Remover del array local inmediatamente
+          const nombreProducto = this.productos.find(p => p.id === this.productoParaEliminar)?.nombre || 'Producto';
+          
+          // Filtrar el producto eliminado de la lista actual
+          this.productos = this.productos.filter(p => p.id !== this.productoParaEliminar);
+          this.aplicarFiltros(); // Reaplicar filtros
+          this.calcularEstadisticas(); // Recalcular estadísticas
+          
+          this.toastService.showSuccess(`"${nombreProducto}" eliminado exitosamente`);
+          
+          // Recargar datos en segundo plano sin afectar la UI
+          setTimeout(() => {
             this.cargarProductos();
             this.cargarProductosEliminados();
-          }
-          break;
-          
-        case 'restore':
-          const sub = this.barService.restoreProducto(this.productoParaEliminar).subscribe({
-            next: (success) => {
-              if (success) {
+          }, 500);
+        }
+        break;
+        
+      case 'restore':
+        const sub = this.barService.restoreProducto(this.productoParaEliminar).subscribe({
+          next: (success) => {
+            if (success) {
+              // 🔧 FIX: Remover de la lista de eliminados inmediatamente
+              const nombreProducto = this.productosEliminados.find(p => p.id === this.productoParaEliminar)?.nombre || 'Producto';
+              
+              this.productosEliminados = this.productosEliminados.filter(p => p.id !== this.productoParaEliminar);
+              this.estadisticas.eliminados = this.productosEliminados.length;
+              
+              this.toastService.showSuccess(`"${nombreProducto}" restaurado exitosamente`);
+              
+              // Recargar datos principales en segundo plano
+              setTimeout(() => {
                 this.cargarProductos();
-                this.cargarProductosEliminados();
-              }
-              this.procesando = false;
-            },
-            error: (error) => {
-              console.error('Error al restaurar:', error);
-              this.procesando = false;
+              }, 500);
             }
-          });
-          this.subscriptions.add(sub);
-          break;
-          
-        case 'hard':
-          const hardSub = this.barService.hardDeleteProducto(this.productoParaEliminar).subscribe({
-            next: (success) => {
-              if (success) {
-                this.cargarProductosEliminados();
-              }
-              this.procesando = false;
-            },
-            error: (error) => {
-              console.error('Error al eliminar permanentemente:', error);
-              this.procesando = false;
+            this.procesando = false;
+          },
+          error: (error) => {
+            console.error('Error al restaurar:', error);
+            this.procesando = false;
+          }
+        });
+        this.subscriptions.add(sub);
+        break;
+        
+      case 'hard':
+        const hardSub = this.barService.hardDeleteProducto(this.productoParaEliminar).subscribe({
+          next: (success) => {
+            if (success) {
+              // 🔧 FIX: Remover de la lista de eliminados inmediatamente
+              const nombreProducto = this.productosEliminados.find(p => p.id === this.productoParaEliminar)?.nombre || 'Producto';
+              
+              this.productosEliminados = this.productosEliminados.filter(p => p.id !== this.productoParaEliminar);
+              this.estadisticas.eliminados = this.productosEliminados.length;
+              
+              this.toastService.showSuccess(`"${nombreProducto}" eliminado permanentemente`);
             }
-          });
-          this.subscriptions.add(hardSub);
-          break;
-      }
-      
-      if (this.tipoEliminacion === 'soft') {
-        this.procesando = false;
-      }
-      
-    } catch (error) {
-      console.error('Error al procesar eliminación:', error);
-      this.toastService.showError('Error inesperado al procesar la acción');
-      this.procesando = false;
-    } finally {
-      this.cerrarModalConfirmacion();
+            this.procesando = false;
+          },
+          error: (error) => {
+            console.error('Error al eliminar permanentemente:', error);
+            this.procesando = false;
+          }
+        });
+        this.subscriptions.add(hardSub);
+        break;
     }
+    
+    if (this.tipoEliminacion === 'soft') {
+      this.procesando = false;
+    }
+    
+  } catch (error) {
+    console.error('Error al procesar eliminación:', error);
+    this.toastService.showError('Error inesperado al procesar la acción');
+    this.procesando = false;
+  } finally {
+    this.cerrarModalConfirmacion();
   }
+}
 
   cerrarModalConfirmacion(): void {
     this.mostrarModalConfirmacion = false;
