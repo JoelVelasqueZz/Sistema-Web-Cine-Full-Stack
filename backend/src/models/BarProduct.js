@@ -1,6 +1,7 @@
 const { query } = require('../config/database');
 
 class BarProduct {
+  // ✅ Obtener todos los productos (solo los no eliminados)
   static async getAll() {
     try {
       const queryText = `
@@ -51,6 +52,7 @@ class BarProduct {
     }
   }
 
+  // ✅ Obtener producto por ID (solo si no está eliminado)
   static async getById(id) {
     try {
       const queryText = `
@@ -255,7 +257,7 @@ class BarProduct {
     }
   }
 
-  // 🆕 NUEVO MÉTODO: Cambiar disponibilidad (para activar/desactivar producto)
+  // Cambiar disponibilidad (para activar/desactivar producto)
   static async toggleDisponibilidad(id) {
     try {
       const queryText = `
@@ -277,7 +279,7 @@ class BarProduct {
     }
   }
 
-  // 🆕 MODIFICADO: Soft delete (cambiar eliminado a true)
+  // ✅ SIMPLIFICADO: Soft delete directo (igual que películas)
   static async delete(id) {
     try {
       const queryText = `
@@ -299,95 +301,7 @@ class BarProduct {
     }
   }
 
-  // 🆕 NUEVO MÉTODO: Restaurar producto eliminado
-  static async restore(id) {
-    try {
-      const queryText = `
-        UPDATE productos_bar 
-        SET eliminado = false, fecha_actualizacion = CURRENT_TIMESTAMP
-        WHERE id = $1 AND eliminado = true
-        RETURNING *
-      `;
-      
-      const result = await query(queryText, [id]);
-      
-      if (result.rows.length === 0) {
-        throw new Error('Producto no encontrado en la papelera');
-      }
-      
-      return result.rows[0];
-    } catch (error) {
-      throw new Error(`Error al restaurar producto: ${error.message}`);
-    }
-  }
-
-  // 🆕 NUEVO MÉTODO: Obtener productos eliminados (papelera)
-  static async getDeleted() {
-    try {
-      const queryText = `
-        SELECT 
-          pb.*,
-          COALESCE(
-            json_agg(
-              json_build_object(
-                'id', pt.id,
-                'nombre', pt.nombre,
-                'precio', pt.precio
-              )
-            ) FILTER (WHERE pt.id IS NOT NULL), 
-            '[]'
-          ) as tamanos,
-          COALESCE(
-            json_agg(
-              json_build_object(
-                'id', pe.id,
-                'nombre', pe.nombre,
-                'precio', pe.precio
-              )
-            ) FILTER (WHERE pe.id IS NOT NULL), 
-            '[]'
-          ) as extras,
-          COALESCE(
-            json_agg(
-              json_build_object(
-                'id', ci.id,
-                'item_nombre', ci.item_nombre
-              )
-            ) FILTER (WHERE ci.id IS NOT NULL), 
-            '[]'
-          ) as combo_items
-        FROM productos_bar pb
-        LEFT JOIN producto_tamanos pt ON pb.id = pt.producto_id
-        LEFT JOIN producto_extras pe ON pb.id = pe.producto_id
-        LEFT JOIN combo_items ci ON pb.id = ci.producto_id
-        WHERE pb.eliminado = true
-        GROUP BY pb.id
-        ORDER BY pb.fecha_actualizacion DESC
-      `;
-      
-      const result = await query(queryText);
-      return result.rows;
-    } catch (error) {
-      throw new Error(`Error al obtener productos eliminados: ${error.message}`);
-    }
-  }
-
-  static async hardDelete(id) {
-    try {
-      // Eliminación física (solo para admin)
-      const queryText = 'DELETE FROM productos_bar WHERE id = $1 RETURNING *';
-      const result = await query(queryText, [id]);
-      
-      if (result.rows.length === 0) {
-        throw new Error('Producto no encontrado');
-      }
-      
-      return result.rows[0];
-    } catch (error) {
-      throw new Error(`Error al eliminar producto permanentemente: ${error.message}`);
-    }
-  }
-
+  // ✅ Obtener por categoría (solo los no eliminados)
   static async getByCategory(categoria) {
     try {
       const queryText = `
@@ -428,6 +342,7 @@ class BarProduct {
     }
   }
 
+  // ✅ Obtener combos (solo los no eliminados)
   static async getCombos() {
     try {
       const queryText = `
@@ -456,6 +371,7 @@ class BarProduct {
     }
   }
 
+  // ✅ Obtener categorías (solo de productos no eliminados)
   static async getCategories() {
     try {
       const queryText = `

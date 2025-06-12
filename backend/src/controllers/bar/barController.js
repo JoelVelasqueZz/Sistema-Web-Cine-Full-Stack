@@ -3,7 +3,7 @@ const { validationResult } = require('express-validator');
 const { asyncHandler } = require('../../middleware/errorHandler');
 
 class BarController {
-  // Obtener todos los productos
+  // Obtener todos los productos (solo los no eliminados)
   static getAllProducts = asyncHandler(async (req, res) => {
     const products = await BarProduct.getAll();
     
@@ -120,7 +120,7 @@ class BarController {
     });
   });
 
-  // 🆕 NUEVO: Cambiar disponibilidad del producto
+  // Cambiar disponibilidad del producto
   static toggleDisponibilidad = asyncHandler(async (req, res) => {
     const { id } = req.params;
     
@@ -142,7 +142,7 @@ class BarController {
     });
   });
 
-  // 🆕 MODIFICADO: Eliminar producto (soft delete)
+  // ✅ SIMPLIFICADO: Eliminar producto (soft delete directo)
   static deleteProduct = asyncHandler(async (req, res) => {
     const { id } = req.params;
     
@@ -158,58 +158,6 @@ class BarController {
     res.status(200).json({
       success: true,
       message: 'Producto eliminado exitosamente',
-      data: deletedProduct
-    });
-  });
-
-  // 🆕 NUEVO: Restaurar producto eliminado
-  static restoreProduct = asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    
-    if (!id || isNaN(id)) {
-      return res.status(400).json({
-        success: false,
-        message: 'ID de producto inválido'
-      });
-    }
-
-    const restoredProduct = await BarProduct.restore(parseInt(id));
-
-    res.status(200).json({
-      success: true,
-      message: 'Producto restaurado exitosamente',
-      data: restoredProduct
-    });
-  });
-
-  // 🆕 NUEVO: Obtener productos eliminados (papelera)
-  static getDeletedProducts = asyncHandler(async (req, res) => {
-    const deletedProducts = await BarProduct.getDeleted();
-
-    res.status(200).json({
-      success: true,
-      message: 'Productos eliminados obtenidos exitosamente',
-      data: deletedProducts,
-      total: deletedProducts.length
-    });
-  });
-
-  // Eliminar producto permanentemente (solo admin)
-  static hardDeleteProduct = asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    
-    if (!id || isNaN(id)) {
-      return res.status(400).json({
-        success: false,
-        message: 'ID de producto inválido'
-      });
-    }
-
-    const deletedProduct = await BarProduct.hardDelete(parseInt(id));
-
-    res.status(200).json({
-      success: true,
-      message: 'Producto eliminado permanentemente',
       data: deletedProduct
     });
   });

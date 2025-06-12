@@ -16,7 +16,7 @@ export interface ProductoBar {
   disponible: boolean;
   es_combo: boolean;
   descuento?: number;
-  eliminado?: boolean; // 🆕 NUEVA PROPIEDAD
+  eliminado?: boolean; // ✅ MANTENER PROPIEDAD PARA BD
   fecha_creacion?: string;
   fecha_actualizacion?: string;
   tamanos?: TamañoProducto[];
@@ -291,7 +291,9 @@ export class BarService {
     return true;
   }
 
-  // 🆕 NUEVO MÉTODO: Cambiar disponibilidad del producto
+  /**
+   * Cambiar disponibilidad del producto
+   */
   toggleDisponibilidad(id: number): boolean {
     if (!this.authService.isAdmin()) {
       this.toastService.showError('No tienes permisos de administrador');
@@ -322,7 +324,7 @@ export class BarService {
   }
 
   /**
-   * Eliminar producto (soft delete - solo admin)
+   * ✅ SIMPLIFICADO: Eliminar producto (soft delete directo)
    */
   deleteProducto(id: number): boolean {
     if (!this.authService.isAdmin()) {
@@ -348,69 +350,6 @@ export class BarService {
     ).subscribe();
 
     return true;
-  }
-
-  // 🆕 NUEVO MÉTODO: Restaurar producto eliminado
-  restoreProducto(id: number): Observable<boolean> {
-    if (!this.authService.isAdmin()) {
-      return throwError(() => new Error('No tienes permisos de administrador'));
-    }
-
-    const headers = this.getAuthHeaders();
-
-    return this.http.patch<APIResponse<ProductoBar>>(`${this.API_URL}/${id}/restore`, {}, { headers }).pipe(
-      map(response => {
-        if (response.success) {
-          const productoRestaurado = this.adaptarProductoDesdeAPI(response.data);
-          this.productosCache.push(productoRestaurado);
-          this.productosSubject.next(this.productosCache);
-          
-          this.toastService.showSuccess(`Producto "${productoRestaurado.nombre}" restaurado exitosamente`);
-          return true;
-        }
-        throw new Error(response.message || 'Error al restaurar producto');
-      }),
-      catchError(this.handleError('Error al restaurar producto'))
-    );
-  }
-
-  // 🆕 NUEVO MÉTODO: Obtener productos eliminados (papelera)
-  getProductosEliminados(): Observable<ProductoBar[]> {
-    if (!this.authService.isAdmin()) {
-      return throwError(() => new Error('No tienes permisos de administrador'));
-    }
-
-    const headers = this.getAuthHeaders();
-
-    return this.http.get<APIResponse<ProductoBar[]>>(`${this.API_URL}/admin/deleted`, { headers }).pipe(
-      map(response => {
-        if (response.success) {
-          return this.adaptarProductosDesdeAPI(response.data);
-        }
-        throw new Error(response.message || 'Error al obtener productos eliminados');
-      }),
-      catchError(this.handleError('Error al cargar papelera'))
-    );
-  }
-
-  // 🆕 NUEVO MÉTODO: Eliminar permanentemente
-  hardDeleteProducto(id: number): Observable<boolean> {
-    if (!this.authService.isAdmin()) {
-      return throwError(() => new Error('No tienes permisos de administrador'));
-    }
-
-    const headers = this.getAuthHeaders();
-
-    return this.http.delete<APIResponse<any>>(`${this.API_URL}/${id}/hard`, { headers }).pipe(
-      map(response => {
-        if (response.success) {
-          this.toastService.showSuccess('Producto eliminado permanentemente');
-          return true;
-        }
-        throw new Error(response.message || 'Error al eliminar permanentemente');
-      }),
-      catchError(this.handleError('Error al eliminar permanentemente'))
-    );
   }
 
   // ==================== MÉTODOS DE VALIDACIÓN ====================
@@ -599,7 +538,7 @@ export class BarService {
       disponible: producto.disponible,
       es_combo: producto.es_combo,
       descuento: producto.descuento ? parseFloat(producto.descuento) : undefined,
-      eliminado: producto.eliminado || false, // 🆕 NUEVA PROPIEDAD
+      eliminado: producto.eliminado || false, // ✅ MANTENER PARA SINCRONIZACIÓN BD
       fecha_creacion: producto.fecha_creacion,
       fecha_actualizacion: producto.fecha_actualizacion,
       tamanos: this.limpiarDuplicados(producto.tamanos || []),

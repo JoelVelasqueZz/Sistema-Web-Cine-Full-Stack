@@ -4,7 +4,7 @@ const BarController = require('../controllers/bar/barController');
 const { body } = require('express-validator');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
 
-// 🔧 VALIDACIONES CORREGIDAS PARA COINCIDIR CON EL FRONTEND
+// Validaciones para productos
 const productValidation = [
   body('nombre')
     .trim()
@@ -117,7 +117,7 @@ const productValidation = [
     .withMessage('El nombre del item del combo es requerido y no puede exceder 255 caracteres')
 ];
 
-// 🆕 VALIDACIONES MÁS PERMISIVAS PARA TESTING
+// Validaciones más permisivas para testing
 const productValidationPermissive = [
   body('nombre')
     .trim()
@@ -171,39 +171,18 @@ router.put('/:id',
   BarController.updateProduct
 );
 
-// 🆕 NUEVA RUTA: Cambiar disponibilidad (activar/desactivar)
+// Cambiar disponibilidad (activar/desactivar)
 router.patch('/:id/toggle-disponibilidad', 
   authenticateToken, 
   requireAdmin, 
   BarController.toggleDisponibilidad
 );
 
-// 🆕 MODIFICADA: Eliminar producto (soft delete)
+// ✅ SIMPLIFICADO: Solo eliminar (soft delete directo)
 router.delete('/:id', 
   authenticateToken, 
   requireAdmin, 
   BarController.deleteProduct
-);
-
-// 🆕 NUEVA RUTA: Restaurar producto eliminado
-router.patch('/:id/restore', 
-  authenticateToken, 
-  requireAdmin, 
-  BarController.restoreProduct
-);
-
-// 🆕 NUEVA RUTA: Obtener productos eliminados (papelera)
-router.get('/admin/deleted', 
-  authenticateToken, 
-  requireAdmin, 
-  BarController.getDeletedProducts
-);
-
-// Eliminar permanentemente (hard delete)
-router.delete('/:id/hard', 
-  authenticateToken, 
-  requireAdmin, 
-  BarController.hardDeleteProduct
 );
 
 module.exports = router;

@@ -27,10 +27,6 @@
               <p class="mb-0 opacity-75">
                 <i class="fas fa-cubes me-2"></i>
                 {{ estadisticas.total }} productos en total • {{ estadisticas.disponibles }} disponibles
-                <!-- 🆕 MOSTRAR PRODUCTOS ELIMINADOS -->
-                <span *ngIf="estadisticas.eliminados > 0">
-                  • {{ estadisticas.eliminados }} en papelera
-                </span>
               </p>
             </div>
             <div class="d-none d-md-block">
@@ -43,7 +39,7 @@
 
     <!-- Estadísticas rápidas -->
     <div class="row mb-4 g-3">
-      <div class="col-lg-2 col-md-4 col-sm-6">
+      <div class="col-lg-3 col-md-6 col-sm-6">
         <div class="card stat-card bg-warning text-dark h-100 border-0 shadow">
           <div class="card-body">
             <div class="d-flex justify-content-between align-items-center">
@@ -59,7 +55,7 @@
         </div>
       </div>
       
-      <div class="col-lg-2 col-md-4 col-sm-6">
+      <div class="col-lg-3 col-md-6 col-sm-6">
         <div class="card stat-card bg-success text-white h-100 border-0 shadow">
           <div class="card-body">
             <div class="d-flex justify-content-between align-items-center">
@@ -75,7 +71,7 @@
         </div>
       </div>
       
-      <div class="col-lg-2 col-md-4 col-sm-6">
+      <div class="col-lg-3 col-md-6 col-sm-6">
         <div class="card stat-card bg-danger text-white h-100 border-0 shadow">
           <div class="card-body">
             <div class="d-flex justify-content-between align-items-center">
@@ -91,7 +87,7 @@
         </div>
       </div>
       
-      <div class="col-lg-2 col-md-4 col-sm-6">
+      <div class="col-lg-3 col-md-6 col-sm-6">
         <div class="card stat-card bg-secondary text-white h-100 border-0 shadow">
           <div class="card-body">
             <div class="d-flex justify-content-between align-items-center">
@@ -101,47 +97,6 @@
               </div>
               <div class="stat-icon">
                 <i class="fas fa-times-circle fa-2x"></i>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 🆕 NUEVA TARJETA: Productos eliminados -->
-      <div class="col-lg-2 col-md-4 col-sm-6">
-        <div class="card stat-card h-100 border-0 shadow cursor-pointer" 
-             [class.bg-dark]="estadisticas.eliminados > 0"
-             [class.bg-light]="estadisticas.eliminados === 0"
-             [class.text-white]="estadisticas.eliminados > 0"
-             [class.text-dark]="estadisticas.eliminados === 0"
-             (click)="cambiarVista('papelera')"
-             title="Ver papelera de productos eliminados">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center">
-              <div>
-                <div class="stat-number">{{ estadisticas.eliminados }}</div>
-                <div class="stat-label">Papelera</div>
-              </div>
-              <div class="stat-icon">
-                <i class="fas fa-trash fa-2x"></i>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 🆕 NUEVA TARJETA: Acceso rápido a agregar -->
-      <div class="col-lg-2 col-md-4 col-sm-6">
-        <div class="card stat-card bg-primary text-white h-100 border-0 shadow cursor-pointer"
-             (click)="mostrarFormularioAgregar()"
-             title="Agregar nuevo producto">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center">
-              <div>
-                <div class="stat-number">
-                  <i class="fas fa-plus fa-2x"></i>
-                </div>
-                <div class="stat-label">Nuevo Producto</div>
               </div>
             </div>
           </div>
@@ -162,13 +117,6 @@
               <div class="btn-group" role="group">
                 <button class="btn btn-success btn-sm" (click)="mostrarFormularioAgregar()">
                   <i class="fas fa-plus me-1"></i>Nuevo Producto
-                </button>
-                <!-- 🆕 BOTÓN PARA PAPELERA -->
-                <button class="btn btn-dark btn-sm" 
-                        (click)="cambiarVista('papelera')"
-                        [disabled]="estadisticas.eliminados === 0">
-                  <i class="fas fa-trash me-1"></i>
-                  Papelera ({{ estadisticas.eliminados }})
                 </button>
                 <button class="btn btn-outline-secondary btn-sm" (click)="exportarProductos()">
                   <i class="fas fa-download me-1"></i>Exportar
@@ -364,10 +312,10 @@
                                 title="Editar producto">
                           <i class="fas fa-edit"></i>
                         </button>
-                        <!-- 🆕 MODIFICADO: Soft delete -->
-                        <button class="btn btn-outline-warning" 
-                                (click)="confirmarEliminarProducto(producto, 'soft')"
-                                title="Mover a papelera">
+                        <!-- ✅ SIMPLIFICADO: Solo eliminar -->
+                        <button class="btn btn-outline-danger" 
+                                (click)="confirmarEliminarProducto(producto)"
+                                title="Eliminar producto">
                           <i class="fas fa-trash"></i>
                         </button>
                       </div>
@@ -443,119 +391,6 @@
             </nav>
           </div>
           
-        </div>
-      </div>
-    </div>
-
-  </ng-container>
-
-  <!-- ========== 🆕 NUEVA VISTA: PAPELERA ========== -->
-  <ng-container *ngIf="vistaActual === 'papelera' && !cargando">
-    
-    <!-- Header de la papelera -->
-    <div class="row mb-4">
-      <div class="col-12">
-        <div class="card border-dark">
-          <div class="card-header bg-dark text-white">
-            <div class="d-flex justify-content-between align-items-center">
-              <h5 class="mb-0">
-                <i class="fas fa-trash me-2"></i>
-                Papelera de Productos Eliminados
-              </h5>
-              <button class="btn btn-outline-light btn-sm" (click)="cambiarVista('lista')">
-                <i class="fas fa-arrow-left me-1"></i>Volver a la Lista
-              </button>
-            </div>
-          </div>
-          <div class="card-body">
-            <div class="alert alert-info" role="alert">
-              <i class="fas fa-info-circle me-2"></i>
-              <strong>Papelera:</strong> Aquí puedes ver los productos eliminados. Puedes restaurarlos o eliminarlos permanentemente.
-              <span *ngIf="productosEliminados.length === 0" class="d-block mt-2">
-                <i class="fas fa-check-circle me-1"></i> No hay productos en la papelera.
-              </span>
-            </div>
-            
-            <!-- Lista de productos eliminados -->
-            <div *ngIf="productosEliminados.length > 0">
-              <div class="table-responsive">
-                <table class="table table-hover">
-                  <thead class="bg-light">
-                    <tr>
-                      <th>ID</th>
-                      <th>Producto</th>
-                      <th>Categoría</th>
-                      <th>Precio</th>
-                      <th>Fecha Eliminación</th>
-                      <th>Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr *ngFor="let producto of productosEliminados" class="align-middle">
-                      
-                      <!-- ID -->
-                      <td>
-                        <span class="badge bg-dark">{{ producto.id }}</span>
-                      </td>
-                      
-                      <!-- Producto -->
-                      <td>
-                        <div class="d-flex align-items-center opacity-75">
-                          <img [src]="producto.imagen" 
-                               class="rounded me-3" 
-                               width="40" height="40"
-                               [alt]="producto.nombre"
-                               style="object-fit: cover; filter: grayscale(100%);">
-                          <div>
-                            <h6 class="mb-1 fw-bold text-muted">{{ producto.nombre }}</h6>
-                            <small class="text-muted">
-                              {{ producto.descripcion | slice:0:40 }}{{ producto.descripcion.length > 40 ? '...' : '' }}
-                            </small>
-                          </div>
-                        </div>
-                      </td>
-                      
-                      <!-- Categoría -->
-                      <td>
-                        <span class="badge bg-secondary">{{ producto.categoria }}</span>
-                      </td>
-                      
-                      <!-- Precio -->
-                      <td>
-                        <span class="text-muted">${{ formatearPrecio(producto.precio) }}</span>
-                      </td>
-                      
-                      <!-- Fecha eliminación -->
-                      <td>
-                        <small class="text-muted">
-                          {{ producto.fecha_actualizacion | date:'dd/MM/yyyy HH:mm' }}
-                        </small>
-                      </td>
-                      
-                      <!-- Acciones -->
-                      <td>
-                        <div class="btn-group btn-group-sm" role="group">
-                          <!-- 🆕 BOTÓN RESTAURAR -->
-                          <button class="btn btn-outline-success" 
-                                  (click)="confirmarRestaurarProducto(producto)"
-                                  title="Restaurar producto">
-                            <i class="fas fa-undo"></i>
-                          </button>
-                          <!-- 🆕 BOTÓN ELIMINAR PERMANENTEMENTE -->
-                          <button class="btn btn-outline-danger" 
-                                  (click)="confirmarEliminarProducto(producto, 'hard')"
-                                  title="Eliminar permanentemente">
-                            <i class="fas fa-times"></i>
-                          </button>
-                        </div>
-                      </td>
-                      
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
@@ -977,37 +812,25 @@
   </ng-container>
 
 </div>
-
-<!-- 🆕 MODAL DE CONFIRMACIÓN MEJORADO -->
+<!-- ✅ MODAL DE CONFIRMACIÓN SIMPLIFICADO -->
 <div class="modal fade" [class.show]="mostrarModalConfirmacion" 
      [style.display]="mostrarModalConfirmacion ? 'block' : 'none'"
      *ngIf="mostrarModalConfirmacion">
   <div class="modal-dialog">
     <div class="modal-content">
-      <div class="modal-header" 
-           [ngClass]="{
-             'bg-warning text-dark': tipoEliminacion === 'soft',
-             'bg-danger text-white': tipoEliminacion === 'hard',
-             'bg-success text-white': tipoEliminacion === 'restore'
-           }">
+      <div class="modal-header bg-danger text-white">
         <h5 class="modal-title">
-          <i class="fas me-2"
-             [ngClass]="{
-               'fa-exclamation-triangle': tipoEliminacion === 'soft',
-               'fa-times-circle': tipoEliminacion === 'hard',
-               'fa-undo': tipoEliminacion === 'restore'
-             }"></i>
-          {{ getTituloModal() }}
+          <i class="fas fa-exclamation-triangle me-2"></i>
+          Confirmar Eliminación
         </h5>
       </div>
       <div class="modal-body">
         <p class="mb-3">
-          <strong>{{ getMensajeModal() }}</strong>
+          <strong>¿Estás seguro de que deseas eliminar este producto?</strong>
         </p>
-        <div *ngIf="tipoEliminacion === 'hard'" class="alert alert-danger">
-          <i class="fas fa-exclamation-triangle me-2"></i>
-          <strong>¡ATENCIÓN!</strong> Esta acción es irreversible.
-        </div>
+        <p class="text-muted mb-0">
+          Esta acción no se puede deshacer. El producto será eliminado del sistema.
+        </p>
       </div>
       <div class="modal-footer">
         <button type="button" 
@@ -1017,18 +840,12 @@
           Cancelar
         </button>
         <button type="button" 
-                [class]="'btn ' + getClaseBotonModal()"
+                class="btn btn-danger"
                 (click)="eliminarProducto()"
                 [disabled]="procesando">
           <span *ngIf="procesando" class="spinner-border spinner-border-sm me-2"></span>
-          <i class="fas me-1" 
-             [ngClass]="{
-               'fa-trash': tipoEliminacion === 'soft',
-               'fa-times': tipoEliminacion === 'hard',
-               'fa-undo': tipoEliminacion === 'restore'
-             }" 
-             *ngIf="!procesando"></i>
-          {{ getTextoBotonModal() }}
+          <i class="fas fa-trash me-1" *ngIf="!procesando"></i>
+          Eliminar
         </button>
       </div>
     </div>
@@ -1037,28 +854,3 @@
 
 <!-- Backdrop del modal -->
 <div class="modal-backdrop fade show" *ngIf="mostrarModalConfirmacion"></div>
-
-<style>
-.cursor-pointer {
-  cursor: pointer;
-}
-
-.cursor-pointer:hover {
-  transform: translateY(-2px);
-  transition: transform 0.2s ease;
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-  transition: all 0.2s ease;
-}
-
-.papelera-item {
-  opacity: 0.7;
-  transition: opacity 0.2s ease;
-}
-
-.papelera-item:hover {
-  opacity: 1;
-}
-</style>

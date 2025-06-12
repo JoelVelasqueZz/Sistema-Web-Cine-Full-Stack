@@ -21,10 +21,9 @@ export class AdminBarComponent implements OnInit, OnDestroy {
   // Datos principales
   productos: ProductoBar[] = [];
   productosFiltrados: ProductoBar[] = [];
-  productosEliminados: ProductoBar[] = []; // 🆕 NUEVA PROPIEDAD
   
   // Estados de vista
-  vistaActual: 'lista' | 'agregar' | 'editar' | 'papelera' = 'lista'; // 🆕 AGREGADA VISTA PAPELERA
+  vistaActual: 'lista' | 'agregar' | 'editar' = 'lista';
   cargando = true;
   procesando = false;
   
@@ -43,10 +42,9 @@ export class AdminBarComponent implements OnInit, OnDestroy {
   productosPorPagina = 10;
   totalPaginas = 1;
   
-  // Modal de confirmación
+  // Modal de confirmación simplificado
   mostrarModalConfirmacion = false;
   productoParaEliminar = -1;
-  tipoEliminacion: 'soft' | 'hard' | 'restore' = 'soft'; // 🆕 NUEVO
   
   private subscriptions = new Subscription();
   
@@ -56,7 +54,6 @@ export class AdminBarComponent implements OnInit, OnDestroy {
     disponibles: 0,
     noDisponibles: 0,
     combos: 0,
-    eliminados: 0, // 🆕 NUEVA ESTADÍSTICA
     porCategoria: {} as { [key: string]: number }
   };
   
@@ -82,7 +79,6 @@ export class AdminBarComponent implements OnInit, OnDestroy {
     }
 
     this.cargarProductos();
-    this.cargarProductosEliminados(); // 🆕 CARGAR PAPELERA
     this.suscribirQueryParams();
   }
 
@@ -148,33 +144,14 @@ export class AdminBarComponent implements OnInit, OnDestroy {
     this.subscriptions.add(sub);
   }
 
-  // 🆕 NUEVO MÉTODO: Cargar productos eliminados
-  private cargarProductosEliminados(): void {
-    const sub = this.barService.getProductosEliminados().subscribe({
-      next: (eliminados) => {
-        this.productosEliminados = eliminados;
-        this.estadisticas.eliminados = eliminados.length;
-        console.log('Productos eliminados cargados:', eliminados.length);
-      },
-      error: (error) => {
-        console.error('Error al cargar productos eliminados:', error);
-        this.productosEliminados = [];
-      }
-    });
-    
-    this.subscriptions.add(sub);
-  }
-
   // ==================== GESTIÓN DE VISTA ====================
 
-  cambiarVista(vista: 'lista' | 'agregar' | 'editar' | 'papelera'): void {
+  cambiarVista(vista: 'lista' | 'agregar' | 'editar'): void {
     this.vistaActual = vista;
     
     if (vista === 'lista') {
       this.resetearFormulario();
       this.router.navigate(['/admin/bar']);
-    } else if (vista === 'papelera') {
-      this.cargarProductosEliminados(); // Recargar papelera
     }
   }
 
@@ -300,196 +277,57 @@ export class AdminBarComponent implements OnInit, OnDestroy {
     }
   }
 
-  private limpiarFormularioParaEnvio(): ProductoCreateRequest {
-    const form = this.productoForm;
-    
-    const resultado: any = {
-      nombre: (form.nombre || '').trim(),
-      descripcion: (form.descripcion || '').trim(),
-      precio: Number(form.precio) || 0,
-      categoria: (form.categoria || '').trim(),
-      disponible: Boolean(form.disponible !== false), // default true
-      es_combo: Boolean(form.es_combo)
-    };
-
-    // Solo incluir imagen si tiene valor
-    if (form.imagen && form.imagen.trim()) {
-      resultado.imagen = form.imagen.trim();
-    }
-
-    // Solo incluir descuento si es combo y tiene valor
-    if (form.es_combo && form.descuento !== undefined && Number(form.descuento) >= 0) {
-      resultado.descuento = Number(form.descuento);
-    }
-    
-    // Solo incluir arrays si tienen elementos válidos
-    const tamanosLimpios = this.limpiarTamanos(form.tamanos || []);
-    if (tamanosLimpios.length > 0) {
-      resultado.tamanos = tamanosLimpios;
-    }
-
-    const extrasLimpios = this.limpiarExtras(form.extras || []);
-    if (extrasLimpios.length > 0) {
-      resultado.extras = extrasLimpios;
-    }
-
-    const comboItemsLimpios = this.limpiarComboItems(form.combo_items || []);
-    if (comboItemsLimpios.length > 0) {
-      resultado.combo_items = comboItemsLimpios;
-    }
-
-    return resultado;
-  }
-
-  private limpiarTamanos(tamanos: any[]): any[] {
-    if (!Array.isArray(tamanos)) return [];
-    
-    return tamanos
-      .filter(t => t && t.nombre && t.nombre.trim() && t.precio !== undefined && t.precio >= 0)
-      .map(t => ({
-        nombre: String(t.nombre).trim(),
-        precio: Number(t.precio)
-      }));
-  }
-
-  private limpiarExtras(extras: any[]): any[] {
-    if (!Array.isArray(extras)) return [];
-    
-    return extras
-      .filter(e => e && e.nombre && e.nombre.trim() && e.precio !== undefined && e.precio >= 0)
-      .map(e => ({
-        nombre: String(e.nombre).trim(),
-        precio: Number(e.precio)
-      }));
-  }
-
-  private limpiarComboItems(comboItems: any[]): any[] {
-    if (!Array.isArray(comboItems)) return [];
-    
-    return comboItems
-      .filter(c => c && c.item_nombre && c.item_nombre.trim())
-      .map(c => ({
-        item_nombre: String(c.item_nombre).trim()
-      }));
-  }
-
-  // 🆕 MODIFICADO: Confirmar eliminación con diferentes tipos
-  confirmarEliminarProducto(producto: ProductoBar, tipo: 'soft' | 'hard' = 'soft'): void {
+  // ✅ SIMPLIFICADO: Confirmar eliminación directa
+  confirmarEliminarProducto(producto: ProductoBar): void {
     this.productoParaEliminar = producto.id;
-    this.tipoEliminacion = tipo;
     this.mostrarModalConfirmacion = true;
   }
 
-  // 🆕 NUEVO: Confirmar restauración
-  confirmarRestaurarProducto(producto: ProductoBar): void {
-    this.productoParaEliminar = producto.id;
-    this.tipoEliminacion = 'restore';
-    this.mostrarModalConfirmacion = true;
-  }
-
-  // 🆕 MODIFICADO: Eliminar con diferentes tipos
- async eliminarProducto(): Promise<void> {
-  if (this.productoParaEliminar <= 0) return;
-  
-  this.procesando = true;
-  
-  try {
-    await this.delay(1000);
+  // ✅ SIMPLIFICADO: Eliminar directo (soft delete)
+  async eliminarProducto(): Promise<void> {
+    if (this.productoParaEliminar <= 0) return;
     
-    let resultado = false;
+    this.procesando = true;
     
-    switch (this.tipoEliminacion) {
-      case 'soft':
-        resultado = this.barService.deleteProducto(this.productoParaEliminar);
-        if (resultado) {
-          // 🔧 FIX: Remover del array local inmediatamente
-          const nombreProducto = this.productos.find(p => p.id === this.productoParaEliminar)?.nombre || 'Producto';
-          
-          // Filtrar el producto eliminado de la lista actual
-          this.productos = this.productos.filter(p => p.id !== this.productoParaEliminar);
-          this.aplicarFiltros(); // Reaplicar filtros
-          this.calcularEstadisticas(); // Recalcular estadísticas
-          
-          this.toastService.showSuccess(`"${nombreProducto}" eliminado exitosamente`);
-          
-          // Recargar datos en segundo plano sin afectar la UI
-          setTimeout(() => {
-            this.cargarProductos();
-            this.cargarProductosEliminados();
-          }, 500);
-        }
-        break;
+    try {
+      await this.delay(1000);
+      
+      const nombreProducto = this.productos.find(p => p.id === this.productoParaEliminar)?.nombre || 'Producto';
+      const resultado = this.barService.deleteProducto(this.productoParaEliminar);
+      
+      if (resultado) {
+        // Remover del array local inmediatamente
+        this.productos = this.productos.filter(p => p.id !== this.productoParaEliminar);
+        this.aplicarFiltros();
+        this.calcularEstadisticas();
         
-      case 'restore':
-        const sub = this.barService.restoreProducto(this.productoParaEliminar).subscribe({
-          next: (success) => {
-            if (success) {
-              // 🔧 FIX: Remover de la lista de eliminados inmediatamente
-              const nombreProducto = this.productosEliminados.find(p => p.id === this.productoParaEliminar)?.nombre || 'Producto';
-              
-              this.productosEliminados = this.productosEliminados.filter(p => p.id !== this.productoParaEliminar);
-              this.estadisticas.eliminados = this.productosEliminados.length;
-              
-              this.toastService.showSuccess(`"${nombreProducto}" restaurado exitosamente`);
-              
-              // Recargar datos principales en segundo plano
-              setTimeout(() => {
-                this.cargarProductos();
-              }, 500);
-            }
-            this.procesando = false;
-          },
-          error: (error) => {
-            console.error('Error al restaurar:', error);
-            this.procesando = false;
-          }
-        });
-        this.subscriptions.add(sub);
-        break;
+        this.toastService.showSuccess(`"${nombreProducto}" eliminado exitosamente`);
         
-      case 'hard':
-        const hardSub = this.barService.hardDeleteProducto(this.productoParaEliminar).subscribe({
-          next: (success) => {
-            if (success) {
-              // 🔧 FIX: Remover de la lista de eliminados inmediatamente
-              const nombreProducto = this.productosEliminados.find(p => p.id === this.productoParaEliminar)?.nombre || 'Producto';
-              
-              this.productosEliminados = this.productosEliminados.filter(p => p.id !== this.productoParaEliminar);
-              this.estadisticas.eliminados = this.productosEliminados.length;
-              
-              this.toastService.showSuccess(`"${nombreProducto}" eliminado permanentemente`);
-            }
-            this.procesando = false;
-          },
-          error: (error) => {
-            console.error('Error al eliminar permanentemente:', error);
-            this.procesando = false;
-          }
-        });
-        this.subscriptions.add(hardSub);
-        break;
-    }
-    
-    if (this.tipoEliminacion === 'soft') {
+        // Recargar datos en segundo plano
+        setTimeout(() => {
+          this.cargarProductos();
+        }, 500);
+      } else {
+        this.toastService.showError('Error al eliminar el producto');
+      }
+      
       this.procesando = false;
+      
+    } catch (error) {
+      console.error('Error al procesar eliminación:', error);
+      this.toastService.showError('Error inesperado al eliminar el producto');
+      this.procesando = false;
+    } finally {
+      this.cerrarModalConfirmacion();
     }
-    
-  } catch (error) {
-    console.error('Error al procesar eliminación:', error);
-    this.toastService.showError('Error inesperado al procesar la acción');
-    this.procesando = false;
-  } finally {
-    this.cerrarModalConfirmacion();
   }
-}
 
   cerrarModalConfirmacion(): void {
     this.mostrarModalConfirmacion = false;
     this.productoParaEliminar = -1;
-    this.tipoEliminacion = 'soft';
   }
 
-  // 🆕 MODIFICADO: Toggle disponibilidad usando nuevo método
+  // Toggle disponibilidad
   toggleDisponibilidad(producto: ProductoBar): void {
     const exito = this.barService.toggleDisponibilidad(producto.id);
     
@@ -584,7 +422,6 @@ export class AdminBarComponent implements OnInit, OnDestroy {
       disponibles: 0,
       noDisponibles: 0,
       combos: 0,
-      eliminados: this.estadisticas.eliminados, // Mantener el valor actual
       porCategoria: {} as { [key: string]: number }
     });
 
@@ -615,6 +452,76 @@ export class AdminBarComponent implements OnInit, OnDestroy {
   private resetearEstadosImagen(): void {
     this.imageError = false;
     this.imageLoaded = false;
+  }
+
+  private limpiarFormularioParaEnvio(): ProductoCreateRequest {
+    const form = this.productoForm;
+    
+    const resultado: any = {
+      nombre: (form.nombre || '').trim(),
+      descripcion: (form.descripcion || '').trim(),
+      precio: Number(form.precio) || 0,
+      categoria: (form.categoria || '').trim(),
+      disponible: Boolean(form.disponible !== false),
+      es_combo: Boolean(form.es_combo)
+    };
+
+    if (form.imagen && form.imagen.trim()) {
+      resultado.imagen = form.imagen.trim();
+    }
+
+    if (form.es_combo && form.descuento !== undefined && Number(form.descuento) >= 0) {
+      resultado.descuento = Number(form.descuento);
+    }
+    
+    const tamanosLimpios = this.limpiarTamanos(form.tamanos || []);
+    if (tamanosLimpios.length > 0) {
+      resultado.tamanos = tamanosLimpios;
+    }
+
+    const extrasLimpios = this.limpiarExtras(form.extras || []);
+    if (extrasLimpios.length > 0) {
+      resultado.extras = extrasLimpios;
+    }
+
+    const comboItemsLimpios = this.limpiarComboItems(form.combo_items || []);
+    if (comboItemsLimpios.length > 0) {
+      resultado.combo_items = comboItemsLimpios;
+    }
+
+    return resultado;
+  }
+
+  private limpiarTamanos(tamanos: any[]): any[] {
+    if (!Array.isArray(tamanos)) return [];
+    
+    return tamanos
+      .filter(t => t && t.nombre && t.nombre.trim() && t.precio !== undefined && t.precio >= 0)
+      .map(t => ({
+        nombre: String(t.nombre).trim(),
+        precio: Number(t.precio)
+      }));
+  }
+
+  private limpiarExtras(extras: any[]): any[] {
+    if (!Array.isArray(extras)) return [];
+    
+    return extras
+      .filter(e => e && e.nombre && e.nombre.trim() && e.precio !== undefined && e.precio >= 0)
+      .map(e => ({
+        nombre: String(e.nombre).trim(),
+        precio: Number(e.precio)
+      }));
+  }
+
+  private limpiarComboItems(comboItems: any[]): any[] {
+    if (!Array.isArray(comboItems)) return [];
+    
+    return comboItems
+      .filter(c => c && c.item_nombre && c.item_nombre.trim())
+      .map(c => ({
+        item_nombre: String(c.item_nombre).trim()
+      }));
   }
 
   getRangoElementos(): string {
@@ -700,47 +607,6 @@ export class AdminBarComponent implements OnInit, OnDestroy {
 
   trackProductoFn(index: number, producto: ProductoBar): number {
     return producto.id;
-  }
-
-  // 🆕 NUEVOS MÉTODOS PARA OBTENER MENSAJES DE CONFIRMACIÓN
-  getTituloModal(): string {
-    switch (this.tipoEliminacion) {
-      case 'soft': return 'Confirmar Eliminación';
-      case 'hard': return 'Eliminar Permanentemente';
-      case 'restore': return 'Confirmar Restauración';
-      default: return 'Confirmar Acción';
-    }
-  }
-
-  getMensajeModal(): string {
-    switch (this.tipoEliminacion) {
-      case 'soft': 
-        return '¿Estás seguro de que deseas eliminar este producto? Se moverá a la papelera pero podrás restaurarlo después.';
-      case 'hard': 
-        return '¿Estás seguro de que deseas eliminar este producto PERMANENTEMENTE? Esta acción no se puede deshacer.';
-      case 'restore': 
-        return '¿Estás seguro de que deseas restaurar este producto? Volverá a estar disponible en la lista principal.';
-      default: 
-        return '¿Estás seguro de que deseas realizar esta acción?';
-    }
-  }
-
-  getTextoBotonModal(): string {
-    switch (this.tipoEliminacion) {
-      case 'soft': return 'Eliminar';
-      case 'hard': return 'Eliminar Permanentemente';
-      case 'restore': return 'Restaurar';
-      default: return 'Confirmar';
-    }
-  }
-
-  getClaseBotonModal(): string {
-    switch (this.tipoEliminacion) {
-      case 'soft': return 'btn-warning';
-      case 'hard': return 'btn-danger';
-      case 'restore': return 'btn-success';
-      default: return 'btn-primary';
-    }
   }
 
   // ==================== MÉTODOS AUXILIARES PRIVADOS ====================
