@@ -250,89 +250,8 @@ export class BarListComponent implements OnInit, OnDestroy {
   }
 
   // ==================== MÉTODOS DE ADMINISTRACIÓN ====================
-
-  /**
-   * Cambiar disponibilidad de producto (solo admin)
-   */
-  toggleDisponibilidad(producto: ProductoBar, event: Event): void {
-  event.stopPropagation();
-
-  if (!this.authService.isAdmin()) {
-    this.toastService.showError('No tienes permisos para realizar esta acción');
-    return;
-  }
-
-  const exito = this.barService.toggleDisponibilidad(producto.id);
   
-  if (exito) {
-    // 🔧 FIX: Actualizar inmediatamente en el array local
-    const index = this.productosOriginales.findIndex(p => p.id === producto.id);
-    if (index !== -1) {
-      // Actualizar en los datos originales
-      this.productosOriginales[index].disponible = !this.productosOriginales[index].disponible;
-      
-      // También actualizar en el array filtrado actual
-      const indexFiltrado = this.productos.findIndex(p => p.id === producto.id);
-      if (indexFiltrado !== -1) {
-        this.productos[indexFiltrado].disponible = this.productosOriginales[index].disponible;
-      }
-      
-      const estado = this.productosOriginales[index].disponible ? 'habilitado' : 'deshabilitado';
-      this.toastService.showSuccess(`Producto ${estado} exitosamente`);
-      
-      // 🔧 FIX: Reaplicar filtros sin cambiar el estado del toggle
-      this.aplicarFiltrosCombinados();
-    }
-    
-    // Recargar en segundo plano para sincronizar con el servidor
-    setTimeout(() => this.cargarProductos(), 1000);
-  } else {
-    this.toastService.showError('Error al cambiar disponibilidad del producto');
-  }
-  }
 
-  /**
-   * Editar producto (solo admin)
-   */
-  editarProducto(producto: ProductoBar, event: Event): void {
-    event.stopPropagation();
-
-    if (!this.authService.isAdmin()) {
-      this.toastService.showError('No tienes permisos para realizar esta acción');
-      return;
-    }
-
-    // Redirigir a admin con el ID del producto
-    this.router.navigate(['/admin/bar'], { queryParams: { edit: producto.id } });
-  }
-
-  /**
-   * Eliminar producto (solo admin)
-   */
-  eliminarProducto(producto: ProductoBar, event: Event): void {
-    event.stopPropagation();
-
-    if (!this.authService.isAdmin()) {
-      this.toastService.showError('No tienes permisos para realizar esta acción');
-      return;
-    }
-
-    const confirmar = confirm(
-      `¿Estás seguro de que quieres eliminar "${producto.nombre}"?\n\n` +
-      `Esta acción no se puede deshacer.`
-    );
-
-    if (confirmar) {
-      const exito = this.barService.deleteProducto(producto.id);
-      
-      if (exito) {
-        this.toastService.showSuccess(`"${producto.nombre}" eliminado exitosamente`);
-        this.cargarProductos();
-      } else {
-        this.toastService.showError('Error al eliminar el producto');
-      }
-    }
-  }
 
   // ==================== MÉTODOS AUXILIARES ====================
 

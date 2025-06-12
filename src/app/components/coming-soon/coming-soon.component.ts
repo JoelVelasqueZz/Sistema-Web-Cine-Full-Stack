@@ -1,6 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
-import { MovieService, ProximoEstreno } from '../../services/movie.service'; // 🔧 USAR INTERFAZ DEL SERVICE
+import { MovieService, ProximoEstreno } from '../../services/movie.service';
+import { AuthService } from '../../services/auth.service';
+
 
 @Component({
   selector: 'app-coming-soon',
@@ -16,7 +18,8 @@ export class ComingSoonComponent implements OnInit {
 
   constructor(
     private movieService: MovieService,
-    private router: Router
+    private router: Router,
+    public authService: AuthService
   ) {}
 
   ngOnInit(): void {
@@ -62,6 +65,12 @@ export class ComingSoonComponent implements OnInit {
     });
   }
 
+  irAAdminComingSoon(): void {
+  if (!this.authService.isAdmin()) {
+    return;
+  }
+  this.router.navigate(['/admin/coming-soon']);
+}
   verDetalles(estreno: ProximoEstreno): void {
     // Navegar usando id o idx para compatibilidad
     const estrenoId = estreno.id || estreno.idx;

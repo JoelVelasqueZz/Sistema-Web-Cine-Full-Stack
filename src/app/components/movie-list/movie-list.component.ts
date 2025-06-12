@@ -187,6 +187,12 @@ export class MovieListComponent implements OnInit {
     });
   }
 }
+irAAdminMovies(): void {
+  if (!this.authService.isAdmin()) {
+    return;
+  }
+  this.router.navigate(['/admin/movies']);
+}
 
   // 🆕 Verificar si está cargando favorita
   isFavoriteLoading(peliculaId: number): boolean {

@@ -18,16 +18,7 @@
       
         <div class="admin-actions" *ngIf="authService.isAdmin()">
           <div class="btn-group" role="group">
-            <button type="button" class="btn btn-warning" (click)="editarProducto()" data-bs-toggle="modal" data-bs-target="#modalEditarProducto">
-              <i class="fas fa-edit me-2"></i>Editar
-            </button>
-            <button type="button" class="btn btn-info" (click)="toggleDisponibilidad()">
-              <i class="fas fa-toggle-on me-2"></i>
-              {{producto.disponible ? 'Deshabilitar' : 'Habilitar'}}
-            </button>
-            <button type="button" class="btn btn-danger" (click)="confirmarEliminarProducto()">
-              <i class="fas fa-trash me-2"></i>Eliminar
-            </button>
+
           </div>
         </div>
       </div>

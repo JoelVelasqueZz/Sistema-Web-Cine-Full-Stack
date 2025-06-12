@@ -23,12 +23,6 @@ export class MovieDetailComponent implements OnInit {
   cargando = true;
   errorConexion = false;
   peliculaNoEncontrada = false;
-  
-  // PROPIEDADES PARA EDICIÓN DE PELÍCULAS (ADMIN)
-  peliculaEditando: Pelicula | null = null;
-  guardandoEdicion: boolean = false;
-  errorEdicion: string = '';
-  exitoEdicion: string = '';
 
   // 🆕 PROPIEDADES PARA ADMINISTRACIÓN DE FUNCIONES
   showFunctionAdmin: boolean = false;
@@ -152,125 +146,6 @@ private validarAdmin(): boolean {
     }
   }
 
-  // ==================== MÉTODOS DE ADMINISTRACIÓN ====================
-
-  editarPelicula(): void {
-    if (!this.authService.isAdmin()) {
-      this.toastService.showError('No tienes permisos para realizar esta acción');
-      return;
-    }
-    if (!this.pelicula) {
-      this.toastService.showError('Película no encontrada');
-      return;
-    }
-
-    this.peliculaEditando = { ...this.pelicula };
-    this.errorEdicion = '';
-    this.exitoEdicion = '';
-    this.guardandoEdicion = false;
-    console.log('Editando película:', this.peliculaEditando);
-  }
-
-  // 🔧 ACTUALIZADO: Guardar usando MovieService
-  guardarEdicionPelicula(formulario: any): void {
-    if (!this.authService.isAdmin()) {
-      this.toastService.showError('No tienes permisos para realizar esta acción');
-      return;
-    }
-    if (!formulario.valid || !this.peliculaEditando) {
-      this.errorEdicion = 'Por favor completa todos los campos requeridos';
-      return;
-    }
-
-    this.guardandoEdicion = true;
-    this.errorEdicion = '';
-    this.exitoEdicion = '';
-
-    // Validar datos
-    const validacion = this.movieService.validatePeliculaData(this.peliculaEditando);
-    if (!validacion.valid) {
-      this.errorEdicion = validacion.errors.join(', ');
-      this.guardandoEdicion = false;
-      return;
-    }
-
-    // Usar MovieService para actualizar
-    this.movieService.updatePelicula(this.peliculaId, this.peliculaEditando).subscribe(
-      success => {
-        if (success) {
-          this.exitoEdicion = `Película "${this.peliculaEditando!.titulo}" actualizada exitosamente`;
-          this.toastService.showSuccess('Película actualizada exitosamente');
-          
-          // Recargar datos de la película
-          this.cargarPelicula();
-          
-          setTimeout(() => {
-            this.cerrarModalEdicion();
-            this.resetearEdicion();
-          }, 2000);
-        } else {
-          this.errorEdicion = 'Error al actualizar la película.';
-          this.toastService.showError('Error al actualizar la película');
-        }
-        this.guardandoEdicion = false;
-      },
-      error => {
-        console.error('Error al actualizar película:', error);
-        this.errorEdicion = 'Error de conexión al actualizar la película.';
-        this.toastService.showError('Error de conexión');
-        this.guardandoEdicion = false;
-      }
-    );
-  }
-
-  // 🔧 ACTUALIZADO: Eliminar usando MovieService
-  confirmarEliminarPelicula(): void {
-    if (!this.authService.isAdmin()) {
-      this.toastService.showError('No tienes permisos para realizar esta acción');
-      return;
-    }
-    if (!this.pelicula) {
-      this.toastService.showError('Película no encontrada');
-      return;
-    }
-
-    const confirmar = confirm(
-      `¿Estás seguro de que quieres eliminar la película "${this.pelicula.titulo}"?\n\n` +
-      `Esta acción no se puede deshacer y también eliminará todas las funciones asociadas.\n` +
-      `Serás redirigido a la lista de películas.`
-    );
-    
-    if (confirmar) {
-      this.eliminarPelicula();
-    }
-  }
-
-  private eliminarPelicula(): void {
-    const tituloPelicula = this.pelicula.titulo;
-    
-    // Usar MovieService para eliminar
-    this.movieService.deletePelicula(this.peliculaId).subscribe(
-      success => {
-        if (success) {
-          this.toastService.showSuccess(`Película "${tituloPelicula}" eliminada exitosamente`);
-        } else {
-          this.toastService.showError('Error al eliminar la película');
-        }
-        
-        setTimeout(() => {
-          this.router.navigate(['/movies']);
-        }, 1500);
-      },
-      error => {
-        console.error('Error al eliminar película:', error);
-        this.toastService.showError('Error de conexión al eliminar película');
-        
-        setTimeout(() => {
-          this.router.navigate(['/movies']);
-        }, 1500);
-      }
-    );
-  }
 
   // 🆕 MÉTODOS ACTUALIZADOS PARA GESTIÓN DE FUNCIONES
   gestionarFunciones(): void {
@@ -355,26 +230,6 @@ refreshFuncionesCount(): void {
     });
   }
 }
-
-  // ==================== MÉTODOS AUXILIARES ====================
-
-  private resetearEdicion(): void {
-    this.peliculaEditando = null;
-    this.errorEdicion = '';
-    this.exitoEdicion = '';
-    this.guardandoEdicion = false;
-  }
-
-  private cerrarModalEdicion(): void {
-    const modalElement = document.getElementById('modalEditarPelicula');
-    if (modalElement) {
-      const modal = (window as any).bootstrap.Modal.getInstance(modalElement);
-      if (modal) {
-        modal.hide();
-      }
-    }
-  }
-
   // MÉTODOS PARA LA INTERFAZ
   getConnectionStatusClass(): string {
     if (this.cargando) return 'text-info';

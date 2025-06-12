@@ -30,6 +30,20 @@
     </div>
   </div>
 
+    <!-- 🔥 INDICADOR ADMIN -->
+  <div *ngIf="authService.isAdmin()" class="container">
+    <div class="alert alert-primary border-primary" role="alert">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <i class="fas fa-crown me-2"></i>
+          <strong>MODO ADMINISTRADOR</strong> - Gestión de próximos estrenos
+        </div>
+        <button class="btn btn-primary btn-sm" (click)="irAAdminComingSoon()">
+          <i class="fas fa-cogs me-2"></i>Panel Admin
+        </button>
+      </div>
+    </div>
+  </div>
   <!-- Estrenos por Mes -->
   <div class="container">
     <div *ngFor="let mes of mesesOrdenados" class="month-section mb-5">

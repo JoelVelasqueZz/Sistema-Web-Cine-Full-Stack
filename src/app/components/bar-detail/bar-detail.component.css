@@ -1,309 +1,291 @@
-/* ==================== HEADER SECTION ==================== */
-.display-4 {
-  background: linear-gradient(45deg, #ffc107, #fd7e14);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+/* bar-detail.component.css */
+
+/* Header Section */
+.display-4.fw-bold.text-warning {
+  text-shadow: 2px 2px 8px rgba(0,0,0,0.3);
 }
 
-.text-muted {
-  transition: color 0.3s ease;
-}
-
-/* ==================== ADMIN CONTROLS ==================== */
-.admin-actions .btn-group {
-  border-radius: 0.8rem;
-  overflow: hidden;
-  box-shadow: 0 5px 15px rgba(255, 193, 7, 0.2);
-}
-
-.admin-actions .btn {
+.admin-actions .btn-group .btn {
   transition: all 0.3s ease;
+  border-radius: 0.5rem;
 }
 
-.admin-actions .btn:hover {
+.admin-actions .btn-group .btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+  box-shadow: 0 6px 15px rgba(0,0,0,0.2);
 }
 
-.badge.bg-danger {
+/* Main Product Card */
+.card.shadow-lg {
   border-radius: 1rem;
-}
-
-/* ==================== MAIN PRODUCT CARD ==================== */
-.card {
-  border-radius: 1.2rem;
   overflow: hidden;
   transition: all 0.3s ease;
-}
-
-.card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 15px 35px rgba(255, 193, 7, 0.2) !important;
 }
 
 .admin-highlight {
-  border-color: #ffc107 !important;
+  border: 2px solid #ffc107 !important;
+  box-shadow: 0 0 20px rgba(255, 193, 7, 0.3) !important;
 }
 
-.card.border-danger {
-  border-color: #dc3545;
-}
-
-/* ==================== PRODUCT IMAGE ==================== */
 .card-img-top {
   transition: all 0.3s ease;
-  object-fit: cover;
 }
 
-.card:hover .card-img-top:not(.opacity-50) {
-  transform: scale(1.05);
-  filter: brightness(1.1);
+.card:hover .card-img-top {
+  transform: scale(1.02);
 }
 
-.card-img-top.opacity-50 {
-  filter: grayscale(100%) brightness(0.6);
-}
-
-/* ==================== BADGES AND PRICE TAGS ==================== */
-.badge {
+/* Price and Category Badges */
+.position-absolute .badge {
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255,255,255,0.2);
+  font-weight: 600;
   transition: all 0.3s ease;
 }
 
-.badge:hover {
+.card:hover .badge {
   transform: scale(1.05);
 }
 
-.badge.bg-success {
-  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+/* Admin Info Card */
+.admin-info .card {
+  background: rgba(255, 193, 7, 0.1) !important;
+  border: 1px solid #ffc107 !important;
+  border-radius: 0.75rem;
 }
 
-.badge.bg-danger {
-  box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+/* Product Content */
+.product-content {
+  padding: 0;
 }
 
-.text-decoration-line-through {
-  opacity: 0.7;
+.product-content h3 {
+  transition: color 0.3s ease;
 }
 
-/* ==================== COMBO SPECIAL EFFECTS ==================== */
-.bg-gradient.bg-danger {
-  box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
+/* Customization Section */
+.customization-section .card {
+  border-radius: 0.75rem;
+  transition: all 0.3s ease;
 }
 
-/* ==================== CUSTOMIZATION SECTIONS ==================== */
-.customization-section {
-  animation: fadeInUp 0.8s ease;
+.customization-section .card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(0,0,0,0.1);
 }
 
-.size-option, .extra-option {
-  border-radius: 0.8rem;
+/* Size and Extra Options */
+.size-option,
+.extra-option {
+  border-radius: 0.75rem;
   transition: all 0.3s ease;
   cursor: pointer;
 }
 
-.size-option:hover, .extra-option:hover {
+.size-option:hover,
+.extra-option:hover {
   transform: translateY(-3px);
-  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
 }
 
 .size-option.border-success {
-  background: linear-gradient(135deg, rgba(40, 167, 69, 0.1), rgba(32, 201, 151, 0.1));
+  border-color: #198754 !important;
+  background: rgba(25, 135, 84, 0.1) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(25, 135, 84, 0.2);
 }
 
 .extra-option.border-warning {
-  background: linear-gradient(135deg, rgba(255, 193, 7, 0.1), rgba(253, 126, 20, 0.1));
-}
-
-/* ==================== QUANTITY CONTROLS ==================== */
-.quantity-selection .card {
-  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-  border: 2px solid #dee2e6;
-  transition: all 0.3s ease;
-}
-
-.quantity-selection .card:hover {
+  border-color: #ffc107 !important;
+  background: rgba(255, 193, 7, 0.1) !important;
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-  border-color: #0d6efd;
+  box-shadow: 0 6px 15px rgba(255, 193, 7, 0.2);
 }
 
+/* Quantity Controls */
 .quantity-selection .btn {
-  border-radius: 50%;
-  width: 45px;
+  min-width: 45px;
   height: 45px;
+  border-radius: 50%;
   transition: all 0.3s ease;
 }
 
-.quantity-selection .btn:hover:not(:disabled) {
-  transform: scale(1.1);
+.quantity-selection .btn:hover {
+  transform: translateY(-2px) scale(1.1);
 }
 
-/* ==================== PRICE SUMMARY ==================== */
+.quantity-selection .fs-3 {
+  transition: all 0.3s ease;
+}
+
+/* Price Summary */
 .price-summary .card {
-  background: linear-gradient(135deg, rgba(40, 167, 69, 0.05), rgba(32, 201, 151, 0.05));
-  border: 2px solid #28a745;
+  border: 2px solid #198754;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+  transition: all 0.3s ease;
+}
+
+.price-summary .card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px rgba(25, 135, 84, 0.2);
 }
 
 .total-price h4 {
-  color: #28a745;
-  text-shadow: 0 2px 8px rgba(40, 167, 69, 0.2);
+  font-size: 1.5rem;
+  font-weight: 700;
 }
 
-/* ==================== ACTION BUTTONS ==================== */
+/* Action Buttons */
 .action-buttons .btn {
-  border-radius: 0.8rem;
-  padding: 0.8rem 1.5rem;
+  border-radius: 0.75rem;
   font-weight: 600;
   transition: all 0.3s ease;
+  padding: 0.75rem 1.5rem;
 }
 
-.btn-success {
-  background: linear-gradient(45deg, #28a745, #20c997);
+.action-buttons .btn-success {
+  background: linear-gradient(45deg, #198754, #20c997);
   border: none;
 }
 
-.btn-success:hover {
-  background: linear-gradient(45deg, #20c997, #28a745);
+.action-buttons .btn-success:hover {
+  background: linear-gradient(45deg, #20c997, #198754);
   transform: translateY(-3px);
-  box-shadow: 0 10px 25px rgba(40, 167, 69, 0.3);
+  box-shadow: 0 10px 25px rgba(25, 135, 84, 0.4);
 }
 
-.btn-primary {
+.action-buttons .btn-primary {
   background: linear-gradient(45deg, #0d6efd, #6610f2);
   border: none;
 }
 
-.btn-primary:hover {
+.action-buttons .btn-primary:hover {
   background: linear-gradient(45deg, #6610f2, #0d6efd);
   transform: translateY(-3px);
-  box-shadow: 0 10px 25px rgba(13, 110, 253, 0.3);
+  box-shadow: 0 10px 25px rgba(13, 110, 253, 0.4);
 }
 
-/* ==================== NOTES SECTION ==================== */
-.notes-section textarea {
-  border-radius: 0.8rem;
-  border: 2px solid #e9ecef;
-  transition: all 0.3s ease;
-  resize: vertical;
+/* Selection Summary */
+.selection-summary {
+  background: rgba(13, 110, 253, 0.05);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  border-left: 4px solid #0d6efd;
 }
 
-.notes-section textarea:focus {
-  border-color: #ffc107;
-  box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.25);
-  transform: translateY(-2px);
-}
-
-/* ==================== COMBO INFO ==================== */
-.combo-info .card {
-  background: linear-gradient(135deg, rgba(220, 53, 69, 0.05), rgba(233, 30, 99, 0.05));
+/* Unavailable Message */
+.unavailable-message .alert {
+  border-radius: 1rem;
   border: 2px solid #dc3545;
 }
 
-.fa-check-circle {
-  color: #28a745;
+/* Navigation Buttons */
+.btn-outline-warning,
+.btn-outline-primary,
+.btn-outline-secondary,
+.btn-outline-danger {
+  border-radius: 0.75rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
 }
 
-/* ==================== SELECTION SUMMARY ==================== */
-.selection-summary {
-  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-  border-radius: 0.8rem;
-  padding: 1rem;
-  margin-top: 1rem;
-  border-left: 4px solid #ffc107;
+.btn-outline-warning:hover,
+.btn-outline-primary:hover,
+.btn-outline-secondary:hover,
+.btn-outline-danger:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(0,0,0,0.2);
 }
 
-/* ==================== UNAVAILABLE MESSAGE ==================== */
-.unavailable-message .alert {
+/* Modal Styles */
+.modal-content {
   border-radius: 1rem;
   border: none;
-  background: linear-gradient(135deg, rgba(220, 53, 69, 0.1), rgba(233, 30, 99, 0.1));
+  box-shadow: 0 20px 40px rgba(0,0,0,0.3);
 }
 
-/* ==================== FORM ELEMENTS ==================== */
-.form-control, .form-select {
-  border-radius: 0.8rem;
-  border: 2px solid #e9ecef;
+.modal-header.bg-warning {
+  background: linear-gradient(135deg, #ffc107, #fd7e14) !important;
+  border-radius: 1rem 1rem 0 0;
+}
+
+.modal-body .form-control,
+.modal-body .form-select {
+  border-radius: 0.5rem;
+  border: 2px solid #dee2e6;
   transition: all 0.3s ease;
 }
 
-.form-control:focus, .form-select:focus {
+.modal-body .form-control:focus,
+.modal-body .form-select:focus {
   border-color: #ffc107;
   box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.25);
-  transform: translateY(-2px);
 }
 
-.form-check-input {
-  transition: all 0.3s ease;
+/* Loading States */
+.spinner-border-sm {
+  width: 1rem;
+  height: 1rem;
 }
 
-.form-check-input:checked {
-  background-color: #ffc107;
-  border-color: #ffc107;
+/* Responsive Design */
+@media (max-width: 768px) {
+  .admin-actions {
+    margin-top: 1rem;
+  }
+  
+  .admin-actions .btn-group {
+    width: 100%;
+  }
+  
+  .admin-actions .btn-group .btn {
+    flex: 1;
+    font-size: 0.85rem;
+  }
+  
+  .card-img-top {
+    height: 350px;
+  }
+  
+  .action-buttons .btn {
+    font-size: 0.9rem;
+  }
+  
+  .quantity-selection .btn {
+    min-width: 40px;
+    height: 40px;
+  }
 }
 
-/* ==================== CATEGORY ICONS ==================== */
-.fa-cocktail { color: #0d6efd; }
-.fa-cookie-bite { color: #ffc107; }
-.fa-candy-cane { color: #e91e63; }
-.fa-gift { color: #dc3545; }
-.fa-ice-cream { color: #6f42c1; }
-
-/* ==================== MODAL STYLES ==================== */
-.modal-content {
-  border-radius: 1.2rem;
-  border: none;
-  overflow: hidden;
+@media (max-width: 576px) {
+  .display-4 {
+    font-size: 2rem;
+  }
+  
+  .card-img-top {
+    height: 300px;
+  }
+  
+  .size-option,
+  .extra-option {
+    margin-bottom: 0.5rem;
+  }
+  
+  .action-buttons .row {
+    flex-direction: column;
+  }
+  
+  .action-buttons .col-md-6 {
+    margin-bottom: 0.75rem;
+  }
 }
 
-.modal-header {
-  background: linear-gradient(135deg, #ffc107, #fd7e14);
-  border: none;
-}
-
-.modal-body {
-  background: #f8f9fa;
-}
-
-/* ==================== ADMIN INFO SECTION ==================== */
-.admin-info .card {
-  background: linear-gradient(135deg, rgba(255, 193, 7, 0.1), rgba(253, 126, 20, 0.1));
-  border: 1px solid #ffc107;
-}
-
-/* ==================== NAVIGATION BUTTONS ==================== */
-.btn-outline-warning {
-  border: 2px solid #ffc107;
-  color: #ffc107;
-  font-weight: 600;
-}
-
-.btn-outline-warning:hover {
-  background: linear-gradient(45deg, #ffc107, #fd7e14);
-  border-color: #ffc107;
-  color: #212529;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(255, 193, 7, 0.3);
-}
-
-.btn-outline-danger:hover {
-  background: linear-gradient(45deg, #dc3545, #e91e63);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(220, 53, 69, 0.3);
-}
-
-/* ==================== PRODUCT CONTENT ANIMATIONS ==================== */
-.product-content {
-  animation: fadeInUp 0.8s ease;
-}
-
-/* ==================== LOADING ANIMATION ==================== */
-@keyframes fadeInUp {
+/* Animation */
+@keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(30px);
+    transform: translateY(20px);
   }
   to {
     opacity: 1;
@@ -311,57 +293,6 @@
   }
 }
 
-/* ==================== RESPONSIVE DESIGN ==================== */
-@media (max-width: 768px) {
-  .display-4 {
-    font-size: 2rem;
-  }
-  
-  .admin-actions .btn-group {
-    flex-direction: column;
-    width: 100%;
-  }
-  
-  .admin-actions .btn {
-    border-radius: 0.5rem !important;
-    margin-bottom: 0.5rem;
-  }
-  
-  .card:hover {
-    transform: translateY(-5px);
-  }
-  
-  .action-buttons .btn {
-    padding: 0.7rem 1.2rem;
-  }
-  
-  .size-option, .extra-option {
-    margin-bottom: 0.5rem;
-  }
+.animated.fadeIn {
+  animation: fadeIn 0.6s ease-out;
 }
-
-@media (max-width: 576px) {
-  .card-img-top {
-    height: 280px !important;
-  }
-  
-  .modal-dialog {
-    margin: 0.5rem;
-  }
-  
-  .btn {
-    padding: 0.6rem 1rem;
-  }
-  
-  .quantity-selection .btn {
-    width: 40px;
-    height: 40px;
-  }
-}
-
-/* ==================== BACKGROUND GRADIENTS ==================== */
-.bg-primary { background: linear-gradient(135deg, #0d6efd, #6610f2) !important; }
-.bg-warning { background: linear-gradient(135deg, #ffc107, #fd7e14) !important; }
-.bg-info { background: linear-gradient(135deg, #0dcaf0, #6f42c1) !important; }
-.bg-danger { background: linear-gradient(135deg, #dc3545, #e91e63) !important; }
-.bg-secondary { background: linear-gradient(135deg, #6c757d, #495057) !important; }

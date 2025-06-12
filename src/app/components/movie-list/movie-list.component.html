@@ -28,6 +28,20 @@
     </div>
   </div>
 
+  <div *ngIf="authService.isAdmin()" class="container">
+  <div class="alert alert-success border-success" role="alert">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <i class="fas fa-crown me-2"></i>
+        <strong>MODO ADMINISTRADOR</strong> - Gestión de películas
+      </div>
+      <button class="btn btn-success btn-sm" (click)="irAAdminMovies()">
+        <i class="fas fa-cogs me-2"></i>Panel Admin
+      </button>
+    </div>
+  </div>
+</div>
+
   <!-- Filters Section -->
   <div class="row mb-4">
     <div class="col-12">
