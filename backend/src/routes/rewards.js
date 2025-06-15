@@ -147,7 +147,7 @@ router.get('/check/availability',
 // ==================== RUTAS DE ADMINISTRACIÓN ====================
 
 // Middleware para todas las rutas de admin
-router.use('/admin*', requireAdmin);
+router.use('/admin*', authenticateToken, requireAdmin);
 
 /**
  * @route POST /api/rewards/admin/create
