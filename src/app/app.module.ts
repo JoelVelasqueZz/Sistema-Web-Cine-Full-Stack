@@ -103,7 +103,8 @@ import { AdminComingSoonComponent } from './components/admin/admin-coming-soon/a
     HistoryComponent, 
     
     // 🆕 COMPONENTES DEL SISTEMA DE PUNTOS
-    
+    OrderHistoryComponent,
+    PointsHistoryComponent,
     RewardsComponent,
     
     // 🍿 COMPONENTES DEL BAR
@@ -130,8 +131,6 @@ import { AdminComingSoonComponent } from './components/admin/admin-coming-soon/a
     HttpClientModule,
     ReactiveFormsModule,
     FormsModule,
-    OrderHistoryComponent,
-    PointsHistoryComponent,
     
     // 🎬 COMPONENTES STANDALONE
     AdminComingSoonComponent

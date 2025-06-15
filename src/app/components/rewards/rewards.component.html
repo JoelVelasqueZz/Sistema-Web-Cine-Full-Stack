@@ -1,30 +1,56 @@
-<!-- rewards.component.html - VERSIÓN FINAL CON ESTRUCTURA CORREGIDA -->
+<!-- rewards.component.html - VERSIÓN SIMPLIFICADA -->
 <div class="container mt-4">
   
   <!-- Header -->
   <div class="row mb-4">
     <div class="col-12">
-      <div class="header-section bg-gradient bg-success text-white p-4 rounded-3">
-        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
-          <div>
-            <h1 class="display-4 fw-bold mb-2">
-              <i class="fas fa-gift me-3 text-warning"></i>
-              Centro de Recompensas
-            </h1>
-            <p class="lead mb-0 fs-5">
-              <i class="fas fa-coins me-2"></i>
-              Canjea tus puntos por increíbles recompensas
-            </p>
-          </div>
-          <div class="header-stats text-center">
-            <div class="bg-white bg-opacity-20 rounded-3 p-3">
-              <h2 class="fw-bold text-warning mb-1">{{ userPoints }}</h2>
-              <small class="text-light">Puntos disponibles</small>
+      <h2 class="fw-bold text-warning">
+        <i class="fas fa-gift me-2"></i>
+        Centro de Recompensas
+      </h2>
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item">
+            <a routerLink="/profile">Perfil</a>
+          </li>
+          <li class="breadcrumb-item active">Recompensas</li>
+        </ol>
+      </nav>
+    </div>
+  </div>
+
+  <!-- Información de puntos del usuario -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card bg-warning text-dark">
+        <div class="card-body">
+          <div class="row align-items-center">
+            <div class="col-md-3 text-center">
+              <i class="fas fa-coins fa-3x mb-2"></i>
+              <h3 class="mb-1">{{ userPoints }}</h3>
+              <p class="mb-0">Puntos Disponibles</p>
+            </div>
+            <div class="col-md-6">
+              <h5 class="mb-2">¡Canjea tus puntos por increíbles recompensas!</h5>
+              <p class="mb-0">
+                Cada punto equivale a $0.01. Compra entradas y productos para ganar más puntos.
+              </p>
+            </div>
+            <div class="col-md-3 text-end">
+              <div class="d-grid gap-2">
+                <button class="btn btn-dark" (click)="goToPointsHistory()">
+                  <i class="fas fa-history me-2"></i>
+                  Ver Historial
+                </button>
+                <small class="text-dark">
+                  <i class="fas fa-dollar-sign me-1"></i>
+                  Valor: ${{ (userPoints / 100).toFixed(2) }}
+                </small>
+              </div>
             </div>
           </div>
         </div>
       </div>
-      <hr class="border-success border-2 mt-4">
     </div>
   </div>
 
@@ -84,16 +110,16 @@
               </div>
               <div class="col-md-4">
                 <div class="form-check form-switch">
-                <input class="form-check-input" 
-                      type="checkbox" 
-                      id="affordableFilter"
-                      [checked]="showOnlyAffordable"
-                      (click)="toggleAffordableFilter()">
-                <label class="form-check-label fw-semibold text-success" for="affordableFilter">
-                  <i class="fas fa-coins me-1"></i>
-                  Solo las que puedo canjear
-                </label>
-              </div>
+                  <input class="form-check-input" 
+                        type="checkbox" 
+                        id="affordableFilter"
+                        [checked]="showOnlyAffordable"
+                        (click)="toggleAffordableFilter()">
+                  <label class="form-check-label fw-semibold text-success" for="affordableFilter">
+                    <i class="fas fa-coins me-1"></i>
+                    Solo las que puedo canjear
+                  </label>
+                </div>
               </div>
             </div>
 
@@ -500,7 +526,7 @@
               <div class="col-6" *ngIf="selectedReward.valor > 0">
                 <small class="text-muted">Valor:</small>
                 <div class="fw-bold text-primary fs-5">
-                  ${{ selectedReward.valor != null ? selectedReward.valor.toFixed(2) : '0.00' }}
+                  ${{ selectedReward.valor.toFixed(2) }}
                 </div>
               </div>
               <div class="col-6">
@@ -510,8 +536,8 @@
               <div class="col-6">
                 <small class="text-muted">Stock disponible:</small>
                 <div class="fw-bold" 
-                     [class.text-danger]="selectedReward.stock !== undefined && selectedReward.stock! <= 10"
-                     [class.text-success]="selectedReward.stock !== undefined && selectedReward.stock! > 10">
+                     [class.text-danger]="selectedReward.stock <= 10"
+                     [class.text-success]="selectedReward.stock > 10">
                   {{ selectedReward.stock }} unidades
                 </div>
               </div>
@@ -534,8 +560,8 @@
 
         <!-- Estado del usuario -->
         <div class="alert" 
-             [class.alert-success]="canAffordReward(selectedReward!)"
-             [class.alert-warning]="!canAffordReward(selectedReward!)">
+             [class.alert-success]="canAffordReward(selectedReward)"
+             [class.alert-warning]="!canAffordReward(selectedReward)">
           <div class="d-flex justify-content-between align-items-center">
             <div>
               <strong>Tus puntos:</strong> {{ userPoints }}
@@ -563,7 +589,7 @@
         </button>
         <button type="button" 
                 class="btn btn-success"
-                [disabled]="isRedeemButtonDisabled(selectedReward!)"
+                [disabled]="isRedeemButtonDisabled(selectedReward)"
                 (click)="confirmRedeem()">
           <span *ngIf="!canjeando">
             <i class="fas fa-gift me-2"></i>

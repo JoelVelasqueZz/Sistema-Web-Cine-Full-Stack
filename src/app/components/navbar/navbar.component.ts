@@ -273,7 +273,36 @@ export class NavbarComponent implements OnInit, OnDestroy {
   isProfileActive(): boolean {
     return this.router.url === '/profile';
   }
+goToPointsHistory(): void {
+  this.router.navigate(['/points-history']);
+}
+showEarnPointsInfo(): void {
+  // Mostrar modal de información de puntos
+  const modalElement = document.getElementById('pointsInfoModal');
+  if (modalElement) {
+    const modal = new (window as any).bootstrap.Modal(modalElement);
+    modal.show();
+  }
+}
+shareReferralCode(): void {
+  // Navegar directamente al historial de puntos donde está la gestión de referidos
+  this.router.navigate(['/points-history']);
+}
+showPointsUsageInfo(): void {
+  const modalElement = document.getElementById('pointsUsageModal');
+  if (modalElement) {
+    const modal = new (window as any).bootstrap.Modal(modalElement);
+    modal.show();
+  }
+}
+getUserPointsValue(): number {
+  return this.userPoints / 1; // 1 punto = $1
+}
 
+getMaxPointsToUse(): number {
+  // En el navbar simplemente retornar los puntos disponibles
+  return this.userPoints;
+}
   /**
    * Manejar clic en el badge de puntos
    */

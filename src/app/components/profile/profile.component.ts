@@ -1,7 +1,8 @@
 import { Component, OnInit } from '@angular/core';
+import { Router } from '@angular/router'; // 🆕 AGREGAR ESTA IMPORTACIÓN
 import { AuthService, Usuario } from '../../services/auth.service';
 import { UserService, UpdateProfileData, UserStats } from '../../services/user.service';
-import { PointsService, PointsStats } from '../../services/points.service'; // 🆕 NUEVO
+import { PointsService, PointsStats } from '../../services/points.service';
 import { ToastService } from '../../services/toast.service';
 
 @Component({
@@ -14,7 +15,7 @@ export class ProfileComponent implements OnInit {
   
   currentUser: Usuario | null = null;
   userStats: UserStats | null = null;
-  pointsStats: PointsStats | null = null; // 🆕 NUEVO
+  pointsStats: PointsStats | null = null;
   editMode: boolean = false;
   
   // 🆕 AGREGAR ESTA VARIABLE PARA CONTAR FAVORITAS REAL
@@ -48,10 +49,11 @@ export class ProfileComponent implements OnInit {
   ];
 
   constructor(
-    public  authService: AuthService,
+    public authService: AuthService,
     private userService: UserService,
-    private pointsService: PointsService, // 🆕 NUEVO
-    private toastService: ToastService
+    private pointsService: PointsService,
+    private toastService: ToastService,
+    private router: Router // 🆕 AGREGAR ROUTER
   ) {}
 
   ngOnInit(): void {
@@ -302,11 +304,11 @@ export class ProfileComponent implements OnInit {
    * Compartir código de referido
    */
   shareReferralCode(): void {
-    const shareText = `¡Únete a CinemaApp con mi código de referido y obtén puntos gratis! 🎬🍿\n\nCódigo: ${this.referralCode}\n\n¡Disfruta del mejor cine!`;
+    const shareText = `¡Únete a Parky Films con mi código de referido y obtén puntos gratis! 🎬🍿\n\nCódigo: ${this.referralCode}\n\n¡Disfruta del mejor cine!`;
     
     if (navigator.share) {
       navigator.share({
-        title: 'Código de Referido - CinemaApp',
+        title: 'Código de Referido - Parky Films',
         text: shareText,
         url: window.location.origin
       }).then(() => {
@@ -393,19 +395,17 @@ export class ProfileComponent implements OnInit {
   }
 
   /**
-   * Navegar a la página de recompensas
+   * 🆕 CORREGIDO: Navegar a la página de recompensas
    */
   goToRewards(): void {
-    // Aquí navegarías a la página de recompensas cuando la implementes
-    this.toastService.showInfo('Próximamente: Centro de Recompensas');
+    this.router.navigate(['/rewards']);
   }
 
   /**
-   * Navegar al historial de puntos
+   * 🆕 CORREGIDO: Navegar al historial de puntos
    */
   goToPointsHistory(): void {
-    // Aquí navegarías al historial de puntos cuando lo implementes
-    this.toastService.showInfo('Próximamente: Historial de Puntos');
+    this.router.navigate(['/points-history']);
   }
 
   /**
@@ -422,4 +422,3 @@ export class ProfileComponent implements OnInit {
     alert(message);
   }
 }
-
