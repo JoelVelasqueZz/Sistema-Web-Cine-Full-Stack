@@ -316,53 +316,66 @@ class CheckoutController {
   // ==================== MÉTODOS AUXILIARES PRIVADOS ====================
 
   validateAndProcessCart(cartItems) {
-    const errors = [];
-    const processedItems = [];
+  const errors = [];
+  const processedItems = [];
+  
+  for (let i = 0; i < cartItems.length; i++) {
+    const item = cartItems[i];
     
-    for (let i = 0; i < cartItems.length; i++) {
-      const item = cartItems[i];
-      
-      // Validaciones básicas
-      if (!item.tipo || !['pelicula', 'bar'].includes(item.tipo)) {
-        errors.push(`Item ${i + 1}: Tipo inválido`);
-        continue;
-      }
-      
-      if (!item.cantidad || item.cantidad <= 0 || item.cantidad > 20) {
-        errors.push(`Item ${i + 1}: Cantidad debe estar entre 1 y 20`);
-        continue;
-      }
-      
-      if (!item.precio || item.precio <= 0) {
-        errors.push(`Item ${i + 1}: Precio inválido`);
-        continue;
-      }
-
-      // Procesar según tipo
-      if (item.tipo === 'pelicula') {
-        const processedItem = this.processMovieItem(item);
-        if (processedItem.error) {
-          errors.push(`Item ${i + 1}: ${processedItem.error}`);
-        } else {
-          processedItems.push(processedItem);
-        }
-      } else if (item.tipo === 'bar') {
-        const processedItem = this.processBarItem(item);
-        if (processedItem.error) {
-          errors.push(`Item ${i + 1}: ${processedItem.error}`);
-        } else {
-          processedItems.push(processedItem);
-        }
-      }
+    console.log(`🔍 Validando item ${i + 1}:`, item);
+    
+    // Validaciones básicas
+    if (!item.tipo || !['pelicula', 'bar'].includes(item.tipo)) {
+      errors.push(`Item ${i + 1}: Tipo inválido`);
+      continue;
     }
     
-    return {
-      valid: errors.length === 0,
-      errors,
-      processedItems
-    };
-  }
+    if (!item.cantidad || item.cantidad <= 0 || item.cantidad > 20) {
+      errors.push(`Item ${i + 1}: Cantidad debe estar entre 1 y 20`);
+      continue;
+    }
+    
+    if (!item.precio || item.precio <= 0) {
+      errors.push(`Item ${i + 1}: Precio inválido`);
+      continue;
+    }
 
+    // Procesar según tipo
+    if (item.tipo === 'pelicula') {
+      const processedItem = this.processMovieItem(item);
+      if (processedItem.error) {
+        errors.push(`Item ${i + 1}: ${processedItem.error}`);
+      } else {
+        processedItems.push(processedItem);
+      }
+    } else if (item.tipo === 'bar') {
+      // 🔧 ASEGURAR QUE EL ITEM TENGA TODOS LOS DATOS NECESARIOS
+      const itemWithDefaults = {
+        ...item,
+        barProduct: item.barProduct || {
+          id: item.producto_id,
+          nombre: item.nombre || 'Producto del bar',
+          categoria: item.categoria || 'general',
+          precio: item.precio
+        }
+      };
+      
+      const processedItem = this.processBarItem(itemWithDefaults);
+      if (processedItem.error) {
+        errors.push(`Item ${i + 1}: ${processedItem.error}`);
+      } else {
+        console.log(`✅ Item del bar procesado:`, processedItem);
+        processedItems.push(processedItem);
+      }
+    }
+  }
+  
+  return {
+    valid: errors.length === 0,
+    errors,
+    processedItems
+  };
+}
   processMovieItem(item) {
     if (!item.pelicula || !item.funcion) {
       return { error: 'Datos de película o función faltantes' };
@@ -388,26 +401,39 @@ class CheckoutController {
   }
 
   processBarItem(item) {
-    if (!item.barProduct) {
-      return { error: 'Datos de producto del bar faltantes' };
-    }
-    
-    return {
-      tipo: 'bar',
-      producto_id: item.barProduct.id,
-      cantidad: item.cantidad,
-      precio_unitario: item.precio,
-      subtotal: item.precio * item.cantidad,
-      tamano_seleccionado: item.barOptions?.tamano || null,
-      extras_seleccionados: item.barOptions?.extras || [],
-      notas: item.barOptions?.notas || null,
-      detalles: {
-        nombre: item.barProduct.nombre,
-        categoria: item.barProduct.categoria,
-        es_combo: item.barProduct.es_combo
-      }
-    };
+  if (!item.barProduct) {
+    return { error: 'Datos de producto del bar faltantes' };
   }
+  
+  // 🔧 ARREGLADO: Usar item.precio directamente si está disponible
+  const precioUnitario = item.precio || parseFloat(item.barProduct.precio) || 0;
+  const cantidad = item.cantidad || 1;
+  const subtotal = precioUnitario * cantidad;
+  
+  console.log(`📦 Procesando item del bar:`, {
+    nombre: item.barProduct.nombre,
+    precio_original: item.barProduct.precio,
+    precio_unitario: precioUnitario,
+    cantidad: cantidad,
+    subtotal: subtotal
+  });
+  
+  return {
+    tipo: 'bar',
+    producto_id: item.barProduct.id || item.producto_id, // 🔧 Soporte para ambos formatos
+    cantidad: cantidad,
+    precio_unitario: precioUnitario, // 🔧 CORREGIDO: Asegurar que no sea null
+    subtotal: subtotal,
+    tamano_seleccionado: item.barOptions?.tamano || null,
+    extras_seleccionados: item.barOptions?.extras || [],
+    notas: item.barOptions?.notas || null,
+    detalles: {
+      nombre: item.barProduct.nombre,
+      categoria: item.barProduct.categoria,
+      es_combo: item.barProduct.es_combo || false
+    }
+  };
+}
 
   calculateTotals(items) {
     const subtotal = items.reduce((sum, item) => sum + item.subtotal, 0);
@@ -470,51 +496,65 @@ class CheckoutController {
     };
   }
 
-  async prepareOrderData(userId, paymentData) {
-    const totals = this.calculateTotals(paymentData.cartItems);
-    
-    // Separar items por tipo
-    const movieItems = paymentData.cartItems
-      .filter(item => item.tipo === 'pelicula')
-      .map(item => ({
-        funcion_id: item.funcion_id,
-        cantidad: item.cantidad,
-        precio_unitario: item.precio_unitario,
-        subtotal: item.subtotal,
-        asientos_seleccionados: item.asientos_seleccionados || [],
-        tipo_asiento: item.tipo_asiento || 'estandar'
-      }));
-    
-    const barItems = paymentData.cartItems
-      .filter(item => item.tipo === 'bar')
-      .map(item => ({
+ async prepareOrderData(userId, paymentData) {
+  // 🔧 CORREGIDO: Procesar items antes de usarlos
+  const validation = this.validateAndProcessCart(paymentData.cartItems);
+  if (!validation.valid) {
+    throw new Error(`Items inválidos: ${validation.errors.join(', ')}`);
+  }
+  
+  const processedItems = validation.processedItems;
+  const totals = this.calculateTotals(processedItems);
+  
+  console.log('🔍 Items procesados para orden:', processedItems);
+  
+  // Separar items por tipo usando los items YA PROCESADOS
+  const movieItems = processedItems
+    .filter(item => item.tipo === 'pelicula')
+    .map(item => ({
+      funcion_id: item.funcion_id,
+      cantidad: item.cantidad,
+      precio_unitario: item.precio_unitario,
+      subtotal: item.subtotal,
+      asientos_seleccionados: item.asientos_seleccionados || [],
+      tipo_asiento: item.tipo_asiento || 'estandar'
+    }));
+  
+  const barItems = processedItems
+    .filter(item => item.tipo === 'bar')
+    .map(item => {
+      console.log('🔍 Preparando item del bar para BD:', item);
+      return {
         producto_id: item.producto_id,
         cantidad: item.cantidad,
-        precio_unitario: item.precio_unitario,
+        precio_unitario: item.precio_unitario, // 🔧 Ahora viene del processBarItem
         subtotal: item.subtotal,
         tamano_seleccionado: item.tamano_seleccionado,
         extras_seleccionados: item.extras_seleccionados,
         notas: item.notas
-      }));
-    
-    return {
-      usuario_id: userId,
-      total: totals.total,
-      subtotal: totals.subtotal,
-      impuestos: totals.taxes,
-      cargo_servicio: totals.serviceFee,
-      metodo_pago: paymentData.metodo_pago === 'tarjeta' ? 'Tarjeta de Crédito' : 'PayPal',
-      estado: 'completada',
-      email_cliente: paymentData.email_cliente,
-      nombre_cliente: paymentData.nombre_cliente,
-      telefono_cliente: paymentData.telefono_cliente || null,
-      paypal_transaction_id: paymentData.paypal?.transaction_id || null,
-      paypal_payer_id: paymentData.paypal?.payer_id || null,
-      paypal_status: paymentData.paypal?.status || null,
-      items_peliculas: movieItems,
-      items_bar: barItems
-    };
-  }
+      };
+    });
+  
+  console.log('🔍 Items del bar que se enviarán a BD:', barItems);
+  
+  return {
+    usuario_id: userId,
+    total: totals.total,
+    subtotal: totals.subtotal,
+    impuestos: totals.taxes,
+    cargo_servicio: totals.serviceFee,
+    metodo_pago: paymentData.metodo_pago === 'tarjeta' ? 'Tarjeta de Crédito' : 'PayPal',
+    estado: 'completada',
+    email_cliente: paymentData.email_cliente,
+    nombre_cliente: paymentData.nombre_cliente,
+    telefono_cliente: paymentData.telefono_cliente || null,
+    paypal_transaction_id: paymentData.paypal?.transaction_id || null,
+    paypal_payer_id: paymentData.paypal?.payer_id || null,
+    paypal_status: paymentData.paypal?.status || null,
+    items_peliculas: movieItems,
+    items_bar: barItems
+  };
+}
 
   async checkItemsAvailability(cartItems) {
     const itemsStatus = [];
