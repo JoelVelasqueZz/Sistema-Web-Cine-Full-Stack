@@ -19,42 +19,53 @@ import { HistoryComponent } from './components/history/history.component';
 import { AdminGuard } from './guards/admin.guard';
 import { BarListComponent } from './components/bar-list/bar-list.component';
 import { BarDetailComponent } from './components/bar-detail/bar-detail.component';
-//IMPORTAR COMPONENTES ADMIN
+
+// IMPORTAR COMPONENTES ADMIN
 import { AdminLayoutComponent } from './components/admin/admin-layout/admin-layout.component';
 import { AdminDashboardComponent } from './components/admin/admin-dashboard/admin-dashboard.component';
 import { AdminMoviesComponent } from './components/admin/admin-movies/admin-movies.component';
 import { AdminUsersComponent } from './components/admin/admin-users/admin-users.component';
 import { AdminBarComponent } from './components/admin/admin-bar/admin-bar.component';
 import { AdminComingSoonComponent } from './components/admin/admin-coming-soon/admin-coming-soon.component';
-// 🆕 NUEVOS COMPONENTES DEL SISTEMA DE PUNTOS
-import { RewardsComponent } from './components/rewards/rewards.component';
 import { FunctionAdminComponent } from './components/admin/function-admin/function-admin.component';
 
+// 🆕 COMPONENTES DEL SISTEMA DE PUNTOS Y RECOMPENSAS
+import { RewardsComponent } from './components/rewards/rewards.component';
+import { OrderHistoryComponent } from './components/order-history/order-history.component';
+import { PointsHistoryComponent } from './components/points-history/points-history.component';
+
 const routes: Routes = [
-  { path: 'home', component: HomeComponent },
-  { path: 'movies', component: MovieListComponent },
-  { path: 'movie/:id', component: MovieDetailComponent },
-  { path: 'ticket-purchase/:id', component: TicketPurchaseComponent },
+  // ==================== RUTAS PRINCIPALES ====================
+  { 
+    path: 'home', 
+    component: HomeComponent,
+    data: { title: 'Inicio - Parky Films' }
+  },
+  
+  // ==================== RUTAS DE PELÍCULAS ====================
+  { 
+    path: 'movies', 
+    component: MovieListComponent,
+    data: { title: 'Películas en Cartelera' }
+  },
+  { 
+    path: 'movie/:id', 
+    component: MovieDetailComponent,
+    data: { title: 'Detalles de Película' }
+  },
+  { 
+    path: 'ticket-purchase/:id', 
+    component: TicketPurchaseComponent,
+    data: { title: 'Comprar Entradas' }
+  },
   { 
     path: 'seat-selection/:movieId/:funcionId/:cantidad', 
     component: SeatSelectionComponent,
-    canActivate: [AuthGuard]
+    canActivate: [AuthGuard],
+    data: { title: 'Seleccionar Asientos' }
   },
-  { 
-    path: 'cart', 
-    component: ShoppingCartComponent,
-    canActivate: [AuthGuard]
-  },
-  { 
-    path: 'checkout', 
-    component: CheckoutComponent,
-    canActivate: [AuthGuard]
-  },
-  { path: 'buscar/:termino', component: SearchComponent },
-  { path: 'login', component: LoginComponent },
-  { path: 'register', component: RegisterComponent },
   
-  // RUTAS PÚBLICAS PARA PRÓXIMOS ESTRENOS
+  // ==================== RUTAS DE PRÓXIMOS ESTRENOS ====================
   {
     path: 'coming-soon',
     component: ComingSoonComponent,
@@ -66,39 +77,102 @@ const routes: Routes = [
     data: { title: 'Detalles del Estreno' }
   },
   
-  // 🍿 RUTAS DEL BAR
-  { path: 'bar', component: BarListComponent },
-  { path: 'bar/:id', component: BarDetailComponent },
+  // ==================== RUTAS DEL BAR ====================
+  { 
+    path: 'bar', 
+    component: BarListComponent,
+    data: { title: 'Bar y Snacks' }
+  },
+  { 
+    path: 'bar/:id', 
+    component: BarDetailComponent,
+    data: { title: 'Producto del Bar' }
+  },
   
-  // 🆕 NUEVA RUTA: SISTEMA DE RECOMPENSAS
+  // ==================== RUTAS DE COMPRA (PROTEGIDAS) ====================
+  { 
+    path: 'cart', 
+    component: ShoppingCartComponent,
+    canActivate: [AuthGuard],
+    data: { title: 'Mi Carrito' }
+  },
+  { 
+    path: 'checkout', 
+    component: CheckoutComponent,
+    canActivate: [AuthGuard],
+    data: { title: 'Finalizar Compra' }
+  },
+  
+  // ==================== 🆕 RUTAS DEL SISTEMA DE PUNTOS ====================
   { 
     path: 'rewards', 
     component: RewardsComponent,
-    canActivate: [AuthGuard]
+    canActivate: [AuthGuard],
+    data: { title: 'Centro de Recompensas' }
+  },
+  { 
+    path: 'order-history', 
+    component: OrderHistoryComponent, 
+    canActivate: [AuthGuard],
+    data: { title: 'Historial de Órdenes' }
+  },
+  { 
+    path: 'orders', 
+    redirectTo: 'order-history',
+    pathMatch: 'full'
+  },
+  { 
+    path: 'points-history', 
+    component: PointsHistoryComponent, 
+    canActivate: [AuthGuard],
+    data: { title: 'Historial de Puntos' }
   },
   
-  // RUTAS DE PERFIL (PROTEGIDAS)
+  // ==================== RUTAS DE PERFIL (PROTEGIDAS) ====================
   { 
     path: 'profile', 
     component: ProfileComponent,
-    canActivate: [AuthGuard]
+    canActivate: [AuthGuard],
+    data: { title: 'Mi Perfil' }
   },
   { 
     path: 'favorites', 
     component: FavoritesComponent,
-    canActivate: [AuthGuard]
+    canActivate: [AuthGuard],
+    data: { title: 'Mis Favoritas' }
   },
   { 
     path: 'history', 
     component: HistoryComponent,
-    canActivate: [AuthGuard]
+    canActivate: [AuthGuard],
+    data: { title: 'Mi Historial' }
   },
   
-  // 🔥 RUTAS DE ADMINISTRACIÓN (PROTEGIDAS CON AdminGuard)
+  // ==================== RUTAS DE BÚSQUEDA ====================
+  { 
+    path: 'buscar/:termino', 
+    component: SearchComponent,
+    data: { title: 'Resultados de Búsqueda' }
+  },
+  
+  // ==================== RUTAS DE AUTENTICACIÓN ====================
+  { 
+    path: 'login', 
+    component: LoginComponent,
+    data: { title: 'Iniciar Sesión' }
+  },
+  { 
+    path: 'register', 
+    component: RegisterComponent,
+    data: { title: 'Registrarse' }
+  },
+  
+  // ==================== RUTAS DE ADMINISTRACIÓN (PROTEGIDAS) ====================
   {
     path: 'admin',
     component: AdminLayoutComponent,
     canActivate: [AuthGuard, AdminGuard],
+    data: { title: 'Panel de Administración' },
     children: [
       {
         path: '',
@@ -115,7 +189,6 @@ const routes: Routes = [
         component: AdminMoviesComponent,
         data: { title: 'Gestión de Películas' }
       },
-      // 🆕 NUEVA RUTA PARA PRÓXIMOS ESTRENOS
       {
         path: 'coming-soon',
         component: AdminComingSoonComponent,
@@ -135,16 +208,40 @@ const routes: Routes = [
         path: 'bar',
         component: AdminBarComponent,
         data: { title: 'Gestión del Bar' }
+      },
+      // 🆕 NUEVAS RUTAS DE ADMIN PARA PUNTOS Y RECOMPENSAS
+      {
+        path: 'points',
+        component: AdminDashboardComponent, // Temporal, puedes crear AdminPointsComponent
+        data: { title: 'Gestión de Puntos' }
+      },
+      {
+        path: 'rewards-admin',
+        component: AdminDashboardComponent, // Temporal, puedes crear AdminRewardsComponent
+        data: { title: 'Gestión de Recompensas' }
       }
     ]
   },
   
-  { path: '', redirectTo: '/home', pathMatch: 'full' },
-  { path: '**', redirectTo: '/home' }
+  // ==================== RUTAS DE REDIRECCIÓN ====================
+  { 
+    path: '', 
+    redirectTo: '/home', 
+    pathMatch: 'full' 
+  },
+  { 
+    path: '**', 
+    redirectTo: '/home' 
+  }
 ];
 
 @NgModule({
-  imports: [RouterModule.forRoot(routes)],
+  imports: [RouterModule.forRoot(routes, {
+    // 🆕 CONFIGURACIONES ADICIONALES
+    enableTracing: false, // Cambiar a true para debug de rutas
+    scrollPositionRestoration: 'top', // Scroll al top en cada navegación
+    anchorScrolling: 'enabled' // Habilitar scroll a anclas
+  })],
   exports: [RouterModule]
 })
 export class AppRoutingModule { }

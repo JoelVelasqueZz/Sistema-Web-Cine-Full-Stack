@@ -6,6 +6,7 @@ import { ToastService } from '../../services/toast.service';
 
 @Component({
   selector: 'app-points-history',
+  standalone: false, // ✅ IMPORTANTE: Debe ser false para usar en app.module.ts
   templateUrl: './points-history.component.html',
   styleUrls: ['./points-history.component.css']
 })
@@ -20,6 +21,7 @@ export class PointsHistoryComponent implements OnInit {
   loading: boolean = true;
   loadingReferrals: boolean = true;
   applyingReferralCode: boolean = false;
+  copyingCode: boolean = false;
   
   // Paginación
   currentPage: number = 1;
@@ -66,6 +68,7 @@ export class PointsHistoryComponent implements OnInit {
       },
       error: (error) => {
         console.error('❌ Error cargando puntos:', error);
+        this.currentUserPoints = 0;
       }
     });
   }
@@ -148,8 +151,11 @@ export class PointsHistoryComponent implements OnInit {
   }
 
   copyReferralCode(): void {
+    this.copyingCode = true;
+    
     navigator.clipboard.writeText(this.referralCode).then(() => {
       this.toastService.showSuccess('¡Código copiado al portapapeles!');
+      this.copyingCode = false;
     }).catch(() => {
       // Fallback para navegadores que no soportan clipboard API
       const textArea = document.createElement('textarea');
@@ -158,7 +164,9 @@ export class PointsHistoryComponent implements OnInit {
       textArea.select();
       document.execCommand('copy');
       document.body.removeChild(textArea);
+      
       this.toastService.showSuccess('¡Código copiado al portapapeles!');
+      this.copyingCode = false;
     });
   }
 
@@ -190,6 +198,7 @@ export class PointsHistoryComponent implements OnInit {
       textArea.select();
       document.execCommand('copy');
       document.body.removeChild(textArea);
+      
       this.toastService.showSuccess('Mensaje de referido copiado al portapapeles');
     });
   }
@@ -300,6 +309,23 @@ export class PointsHistoryComponent implements OnInit {
     return this.transactions.filter(t => 
       new Date(t.fecha) >= thirtyDaysAgo
     ).length;
+  }
+
+  // ==================== MÉTODOS PARA METADATA ====================
+
+  getMetadataKeys(metadata: any): string[] {
+    if (!metadata || typeof metadata !== 'object') return [];
+    return Object.keys(metadata).slice(0, 3); // Máximo 3 keys para no saturar
+  }
+
+  // ==================== TRACKBY FUNCTIONS ====================
+
+  trackByTransactionId(index: number, transaction: PointsTransaction): number {
+    return transaction.id;
+  }
+
+  trackByReferralId(index: number, referral: ReferralRecord): number {
+    return referral.id;
   }
 
   // ==================== NAVEGACIÓN ====================

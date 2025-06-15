@@ -6,6 +6,7 @@ import { ToastService } from '../../services/toast.service';
 
 @Component({
   selector: 'app-order-history',
+  standalone: false, // ✅ IMPORTANTE: Debe ser false para usar en app.module.ts
   templateUrl: './order-history.component.html',
   styleUrls: ['./order-history.component.css']
 })
@@ -382,6 +383,12 @@ export class OrderHistoryComponent implements OnInit {
 
   hasBarItems(order: OrderDetails): boolean {
     return order.items_bar && order.items_bar.length > 0;
+  }
+
+  // ==================== TRACKBY FUNCTIONS ====================
+
+  trackByOrderId(index: number, order: Order): string {
+    return order.id;
   }
 
   // ==================== MÉTODO PARA REFRESCAR DATOS ====================
