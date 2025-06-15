@@ -240,14 +240,22 @@ export class BarListComponent implements OnInit, OnDestroy {
       opciones: {}
     };
 
-    const agregado = this.cartService.addToCart(productoCarrito);
-    
-    if (agregado) {
-      this.toastService.showSuccess(`"${producto.nombre}" agregado al carrito`);
-    } else {
-      this.toastService.showError('Error al agregar al carrito');
-    }
+    // 🆕 USAR Observable CORRECTAMENTE
+    this.cartService.addToCart(productoCarrito).subscribe({
+      next: (agregado) => {
+        if (agregado) {
+          this.toastService.showSuccess(`"${producto.nombre}" agregado al carrito`);
+        } else {
+          this.toastService.showError('Error al agregar al carrito');
+        }
+      },
+      error: (error) => {
+        console.error('❌ Error agregando al carrito:', error);
+        this.toastService.showError('Error al agregar al carrito');
+      }
+    });
   }
+
 
   // ==================== MÉTODOS DE ADMINISTRACIÓN ====================
   

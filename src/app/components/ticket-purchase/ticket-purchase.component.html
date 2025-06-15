@@ -1,4 +1,4 @@
-<!-- ticket-purchase.component.html -->
+<!-- ticket-purchase.component.html - ACTUALIZADO -->
 <div class="container mt-4">
   
   <!-- Header -->
@@ -174,7 +174,7 @@
     </div>
   </div>
 
-  <!-- Panel de compra -->
+  <!-- Panel de compra ACTUALIZADO -->
   <div class="row mt-4" *ngIf="funcionSeleccionada && !cargando">
     <div class="col-12">
       <div class="card border-success shadow-lg">
@@ -195,6 +195,14 @@
               </p>
               <span class="badge bg-info me-2">{{ funcionSeleccionada.formato }}</span>
               <span class="badge bg-secondary">{{ funcionSeleccionada.asientosDisponibles }} asientos disponibles</span>
+              
+              <!-- 🆕 NUEVO: Mostrar si ya está en carrito -->
+              <div *ngIf="yaEstaEnCarrito()" class="mt-2">
+                <div class="alert alert-info py-2 mb-0">
+                  <i class="fas fa-shopping-cart me-2"></i>
+                  Ya tienes {{ getCantidadEnCarrito() }} entrada(s) de esta función en tu carrito
+                </div>
+              </div>
             </div>
             <div class="col-md-4">
               <div class="row align-items-center">
@@ -239,23 +247,50 @@
           
           <hr>
           
-          <div class="d-flex justify-content-between">
+          <!-- 🆕 BOTONES ACTUALIZADOS -->
+          <div class="d-flex justify-content-between flex-wrap gap-2">
             <button class="btn btn-outline-secondary" (click)="cancelar()">
               <i class="fas fa-times me-2"></i>
               Cancelar
             </button>
-            <button class="btn btn-success btn-lg" 
-                    (click)="agregarAlCarrito()"
-                    [disabled]="agregandoCarrito || cantidadEntradas > funcionSeleccionada.asientosDisponibles">
-              <span *ngIf="!agregandoCarrito">
-                <i class="fas fa-couch me-2"></i>
-                Seleccionar Asientos
-              </span>
-              <span *ngIf="agregandoCarrito">
-                <span class="spinner-border spinner-border-sm me-2"></span>
-                Procesando...
-              </span>
-            </button>
+            
+            <div class="d-flex gap-2 flex-wrap">
+              <!-- Ver carrito (si ya hay items) -->
+              <button class="btn btn-outline-info" 
+                      *ngIf="yaEstaEnCarrito()"
+                      (click)="irAlCarrito()">
+                <i class="fas fa-shopping-cart me-2"></i>
+                Ver Carrito
+              </button>
+              
+              <!-- Agregar al carrito -->
+              <button class="btn btn-warning btn-lg" 
+                      (click)="agregarAlCarrito()"
+                      [disabled]="agregandoCarrito || cantidadEntradas > funcionSeleccionada.asientosDisponibles">
+                <span *ngIf="!agregandoCarrito">
+                  <i class="fas fa-cart-plus me-2"></i>
+                  Agregar al Carrito
+                </span>
+                <span *ngIf="agregandoCarrito">
+                  <span class="spinner-border spinner-border-sm me-2"></span>
+                  Agregando...
+                </span>
+              </button>
+              
+              <!-- Comprar ahora -->
+              <button class="btn btn-success btn-lg" 
+                      (click)="comprarAhora()"
+                      [disabled]="agregandoCarrito || cantidadEntradas > funcionSeleccionada.asientosDisponibles">
+                <span *ngIf="!agregandoCarrito">
+                  <i class="fas fa-bolt me-2"></i>
+                  Comprar Ahora
+                </span>
+                <span *ngIf="agregandoCarrito">
+                  <span class="spinner-border spinner-border-sm me-2"></span>
+                  Procesando...
+                </span>
+              </button>
+            </div>
           </div>
         </div>
       </div>

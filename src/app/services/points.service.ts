@@ -18,7 +18,25 @@ export class PointsService {
     private authService: AuthService
   ) {
     console.log('🆕 PointsService actualizado con API backend');
-    this.loadUserPoints();
+    this.initializeService();
+  }
+
+  // ==================== INICIALIZACIÓN ====================
+
+  private initializeService(): void {
+    // Solo cargar puntos si el usuario está logueado
+    if (this.authService.isLoggedIn()) {
+      this.loadUserPoints();
+    }
+
+    // Suscribirse a cambios de autenticación
+    this.authService.authStatus$.subscribe(isLoggedIn => {
+      if (isLoggedIn) {
+        this.loadUserPoints();
+      } else {
+        this.userPointsSubject.next(0);
+      }
+    });
   }
 
   // ==================== MÉTODOS PRINCIPALES DE PUNTOS ====================
@@ -27,7 +45,14 @@ export class PointsService {
    * Obtener puntos actuales del usuario desde la API
    */
   getUserPoints(): Observable<UserPointsResponse> {
-    return this.http.get<ApiResponse<UserPointsData>>(`${this.API_URL}`).pipe(
+    if (!this.authService.isLoggedIn()) {
+      console.log('🔐 Usuario no autenticado, retornando puntos en 0');
+      return of({ puntosActuales: 0, totalGanados: 0, totalUsados: 0 });
+    }
+
+    const headers = this.getAuthHeaders();
+    
+    return this.http.get<ApiResponse<UserPointsData>>(`${this.API_URL}`, { headers }).pipe(
       map(response => {
         if (response.success && response.data) {
           this.userPointsSubject.next(response.data.puntos_actuales || 0);
@@ -41,6 +66,24 @@ export class PointsService {
       }),
       catchError(error => {
         console.error('❌ Error al obtener puntos del usuario:', error);
+        
+        // Si es error 401, el token expiró
+        if (error.status === 401) {
+          this.authService.logout();
+          return of({ puntosActuales: 0, totalGanados: 0, totalUsados: 0 });
+        }
+        
+        // Para otros errores, usar fallback legacy
+        const currentUser = this.authService.getCurrentUser();
+        if (currentUser) {
+          const puntosLegacy = this.getUserPoints_Legacy(currentUser.id);
+          return of({ 
+            puntosActuales: puntosLegacy, 
+            totalGanados: puntosLegacy, 
+            totalUsados: 0 
+          });
+        }
+        
         return of({ puntosActuales: 0, totalGanados: 0, totalUsados: 0 });
       })
     );
@@ -50,7 +93,13 @@ export class PointsService {
    * Obtener estadísticas completas de puntos
    */
   getUserPointsStats(): Observable<PointsStats> {
-    return this.http.get<ApiResponse<PointsStats>>(`${this.API_URL}/stats`).pipe(
+    if (!this.authService.isLoggedIn()) {
+      return of(this.getDefaultStats());
+    }
+
+    const headers = this.getAuthHeaders();
+    
+    return this.http.get<ApiResponse<PointsStats>>(`${this.API_URL}/stats`, { headers }).pipe(
       map(response => response.success ? response.data : this.getDefaultStats()),
       catchError(error => {
         console.error('❌ Error al obtener estadísticas de puntos:', error);
@@ -63,9 +112,17 @@ export class PointsService {
    * Obtener historial de transacciones de puntos
    */
   getPointsHistory(page: number = 1, limit: number = 20): Observable<PointsTransaction[]> {
+    if (!this.authService.isLoggedIn()) {
+      return of([]);
+    }
+
+    const headers = this.getAuthHeaders();
     const params = { page: page.toString(), limit: limit.toString() };
     
-    return this.http.get<ApiResponse<PointsTransaction[]>>(`${this.API_URL}/history`, { params }).pipe(
+    return this.http.get<ApiResponse<PointsTransaction[]>>(`${this.API_URL}/history`, { 
+      headers, 
+      params 
+    }).pipe(
       map(response => response.success ? response.data : []),
       catchError(error => {
         console.error('❌ Error al obtener historial de puntos:', error);
@@ -78,9 +135,14 @@ export class PointsService {
    * Usar puntos del usuario
    */
   usePoints(puntos: number, concepto: string, metadata?: any): Observable<boolean> {
+    if (!this.authService.isLoggedIn()) {
+      return of(false);
+    }
+
+    const headers = this.getAuthHeaders();
     const payload = { puntos, concepto, metadata };
     
-    return this.http.post<ApiResponse<any>>(`${this.API_URL}/use`, payload).pipe(
+    return this.http.post<ApiResponse<any>>(`${this.API_URL}/use`, payload, { headers }).pipe(
       map(response => {
         if (response.success) {
           this.loadUserPoints(); // Recargar puntos después de usar
@@ -99,13 +161,20 @@ export class PointsService {
    * Verificar si el usuario puede usar cierta cantidad de puntos
    */
   canUsePoints(puntos: number): Observable<boolean> {
+    if (!this.authService.isLoggedIn()) {
+      return of(false);
+    }
+
+    const headers = this.getAuthHeaders();
     const params = { puntos: puntos.toString() };
     
-    return this.http.get<ApiResponse<any>>(`${this.API_URL}/check`, { params }).pipe(
+    return this.http.get<ApiResponse<any>>(`${this.API_URL}/check`, { headers, params }).pipe(
       map(response => response.success && response.data.puede_usar),
       catchError(error => {
         console.error('❌ Error al verificar puntos:', error);
-        return of(false);
+        // Fallback: verificar con puntos actuales
+        const puntosActuales = this.userPointsSubject.value;
+        return of(puntosActuales >= puntos);
       })
     );
   }
@@ -116,10 +185,29 @@ export class PointsService {
    * Obtener código de referido del usuario
    */
   getReferralCode(): Observable<string> {
-    return this.http.get<ApiResponse<any>>(`${this.API_URL}/referral/code`).pipe(
-      map(response => response.success ? response.data.codigo : ''),
+    if (!this.authService.isLoggedIn()) {
+      return of('');
+    }
+
+    const headers = this.getAuthHeaders();
+    
+    return this.http.get<ApiResponse<any>>(`${this.API_URL}/referral/code`, { headers }).pipe(
+      map(response => {
+        if (response.success && response.data && response.data.codigo) {
+          return response.data.codigo;
+        }
+        // Si no hay código, intentar crear uno
+        return '';
+      }),
       catchError(error => {
         console.error('❌ Error al obtener código de referido:', error);
+        
+        // Fallback: usar método legacy
+        const currentUser = this.authService.getCurrentUser();
+        if (currentUser) {
+          return of(this.getUserReferralCode_Legacy(currentUser.id));
+        }
+        
         return of('');
       })
     );
@@ -129,10 +217,23 @@ export class PointsService {
    * Crear código de referido para el usuario
    */
   createReferralCode(): Observable<string> {
-    return this.http.post<ApiResponse<any>>(`${this.API_URL}/referral/create`, {}).pipe(
+    if (!this.authService.isLoggedIn()) {
+      return of('');
+    }
+
+    const headers = this.getAuthHeaders();
+    
+    return this.http.post<ApiResponse<any>>(`${this.API_URL}/referral/create`, {}, { headers }).pipe(
       map(response => response.success ? response.data.codigo : ''),
       catchError(error => {
         console.error('❌ Error al crear código de referido:', error);
+        
+        // Fallback: generar código legacy
+        const currentUser = this.authService.getCurrentUser();
+        if (currentUser) {
+          return of(this.getUserReferralCode_Legacy(currentUser.id));
+        }
+        
         return of('');
       })
     );
@@ -142,9 +243,18 @@ export class PointsService {
    * Aplicar código de referido
    */
   applyReferralCode(codigo: string): Observable<ReferralResult> {
+    if (!this.authService.isLoggedIn()) {
+      return of({
+        success: false,
+        message: 'Debes iniciar sesión para aplicar un código de referido',
+        puntosGanados: 0
+      });
+    }
+
+    const headers = this.getAuthHeaders();
     const payload = { codigo };
     
-    return this.http.post<ApiResponse<any>>(`${this.API_URL}/referral/apply`, payload).pipe(
+    return this.http.post<ApiResponse<any>>(`${this.API_URL}/referral/apply`, payload, { headers }).pipe(
       map(response => {
         if (response.success) {
           this.loadUserPoints(); // Recargar puntos después de aplicar código
@@ -175,7 +285,13 @@ export class PointsService {
    * Obtener lista de usuarios referidos
    */
   getUserReferrals(): Observable<ReferralRecord[]> {
-    return this.http.get<ApiResponse<ReferralRecord[]>>(`${this.API_URL}/referral/list`).pipe(
+    if (!this.authService.isLoggedIn()) {
+      return of([]);
+    }
+
+    const headers = this.getAuthHeaders();
+    
+    return this.http.get<ApiResponse<ReferralRecord[]>>(`${this.API_URL}/referral/list`, { headers }).pipe(
       map(response => response.success ? response.data : []),
       catchError(error => {
         console.error('❌ Error al obtener referidos:', error);
@@ -190,7 +306,13 @@ export class PointsService {
    * Otorgar puntos de bienvenida
    */
   giveWelcomePoints(): Observable<boolean> {
-    return this.http.post<ApiResponse<any>>(`${this.API_URL}/welcome`, {}).pipe(
+    if (!this.authService.isLoggedIn()) {
+      return of(false);
+    }
+
+    const headers = this.getAuthHeaders();
+    
+    return this.http.post<ApiResponse<any>>(`${this.API_URL}/welcome`, {}, { headers }).pipe(
       map(response => {
         if (response.success) {
           this.loadUserPoints(); // Recargar puntos después de otorgar bienvenida
@@ -211,7 +333,9 @@ export class PointsService {
    * Obtener configuración del sistema de puntos
    */
   getSystemConfig(): Observable<PointsConfig> {
-    return this.http.get<ApiResponse<PointsConfig>>(`${this.API_URL}/config`).pipe(
+    const headers = this.getAuthHeaders();
+    
+    return this.http.get<ApiResponse<PointsConfig>>(`${this.API_URL}/config`, { headers }).pipe(
       map(response => response.success ? response.data : this.getDefaultConfig()),
       catchError(error => {
         console.error('❌ Error al obtener configuración:', error);
@@ -224,11 +348,14 @@ export class PointsService {
    * Calcular valor en dólares de una cantidad de puntos
    */
   getPointsValue(puntos: number): Observable<number> {
-    return this.http.get<ApiResponse<any>>(`${this.API_URL}/value/${puntos}`).pipe(
-      map(response => response.success ? response.data.valor_dolares : 0),
+    const headers = this.getAuthHeaders();
+    
+    return this.http.get<ApiResponse<any>>(`${this.API_URL}/value/${puntos}`, { headers }).pipe(
+      map(response => response.success ? response.data.valor_dolares : puntos / 100),
       catchError(error => {
         console.error('❌ Error al calcular valor de puntos:', error);
-        return of(0);
+        // Fallback: 100 puntos = $1
+        return of(puntos / 100);
       })
     );
   }
@@ -236,25 +363,43 @@ export class PointsService {
   // ==================== MÉTODOS AUXILIARES ====================
 
   /**
+   * Obtener headers de autenticación
+   */
+  private getAuthHeaders(): HttpHeaders {
+    const token = this.authService.getToken();
+    return new HttpHeaders({
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    });
+  }
+
+  /**
    * Cargar puntos del usuario al inicializar
    */
   private loadUserPoints(): void {
-    this.getUserPoints().subscribe();
+    this.getUserPoints().subscribe({
+      next: (response) => {
+        console.log('✅ Puntos cargados:', response.puntosActuales);
+      },
+      error: (error) => {
+        console.error('❌ Error cargando puntos:', error);
+      }
+    });
   }
 
   /**
    * Obtener estadísticas por defecto
    */
   private getDefaultStats(): PointsStats {
-  return {
-    puntosActuales: 0,
-    totalGanados: 0,
-    totalUsados: 0,
-    valorEnDolares: 0,
-    ultimaActividad: null,
-    totalReferidos: 0 // 🆕 AGREGAR ESTA LÍNEA
-  };
-}
+    return {
+      puntosActuales: 0,
+      totalGanados: 0,
+      totalUsados: 0,
+      valorEnDolares: 0,
+      ultimaActividad: null,
+      totalReferidos: 0
+    };
+  }
 
   /**
    * Obtener configuración por defecto
@@ -288,8 +433,8 @@ export class PointsService {
   }
 
   getUserReferralCode_Legacy(userId: number): string {
-    // Para mantener compatibilidad, pero se debe migrar a getReferralCode()
-    return 'REF' + userId + Date.now().toString().slice(-4);
+    // Generar código basado en userId
+    return 'REF' + userId.toString().padStart(4, '0') + Date.now().toString().slice(-4);
   }
 
   processPointsForPurchase_Legacy(userId: number, totalCompra: number, items: any[]): number {
@@ -298,11 +443,39 @@ export class PointsService {
   }
 
   getPointsValue_Legacy(puntos: number): number {
-    return puntos / 1; // 1 punto = $1
+    return puntos / 100; // 100 puntos = $1
   }
 
   getUserPointsStats_Legacy(userId: number): PointsStats {
     return this.getDefaultStats();
+  }
+
+  // ==================== MÉTODOS PÚBLICOS ADICIONALES ====================
+
+  /**
+   * Refrescar puntos manualmente
+   */
+  refreshPoints(): void {
+    if (this.authService.isLoggedIn()) {
+      this.loadUserPoints();
+    }
+  }
+
+  /**
+   * Obtener puntos actuales de forma síncrona
+   */
+  getCurrentPoints(): number {
+    return this.userPointsSubject.value;
+  }
+
+  /**
+   * Verificar si el servicio está disponible
+   */
+  isServiceAvailable(): Observable<boolean> {
+    return this.http.get<any>(`${this.API_URL}/health`).pipe(
+      map(() => true),
+      catchError(() => of(false))
+    );
   }
 }
 
@@ -333,7 +506,7 @@ export interface PointsStats {
   totalUsados: number;
   valorEnDolares: number;
   ultimaActividad: string | null;
-  totalReferidos: number; // 🆕 AGREGAR ESTA LÍNEA (sin ?)
+  totalReferidos: number;
 }
 
 export interface PointsTransaction {

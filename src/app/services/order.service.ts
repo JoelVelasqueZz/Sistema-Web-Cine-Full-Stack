@@ -3,6 +3,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { CartItem } from './cart.service';
+import { AuthService } from './auth.service'; // 🆕 IMPORTAR
 
 @Injectable({
   providedIn: 'root'
@@ -11,19 +12,40 @@ export class OrderService {
 
   private readonly API_URL = `http://localhost:3000/api/orders`;
 
-  constructor(private http: HttpClient) {
-    console.log('🆕 OrderService inicializado');
+  constructor(
+    private http: HttpClient,
+    private authService: AuthService // 🆕 INYECTAR
+  ) {
+    console.log('🆕 OrderService inicializado con autenticación');
   }
 
-  // ==================== MÉTODOS DE CHECKOUT ====================
+  // 🆕 MÉTODO PARA OBTENER HEADERS AUTENTICADOS
+  private getAuthHeaders(): HttpHeaders {
+    const token = this.authService.getToken();
+    
+    if (!token) {
+      console.warn('⚠️ No hay token de autenticación para OrderService');
+      return new HttpHeaders({
+        'Content-Type': 'application/json'
+      });
+    }
+
+    return new HttpHeaders({
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    });
+  }
+
+  // ==================== MÉTODOS DE CHECKOUT (CORREGIDOS) ====================
 
   /**
    * Inicializar proceso de checkout
    */
   initializeCheckout(cartItems: CartItem[]): Observable<CheckoutResponse> {
     const payload = { cartItems: this.formatCartItemsForAPI(cartItems) };
+    const headers = this.getAuthHeaders(); // 🆕 AGREGAR HEADERS
     
-    return this.http.post<ApiResponse<CheckoutData>>(`${this.API_URL}/checkout/initialize`, payload).pipe(
+    return this.http.post<ApiResponse<CheckoutData>>(`${this.API_URL}/checkout/initialize`, payload, { headers }).pipe(
       map(response => {
         if (response.success) {
           return {
@@ -54,8 +76,9 @@ export class OrderService {
    */
   validateAvailability(cartItems: CartItem[]): Observable<AvailabilityResponse> {
     const payload = { cartItems: this.formatCartItemsForAPI(cartItems) };
+    const headers = this.getAuthHeaders(); // 🆕 AGREGAR HEADERS
     
-    return this.http.post<ApiResponse<any>>(`${this.API_URL}/checkout/validate`, payload).pipe(
+    return this.http.post<ApiResponse<any>>(`${this.API_URL}/checkout/validate`, payload, { headers }).pipe(
       map(response => ({
         success: response.success,
         available: response.data?.available || false,
@@ -79,8 +102,9 @@ export class OrderService {
    */
   applyPointsToCheckout(puntosAUsar: number, total: number): Observable<PointsApplicationResponse> {
     const payload = { puntosAUsar, total };
+    const headers = this.getAuthHeaders(); // 🆕 AGREGAR HEADERS
     
-    return this.http.post<ApiResponse<any>>(`${this.API_URL}/checkout/apply-points`, payload).pipe(
+    return this.http.post<ApiResponse<any>>(`${this.API_URL}/checkout/apply-points`, payload, { headers }).pipe(
       map(response => {
         if (response.success) {
           return {
@@ -117,8 +141,9 @@ export class OrderService {
    */
   simulatePayPal(orderData: any, returnUrl?: string, cancelUrl?: string): Observable<PayPalSimulationResponse> {
     const payload = { orderData, returnUrl, cancelUrl };
+    const headers = this.getAuthHeaders(); // 🆕 AGREGAR HEADERS
     
-    return this.http.post<ApiResponse<any>>(`${this.API_URL}/checkout/paypal/simulate`, payload).pipe(
+    return this.http.post<ApiResponse<any>>(`${this.API_URL}/checkout/paypal/simulate`, payload, { headers }).pipe(
       map(response => {
         if (response.success) {
           return {
@@ -157,7 +182,9 @@ export class OrderService {
    * Procesar pago final
    */
   processPayment(paymentData: PaymentData): Observable<PaymentResponse> {
-    return this.http.post<ApiResponse<any>>(`${this.API_URL}/checkout/process`, paymentData).pipe(
+    const headers = this.getAuthHeaders(); // 🆕 AGREGAR HEADERS
+    
+    return this.http.post<ApiResponse<any>>(`${this.API_URL}/checkout/process`, paymentData, { headers }).pipe(
       map(response => {
         if (response.success) {
           return {
@@ -195,15 +222,16 @@ export class OrderService {
     );
   }
 
-  // ==================== GESTIÓN DE ÓRDENES ====================
+  // ==================== GESTIÓN DE ÓRDENES (CORREGIDAS) ====================
 
   /**
    * Obtener órdenes del usuario
    */
   getUserOrders(page: number = 1, limit: number = 20): Observable<Order[]> {
     const params = { page: page.toString(), limit: limit.toString() };
+    const headers = this.getAuthHeaders(); // 🆕 AGREGAR HEADERS
     
-    return this.http.get<ApiResponse<Order[]>>(`${this.API_URL}`, { params }).pipe(
+    return this.http.get<ApiResponse<Order[]>>(`${this.API_URL}`, { headers, params }).pipe(
       map(response => response.success ? response.data : []),
       catchError(error => {
         console.error('❌ Error al obtener órdenes:', error);
@@ -216,7 +244,9 @@ export class OrderService {
    * Obtener orden específica por ID
    */
   getOrderById(orderId: string): Observable<OrderDetails | null> {
-    return this.http.get<ApiResponse<OrderDetails>>(`${this.API_URL}/${orderId}`).pipe(
+    const headers = this.getAuthHeaders(); // 🆕 AGREGAR HEADERS
+    
+    return this.http.get<ApiResponse<OrderDetails>>(`${this.API_URL}/${orderId}`, { headers }).pipe(
       map(response => response.success ? response.data : null),
       catchError(error => {
         console.error('❌ Error al obtener orden:', error);
@@ -229,7 +259,9 @@ export class OrderService {
    * Obtener estadísticas de órdenes del usuario
    */
   getOrderStats(): Observable<OrderStats> {
-    return this.http.get<ApiResponse<OrderStats>>(`${this.API_URL}/stats`).pipe(
+    const headers = this.getAuthHeaders(); // 🆕 AGREGAR HEADERS
+    
+    return this.http.get<ApiResponse<OrderStats>>(`${this.API_URL}/stats`, { headers }).pipe(
       map(response => response.success ? response.data : this.getDefaultOrderStats()),
       catchError(error => {
         console.error('❌ Error al obtener estadísticas de órdenes:', error);
@@ -242,7 +274,9 @@ export class OrderService {
    * Cancelar orden
    */
   cancelOrder(orderId: string): Observable<boolean> {
-    return this.http.post<ApiResponse<any>>(`${this.API_URL}/${orderId}/cancel`, {}).pipe(
+    const headers = this.getAuthHeaders(); // 🆕 AGREGAR HEADERS
+    
+    return this.http.post<ApiResponse<any>>(`${this.API_URL}/${orderId}/cancel`, {}, { headers }).pipe(
       map(response => response.success),
       catchError(error => {
         console.error('❌ Error al cancelar orden:', error);
@@ -251,7 +285,7 @@ export class OrderService {
     );
   }
 
-  // ==================== MÉTODOS AUXILIARES ====================
+  // ==================== MÉTODOS AUXILIARES (SIN CAMBIOS) ====================
 
   /**
    * Formatear items del carrito para la API
@@ -277,7 +311,6 @@ export class OrderService {
           sala: item.funcion.sala,
           precio: item.funcion.precio
         };
-        // 🔧 CORREGIDO: Solo agregar si existe la propiedad
         if ('asientos_seleccionados' in item) {
           formattedItem.asientos_seleccionados = item.asientos_seleccionados || [];
         }
@@ -337,7 +370,7 @@ export class OrderService {
   }
 }
 
-// ==================== INTERFACES ====================
+// ==================== INTERFACES (SIN CAMBIOS) ====================
 
 export interface ApiResponse<T> {
   success: boolean;

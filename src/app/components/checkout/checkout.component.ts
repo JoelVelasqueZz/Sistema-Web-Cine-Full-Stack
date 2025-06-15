@@ -1,8 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { CartService, CartItem } from '../../services/cart.service';
-import { OrderService, CheckoutData, PaymentData } from '../../services/order.service'; // 🆕 NUEVO
-import { PointsService } from '../../services/points.service'; // 🆕 ACTUALIZADO
+import { OrderService, CheckoutData, PaymentData } from '../../services/order.service';
+import { PointsService } from '../../services/points.service';
 import { ToastService } from '../../services/toast.service';
 import { EmailService } from '../../services/email.service';
 import { PaypalSimulationService, PayPalResult } from '../../services/paypal-simulation.service';
@@ -18,7 +18,7 @@ import { UserService } from '../../services/user.service';
 export class CheckoutComponent implements OnInit {
   cartItems: CartItem[] = [];
   procesandoPago: boolean = false;
-  inicializandoCheckout: boolean = true; // 🆕 NUEVO
+  inicializandoCheckout: boolean = true;
   
   datosCheckout = {
     nombre: '',
@@ -37,7 +37,7 @@ export class CheckoutComponent implements OnInit {
   validacionFecha = { valid: false, message: '' };
   validacionCVV = { valid: false, message: '' };
 
-  // 🆕 DATOS DEL CHECKOUT DESDE LA API
+  // Datos del checkout desde la API
   checkoutData: CheckoutData | null = null;
   
   // Cálculos
@@ -46,7 +46,7 @@ export class CheckoutComponent implements OnInit {
   taxes: number = 0;
   total: number = 0;
 
-  // 🆕 SISTEMA DE PUNTOS
+  // Sistema de puntos
   userPoints: number = 0;
   pointsToEarn: number = 0;
   userId: number = 0;
@@ -57,8 +57,8 @@ export class CheckoutComponent implements OnInit {
 
   constructor(
     private cartService: CartService,
-    private orderService: OrderService, // 🆕 NUEVO
-    private pointsService: PointsService, // 🆕 ACTUALIZADO
+    private orderService: OrderService,
+    private pointsService: PointsService,
     private router: Router,
     private toastService: ToastService,
     private emailService: EmailService,
@@ -71,7 +71,8 @@ export class CheckoutComponent implements OnInit {
     this.inicializarCheckout();
   }
 
-  // 🆕 NUEVO MÉTODO: Inicializar checkout con API
+  // ==================== INICIALIZACIÓN ====================
+
   inicializarCheckout(): void {
     this.cartItems = this.cartService.getCartItems();
     
@@ -80,11 +81,9 @@ export class CheckoutComponent implements OnInit {
       return;
     }
 
-    // Cargar datos del usuario
     this.loadUserData();
-
-    // Inicializar checkout con API
     this.inicializandoCheckout = true;
+    
     this.orderService.initializeCheckout(this.cartItems).subscribe({
       next: (response) => {
         if (response.success && response.data) {
@@ -106,15 +105,11 @@ export class CheckoutComponent implements OnInit {
     });
   }
 
-  // 🆕 PROCESAR DATOS DEL CHECKOUT DESDE API
   private procesarDatosCheckout(data: CheckoutData): void {
-    // Actualizar totales desde la API
     this.subtotal = data.totals.subtotal;
     this.serviceFee = data.totals.serviceFee;
     this.taxes = data.totals.taxes;
     this.total = data.totals.total;
-
-    // Actualizar información de puntos
     this.userPoints = data.points.available;
     this.pointsToEarn = data.points.toEarn;
 
@@ -125,38 +120,33 @@ export class CheckoutComponent implements OnInit {
     });
   }
 
-  // 🆕 FALLBACK: Cálculo local si falla la API
   private fallbackToLocalCalculation(): void {
     this.subtotal = this.cartService.getTotal();
     this.serviceFee = this.subtotal * 0.05;
     this.taxes = (this.subtotal + this.serviceFee) * 0.08;
     this.total = this.subtotal + this.serviceFee + this.taxes;
-    
-    // Calcular puntos localmente
-    this.pointsToEarn = Math.floor(this.total * 1); // 1 punto por dólar
+    this.pointsToEarn = Math.floor(this.total * 1);
   }
 
-  // 🆕 CARGAR DATOS DEL USUARIO
   private loadUserData(): void {
     const currentUser = this.authService.getCurrentUser();
     if (currentUser) {
       this.userId = currentUser.id;
       
-      // Cargar puntos desde API
       this.pointsService.getUserPoints().subscribe({
         next: (response) => {
           this.userPoints = response.puntosActuales;
         },
         error: (error) => {
           console.error('❌ Error cargando puntos:', error);
-          // Usar método legacy como fallback
           this.userPoints = this.pointsService.getUserPoints_Legacy(this.userId);
         }
       });
     }
   }
 
-  // 🆕 APLICAR PUNTOS AL CHECKOUT
+  // ==================== GESTIÓN DE PUNTOS ====================
+
   aplicarPuntos(): void {
     if (this.puntosAUsar <= 0 || this.puntosAUsar > this.userPoints) {
       this.toastService.showWarning('Cantidad de puntos inválida');
@@ -188,13 +178,11 @@ export class CheckoutComponent implements OnInit {
     });
   }
 
-  // 🆕 QUITAR PUNTOS APLICADOS
   quitarPuntos(): void {
     this.usandoPuntos = false;
     this.puntosAUsar = 0;
     this.descuentoPuntos = 0;
     
-    // Restaurar total original
     if (this.checkoutData) {
       this.total = this.checkoutData.totals.total;
     } else {
@@ -204,7 +192,23 @@ export class CheckoutComponent implements OnInit {
     this.toastService.showInfo('Puntos removidos del checkout');
   }
 
-  // ==================== MÉTODOS DE VALIDACIÓN (SIN CAMBIOS) ====================
+  getMaxPointsToUse(): number {
+    return Math.min(this.userPoints, Math.floor(this.total));
+  }
+
+  getUserPointsValue(): number {
+    return this.userPoints / 1; // 1 punto = $1
+  }
+
+  showPointsUsageInfo(): void {
+    const modalElement = document.getElementById('pointsUsageModal');
+    if (modalElement) {
+      const modal = new (window as any).bootstrap.Modal(modalElement);
+      modal.show();
+    }
+  }
+
+  // ==================== VALIDACIÓN DE TARJETAS ====================
 
   onNumeroTarjetaChange(): void {
     const numero = this.datosCheckout.numeroTarjeta.replace(/\s/g, '');
@@ -269,7 +273,7 @@ export class CheckoutComponent implements OnInit {
            this.validacionCVV.valid;
   }
 
-  // ==================== MÉTODOS DE PAGO ACTUALIZADOS ====================
+  // ==================== PROCESAMIENTO DE PAGO ====================
 
   procesarPago(): void {
     if (!this.isFormValid()) {
@@ -279,7 +283,6 @@ export class CheckoutComponent implements OnInit {
 
     this.procesandoPago = true;
 
-    // Validar disponibilidad antes de procesar
     this.orderService.validateAvailability(this.cartItems).subscribe({
       next: (validation) => {
         if (validation.available) {
@@ -296,7 +299,6 @@ export class CheckoutComponent implements OnInit {
       },
       error: (error) => {
         console.error('❌ Error validando disponibilidad:', error);
-        // Continuar con el pago de todos modos
         if (this.datosCheckout.metodoPago === 'paypal') {
           this.procesarPayPal();
         } else {
@@ -310,7 +312,6 @@ export class CheckoutComponent implements OnInit {
     console.log('Procesando pago con tarjeta...');
     this.toastService.showInfo('Procesando pago con tarjeta...');
     
-    // Simular delay de procesamiento
     setTimeout(() => {
       this.finalizarPago();
     }, 2000);
@@ -320,7 +321,6 @@ export class CheckoutComponent implements OnInit {
     console.log('Iniciando proceso PayPal...');
     this.toastService.showInfo('🔄 Redirigiendo a PayPal...');
     
-    // Preparar datos para PayPal usando API
     const paypalOrderData = {
       orderId: this.generateTempOrderId(),
       total: this.total.toFixed(2),
@@ -328,7 +328,6 @@ export class CheckoutComponent implements OnInit {
       items: this.cartItems
     };
     
-    // Usar API para simular PayPal
     this.orderService.simulatePayPal(paypalOrderData).subscribe({
       next: (result) => {
         if (result.success) {
@@ -351,9 +350,7 @@ export class CheckoutComponent implements OnInit {
     });
   }
 
-  // 🆕 MÉTODO ACTUALIZADO: Finalizar pago con API
   finalizarPago(paypalData?: any): void {
-    // Preparar datos para la API
     const paymentData: PaymentData = {
       nombre_cliente: this.datosCheckout.nombre,
       email_cliente: this.datosCheckout.email,
@@ -362,7 +359,6 @@ export class CheckoutComponent implements OnInit {
       cartItems: this.cartItems
     };
 
-    // Agregar datos específicos del método de pago
     if (this.datosCheckout.metodoPago === 'tarjeta') {
       paymentData.tarjeta = {
         numero: this.datosCheckout.numeroTarjeta.replace(/\s/g, ''),
@@ -380,7 +376,6 @@ export class CheckoutComponent implements OnInit {
       };
     }
 
-    // Procesar pago con API
     this.orderService.processPayment(paymentData).subscribe({
       next: (response) => {
         if (response.success) {
@@ -398,14 +393,11 @@ export class CheckoutComponent implements OnInit {
     });
   }
 
-  // 🆕 MÉTODO ACTUALIZADO: Pago exitoso
   pagoExitoso(paymentResponse: any, paypalData?: any): void {
     this.procesandoPago = false;
 
-    // Limpiar carrito
     this.cartService.clearCart();
 
-    // Agregar al historial
     const currentUser = this.authService.getCurrentUser();
     if (currentUser) {
       this.cartItems
@@ -423,14 +415,12 @@ export class CheckoutComponent implements OnInit {
         });
     }
 
-    // Mostrar mensajes de éxito
     const metodoPago = paypalData ? 'PayPal' : 'Tarjeta de Crédito';
     this.toastService.showSuccess(
       `¡Pago exitoso con ${metodoPago}! 🎉 Orden: ${paymentResponse.orderId}`,
       6000
     );
 
-    // Mostrar puntos ganados
     if (paymentResponse.puntos && paymentResponse.puntos.ganados > 0) {
       setTimeout(() => {
         this.toastService.showInfo(
@@ -440,7 +430,6 @@ export class CheckoutComponent implements OnInit {
       }, 2000);
     }
 
-    // Mostrar información de PayPal si aplica
     if (paypalData?.transactionId) {
       setTimeout(() => {
         this.toastService.showInfo(
@@ -450,16 +439,13 @@ export class CheckoutComponent implements OnInit {
       }, 4000);
     }
 
-    // Enviar email
     this.enviarEmail(paymentResponse, paypalData);
 
-    // Navegar al home después de 7 segundos
     setTimeout(() => {
       this.router.navigate(['/home']);
     }, 7000);
   }
 
-  // 🆕 ENVIAR EMAIL CON DATOS DE LA ORDEN
   private enviarEmail(paymentResponse: any, paypalData?: any): void {
     this.toastService.showInfo('📧 Enviando confirmación por email...');
 
@@ -500,7 +486,7 @@ export class CheckoutComponent implements OnInit {
       });
   }
 
-  // ==================== MÉTODOS DE VALIDACIÓN (EXISTENTES) ====================
+  // ==================== VALIDACIONES DE TARJETA ====================
   
   validarNumeroTarjeta(numero: string): { valid: boolean, tipo: string, message: string } {
     const cleanNumber = numero.replace(/[\s-]/g, '');
@@ -618,7 +604,6 @@ export class CheckoutComponent implements OnInit {
     this.router.navigate(['/cart']);
   }
 
-  // Métodos para el template (sin cambios)
   getPeliculaItems(): CartItem[] {
     return this.cartItems.filter(item => item.tipo === 'pelicula');
   }
@@ -639,48 +624,37 @@ export class CheckoutComponent implements OnInit {
     return this.cartService.getCartSummary();
   }
 
-  getItemDisplayName(item: CartItem): string {
-    if (item.tipo === 'pelicula' && item.pelicula) {
-      return item.pelicula.titulo;
-    } else if (item.tipo === 'bar') {
-      return item.nombre || item.barProduct?.nombre || 'Producto del bar';
+  // 🆕 MÉTODOS FALTANTES PARA EL TEMPLATE
+
+  /**
+   * Obtener nombre para mostrar del item
+   */
+  getItemDisplayName(cartItem: CartItem): string {
+    if (cartItem.tipo === 'pelicula' && cartItem.pelicula) {
+      return cartItem.pelicula.titulo;
+    } else if (cartItem.tipo === 'bar') {
+      return cartItem.nombre || cartItem.barProduct?.nombre || 'Producto del bar';
     }
     return 'Item desconocido';
   }
 
-  getItemDescription(item: CartItem): string {
-    if (item.tipo === 'pelicula' && item.funcion) {
-      return `${item.funcion.fecha} - ${item.funcion.hora} - ${item.funcion.sala}`;
-    } else if (item.tipo === 'bar' && item.barOptions) {
+  /**
+   * Obtener descripción del item
+   */
+  getItemDescription(cartItem: CartItem): string {
+    if (cartItem.tipo === 'pelicula' && cartItem.funcion) {
+      return `${cartItem.funcion.fecha} - ${cartItem.funcion.hora} - ${cartItem.funcion.sala}`;
+    } else if (cartItem.tipo === 'bar' && cartItem.barOptions) {
       let description = '';
-      if (item.barOptions.tamano) {
-        description += `Tamaño: ${item.barOptions.tamano.nombre}`;
+      if (cartItem.barOptions.tamano) {
+        description += `Tamaño: ${cartItem.barOptions.tamano.nombre}`;
       }
-      if (item.barOptions.extras && item.barOptions.extras.length > 0) {
+      if (cartItem.barOptions.extras && cartItem.barOptions.extras.length > 0) {
         if (description) description += ' | ';
-        description += `Extras: ${item.barOptions.extras.map(e => e.nombre).join(', ')}`;
+        description += `Extras: ${cartItem.barOptions.extras.map(e => e.nombre).join(', ')}`;
       }
       return description;
     }
     return '';
-  }
-
-  // 🆕 NUEVOS MÉTODOS PARA PUNTOS
-
-  getPointsConfig() {
-    return {
-      puntosPorDolar: 1,
-      puntosBienvenida: 50,
-      puntosReferido: 100,
-      puntosNuevoUsuario: 25
-    };
-  }
-
-  getUserPointsValue(): number {
-    return this.userPoints / 1; // 1 punto = $1
-  }
-
-  getMaxPointsToUse(): number {
-    return Math.min(this.userPoints, Math.floor(this.total));
   }
 }

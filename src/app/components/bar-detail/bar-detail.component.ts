@@ -166,12 +166,24 @@ export class BarDetailComponent implements OnInit, OnDestroy {
     }
 
     this.agregandoAlCarrito = true;
-    const agregado = this.cartService.addToCart(this.crearProductoCarrito());
-
-    setTimeout(() => {
-      this.agregandoAlCarrito = false;
-      agregado ? callback() : this.toastService.showError('Error al agregar al carrito');
-    }, 500);
+    
+    // 🆕 USAR Observable CORRECTAMENTE
+    this.cartService.addToCart(this.crearProductoCarrito()).subscribe({
+      next: (agregado) => {
+        this.agregandoAlCarrito = false;
+        
+        if (agregado) {
+          callback();
+        } else {
+          this.toastService.showError('Error al agregar al carrito');
+        }
+      },
+      error: (error) => {
+        console.error('❌ Error agregando al carrito:', error);
+        this.agregandoAlCarrito = false;
+        this.toastService.showError('Error al agregar al carrito');
+      }
+    });
   }
 
   agregarAlCarrito(): void {

@@ -30,7 +30,7 @@ export class TicketPurchaseComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private movieService: MovieService,    
-    private functionService: FunctionService, // 🆕 AGREGAR
+    private functionService: FunctionService,
     private cartService: CartService,
     private toastService: ToastService,
     public authService: AuthService,
@@ -49,7 +49,6 @@ export class TicketPurchaseComponent implements OnInit {
     this.peliculaId = Number(this.route.snapshot.paramMap.get('id'));
     
     if (this.peliculaId > 0) {
-      // 🔧 USAR MovieService de la API
       this.movieService.getPeliculaById(this.peliculaId).subscribe({
         next: (pelicula) => {
           if (pelicula) {
@@ -81,7 +80,6 @@ export class TicketPurchaseComponent implements OnInit {
     }
   }
 
-  // 🆕 MÉTODO NUEVO: Cargar funciones desde la API
   private cargarFuncionesAPI(): void {
     this.cargandoFunciones = true;
     
@@ -137,6 +135,7 @@ export class TicketPurchaseComponent implements OnInit {
     this.cantidadEntradas = 1; // Reset cantidad
   }
 
+  // 🔧 MÉTODO CORREGIDO: Agregar al carrito en lugar de ir directo a seat-selection
   agregarAlCarrito(): void {
     if (!this.pelicula || !this.funcionSeleccionada) {
       console.error('Faltan datos para proceder');
@@ -145,7 +144,7 @@ export class TicketPurchaseComponent implements OnInit {
     }
 
     // Verificar si el usuario está autenticado
-    if (!this.authService.isAuthenticated) {
+    if (!this.authService.isLoggedIn()) {
       this.toastService.showWarning('Debes iniciar sesión para comprar entradas');
       this.router.navigate(['/login']);
       return;
@@ -160,27 +159,96 @@ export class TicketPurchaseComponent implements OnInit {
       return;
     }
 
-    // Simular delay de procesamiento
-    setTimeout(() => {
-      this.agregandoCarrito = false;
-      
-      // Navegar a selección de asientos con los datos reales
-      console.log('Navegando a selección de asientos...');
-      console.log('Datos:', {
-        peliculaId: this.peliculaId,
-        funcionId: this.funcionSeleccionada!.id,
-        cantidad: this.cantidadEntradas,
-        funcionData: this.funcionSeleccionada
-      });
+    // 🆕 AGREGAR AL CARRITO CORRECTAMENTE
+    const itemParaCarrito = {
+      tipo: 'pelicula',
+      pelicula: this.pelicula,
+      funcion: this.funcionSeleccionada,
+      cantidad: this.cantidadEntradas
+    };
 
-      // 🔧 USAR ID REAL DE LA FUNCIÓN (UUID)
-      this.router.navigate([
-        '/seat-selection', 
-        this.peliculaId, 
-        this.funcionSeleccionada!.id, 
-        this.cantidadEntradas
-      ]);
-    }, 1000);
+    console.log('🛒 Agregando al carrito:', itemParaCarrito);
+
+    this.cartService.addToCart(itemParaCarrito).subscribe({
+      next: (exito) => {
+        this.agregandoCarrito = false;
+        
+        if (exito) {
+          this.toastService.showSuccess(
+            `✅ ${this.cantidadEntradas} entrada(s) agregada(s) al carrito`
+          );
+          
+          // Dar opción al usuario de qué hacer
+          this.mostrarOpcionesPostAgregarCarrito();
+        } else {
+          this.toastService.showError('No se pudo agregar al carrito');
+        }
+      },
+      error: (error) => {
+        console.error('❌ Error agregando al carrito:', error);
+        this.agregandoCarrito = false;
+        this.toastService.showError('Error al agregar al carrito');
+      }
+    });
+  }
+
+  // 🆕 NUEVO MÉTODO: Mostrar opciones después de agregar al carrito
+  private mostrarOpcionesPostAgregarCarrito(): void {
+    // Mostrar toast con botones de acción
+    setTimeout(() => {
+      const shouldGoToCart = confirm(
+        `Entradas agregadas al carrito.\n\n¿Qué deseas hacer?\n\n` +
+        `OK = Ver carrito\n` +
+        `Cancelar = Seguir comprando`
+      );
+
+      if (shouldGoToCart) {
+        this.router.navigate(['/cart']);
+      }
+      // Si cancela, se queda en la página actual para seguir comprando
+    }, 500);
+  }
+
+  // 🆕 NUEVO MÉTODO: Ir directo al checkout
+  comprarAhora(): void {
+    if (!this.pelicula || !this.funcionSeleccionada) {
+      this.toastService.showError('Por favor selecciona una función');
+      return;
+    }
+
+    if (!this.authService.isLoggedIn()) {
+      this.toastService.showWarning('Debes iniciar sesión para comprar entradas');
+      this.router.navigate(['/login']);
+      return;
+    }
+
+    this.agregandoCarrito = true;
+
+    const itemParaCarrito = {
+      tipo: 'pelicula',
+      pelicula: this.pelicula,
+      funcion: this.funcionSeleccionada,
+      cantidad: this.cantidadEntradas
+    };
+
+    this.cartService.addToCart(itemParaCarrito).subscribe({
+      next: (exito) => {
+        this.agregandoCarrito = false;
+        
+        if (exito) {
+          this.toastService.showSuccess('Entradas agregadas al carrito');
+          // Ir directo al checkout
+          this.router.navigate(['/checkout']);
+        } else {
+          this.toastService.showError('No se pudo agregar al carrito');
+        }
+      },
+      error: (error) => {
+        console.error('❌ Error:', error);
+        this.agregandoCarrito = false;
+        this.toastService.showError('Error al procesar la compra');
+      }
+    });
   }
 
   cancelar(): void {
@@ -204,31 +272,14 @@ export class TicketPurchaseComponent implements OnInit {
     }
   }
 
-  // 🔧 USAR FORMATEO DEL FunctionService
+  // ==================== MÉTODOS DE FORMATO ====================
+
   formatearFecha(fecha: string): string {
     return this.functionService.formatDateForDisplay(fecha);
   }
 
   formatearPrecio(precio: number): string {
     return this.functionService.formatPrice(precio);
-  }
-
-  // 🆕 NUEVOS MÉTODOS AUXILIARES
-
-  getFuncionesDisponibles(): FuncionCine[] {
-    return this.funcionesFuturas;
-  }
-
-  getFuncionesAgrupadas(): { [fecha: string]: FuncionCine[] } {
-    return this.functionService.groupFunctionsByDate(this.funcionesFuturas);
-  }
-
-  getFechasDisponibles(): string[] {
-    return this.functionService.getAvailableDates(this.funcionesFuturas);
-  }
-
-  isPastFunction(funcion: FuncionCine): boolean {
-    return this.functionService.isPastFunction(funcion);
   }
 
   getAsientosDisponiblesTexto(asientos: number): string {
@@ -243,13 +294,11 @@ export class TicketPurchaseComponent implements OnInit {
     return 'text-success';
   }
 
-  // 🆕 MÉTODO PARA RECARGAR DATOS
   reintentarConexion(): void {
     this.toastService.showInfo('Reintentando conexión...');
     this.cargarDatos();
   }
 
-  // 🆕 MÉTODO PARA TRACK FUNCTIONS
   trackFunction(index: number, funcion: FuncionCine): string {
     return funcion.id;
   }
@@ -259,8 +308,46 @@ export class TicketPurchaseComponent implements OnInit {
     return this.funcionSeleccionada.precio * this.cantidadEntradas;
   }
 
-  // 🆕 AGREGAR MÉTODO PARA ACCEDER A Math EN EL TEMPLATE
   getMin(a: number, b: number): number {
     return Math.min(a, b);
+  }
+
+  // 🆕 NUEVOS MÉTODOS AUXILIARES
+
+  /**
+   * Verificar si ya está en el carrito
+   */
+  yaEstaEnCarrito(): boolean {
+    if (!this.pelicula || !this.funcionSeleccionada) return false;
+    
+    const itemsCarrito = this.cartService.getCartItems();
+    return itemsCarrito.some(item => 
+      item.tipo === 'pelicula' && 
+      item.pelicula?.id === this.pelicula!.id &&
+      item.funcion?.id === this.funcionSeleccionada!.id
+    );
+  }
+
+  /**
+   * Obtener cantidad ya en carrito
+   */
+  getCantidadEnCarrito(): number {
+    if (!this.pelicula || !this.funcionSeleccionada) return 0;
+    
+    const itemsCarrito = this.cartService.getCartItems();
+    const item = itemsCarrito.find(item => 
+      item.tipo === 'pelicula' && 
+      item.pelicula?.id === this.pelicula!.id &&
+      item.funcion?.id === this.funcionSeleccionada!.id
+    );
+    
+    return item ? item.cantidad : 0;
+  }
+
+  /**
+   * Ir al carrito
+   */
+  irAlCarrito(): void {
+    this.router.navigate(['/cart']);
   }
 }

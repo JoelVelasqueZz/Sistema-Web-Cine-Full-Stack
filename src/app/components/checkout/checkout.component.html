@@ -1,4 +1,4 @@
-<!-- checkout.component.html - CON INTEGRACIÓN DE PUNTOS -->
+<!-- checkout.component.html - CON INTEGRACIÓN DE PUNTOS - CORREGIDO -->
 <div class="container mt-4">
   
   <!-- Header -->
@@ -366,54 +366,81 @@
         <div class="card-body">
            
           <!-- Items del carrito con información detallada -->
-          <div class="mb-3" *ngFor="let item of cartItems; let last = last">
+          <div class="mb-3" *ngFor="let cartItem of cartItems; let last = last">
             <div class="d-flex justify-content-between align-items-start">
               <div class="flex-grow-1">
                 
                 <!-- PELÍCULAS -->
-                <div *ngIf="item.tipo === 'pelicula' && item.pelicula">
+                <div *ngIf="cartItem.tipo === 'pelicula' && cartItem.pelicula">
                   <h6 class="mb-1 small fw-bold">
                     <i class="fas fa-film me-1 text-primary"></i>
-                    {{ item.pelicula.titulo }}
+                    {{ cartItem.pelicula.titulo }}
                   </h6>
                   <small class="text-muted">
-                    <i class="fas fa-tag me-1"></i>{{ item.barProduct.categoria }}
+                    <i class="fas fa-door-open me-1"></i>{{ cartItem.funcion?.sala || 'Sala' }} • 
+                    <i class="fas fa-clock me-1"></i>{{ cartItem.funcion?.hora || 'Hora' }}<br>
+                    
+                    <!-- Información de asientos -->
+                    <span class="text-success fw-bold d-block mt-1">
+                      <i class="fas fa-couch me-1"></i>
+                      {{ cartItem.cantidad }} entrada{{ cartItem.cantidad > 1 ? 's' : '' }} - Asientos seleccionados
+                    </span>
+                    
+                    <!-- Tipo de asientos -->
+                    <span *ngIf="cartItem.precio > (cartItem.funcion?.precio || 0)" class="badge bg-warning text-dark ms-0 mt-1">
+                      <i class="fas fa-crown me-1"></i>Asientos VIP
+                    </span>
+                    
+                    <span *ngIf="cartItem.precio === (cartItem.funcion?.precio || 0)" class="badge bg-info ms-0 mt-1">
+                      <i class="fas fa-chair me-1"></i>Asientos Estándar
+                    </span>
+                  </small>
+                </div>
+
+                <!-- PRODUCTOS DEL BAR -->
+                <div *ngIf="cartItem.tipo === 'bar' && cartItem.barProduct">
+                  <h6 class="mb-1 small fw-bold">
+                    <i class="fas fa-utensils me-1 text-warning"></i>
+                    {{ getItemDisplayName(cartItem) }}
+                  </h6>
+                  <small class="text-muted">
+                    <i class="fas fa-tag me-1"></i>{{ cartItem.barProduct.categoria || 'Bar' }}
                     
                     <!-- Información de opciones del bar -->
-                    <span *ngIf="getItemDescription(item)" class="d-block mt-1">
-                      <i class="fas fa-info-circle me-1"></i>{{ getItemDescription(item) }}
+                    <span *ngIf="getItemDescription(cartItem)" class="d-block mt-1">
+                      <i class="fas fa-info-circle me-1"></i>{{ getItemDescription(cartItem) }}
                     </span>
                     
                     <!-- Badge de combo si aplica -->
-                    <span *ngIf="item.barProduct.es_combo" class="badge bg-danger ms-0 mt-1">
+                    <span *ngIf="cartItem.barProduct.es_combo" class="badge bg-danger ms-0 mt-1">
                       <i class="fas fa-gift me-1"></i>COMBO
                     </span>
                     
                     <!-- Cantidad de productos del bar -->
                     <span class="text-success fw-bold d-block mt-1">
                       <i class="fas fa-shopping-basket me-1"></i>
-                      Cantidad: {{ item.cantidad }}
+                      Cantidad: {{ cartItem.cantidad }}
                     </span>
                   </small>
                 </div>
 
                 <!-- FALLBACK para items sin tipo definido -->
-                <div *ngIf="!item.tipo || (item.tipo !== 'pelicula' && item.tipo !== 'bar')">
+                <div *ngIf="!cartItem.tipo || (cartItem.tipo !== 'pelicula' && cartItem.tipo !== 'bar')">
                   <h6 class="mb-1 small fw-bold text-muted">
                     <i class="fas fa-question-circle me-1"></i>
                     Item desconocido
                   </h6>
                   <small class="text-muted">
-                    Cantidad: {{ item.cantidad }}
+                    Cantidad: {{ cartItem.cantidad }}
                   </small>
                 </div>
 
               </div>
               
               <div class="text-end">
-                <span class="fw-bold text-success">${{ item.subtotal.toFixed(2) }}</span>
+                <span class="fw-bold text-success">${{ cartItem.subtotal.toFixed(2) }}</span>
                 <br>
-                <small class="text-muted">${{ item.precio.toFixed(2) }} por {{ item.tipo === 'pelicula' ? 'entrada' : 'unidad' }}</small>
+                <small class="text-muted">${{ cartItem.precio.toFixed(2) }} por {{ cartItem.tipo === 'pelicula' ? 'entrada' : 'unidad' }}</small>
               </div>
             </div>
             <hr *ngIf="!last" class="my-3">
@@ -587,30 +614,3 @@
     </div>
   </div>
 </div>
-                    <i class="fas fa-door-open me-1"></i>{{ item.funcion?.sala }} • 
-                    <i class="fas fa-clock me-1"></i>{{ item.funcion?.hora }}<br>
-                    
-                    <!-- Información de asientos -->
-                    <span class="text-success fw-bold d-block mt-1">
-                      <i class="fas fa-couch me-1"></i>
-                      {{ item.cantidad }} entrada{{ item.cantidad > 1 ? 's' : '' }} - Asientos seleccionados
-                    </span>
-                    
-                    <!-- Tipo de asientos -->
-                    <span *ngIf="item.precio > (item.funcion?.precio || 0)" class="badge bg-warning text-dark ms-0 mt-1">
-                      <i class="fas fa-crown me-1"></i>Asientos VIP
-                    </span>
-                    
-                    <span *ngIf="item.precio === (item.funcion?.precio || 0)" class="badge bg-info ms-0 mt-1">
-                      <i class="fas fa-chair me-1"></i>Asientos Estándar
-                    </span>
-                  </small>
-                </div>
-
-                <!-- PRODUCTOS DEL BAR -->
-                <div *ngIf="item.tipo === 'bar' && item.barProduct">
-                  <h6 class="mb-1 small fw-bold">
-                    <i class="fas fa-utensils me-1 text-warning"></i>
-                    {{ getItemDisplayName(item) }}
-                  </h6>
-                  <small class="text-muted">

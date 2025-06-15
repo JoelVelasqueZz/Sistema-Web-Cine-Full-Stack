@@ -64,16 +64,16 @@ export class RewardsComponent implements OnInit {
   // ==================== CARGA DE DATOS ====================
 
   private loadUserData(): void {
-  this.pointsService.getUserPoints().subscribe({
-    next: (response) => {
-      this.userPoints = response.puntosActuales;
-    },
-    error: (error) => {
-      console.error('❌ Error cargando puntos:', error);
-      this.userPoints = 0;
-    }
-  });
-}
+    this.pointsService.getUserPoints().subscribe({
+      next: (response) => {
+        this.userPoints = response.puntosActuales;
+      },
+      error: (error) => {
+        console.error('❌ Error cargando puntos:', error);
+        this.userPoints = 0;
+      }
+    });
+  }
 
   loadRewards(): void {
     this.cargando = true;
@@ -87,9 +87,9 @@ export class RewardsComponent implements OnInit {
   }
 
   private loadUserRedemptions(): void {
-  this.userRedemptions = this.rewardsService.getUserRedemptions();
-  this.activeRedemptions = this.rewardsService.getActiveRedemptions();
-}
+    this.userRedemptions = this.rewardsService.getUserRedemptions();
+    this.activeRedemptions = this.rewardsService.getActiveRedemptions();
+  }
 
   // ==================== FILTRADO Y BÚSQUEDA ====================
 
@@ -146,9 +146,9 @@ export class RewardsComponent implements OnInit {
   }
 
   toggleAffordableFilter(): void {
-  this.showOnlyAffordable = !this.showOnlyAffordable;
-  this.applyFilters();
-}
+    this.showOnlyAffordable = !this.showOnlyAffordable;
+    this.applyFilters();
+  }
 
   clearFilters(): void {
     this.selectedCategory = 'todas';
@@ -187,43 +187,43 @@ export class RewardsComponent implements OnInit {
   }
 
   redeemReward(reward: Recompensa): void {
-  this.canjeando = true;
-  
-  this.rewardsService.redeemReward(reward.id).subscribe({
-    next: (result) => {
-      this.canjeando = false;
-      
-      if (result.success) {
-        this.toastService.showSuccess(result.message);
+    this.canjeando = true;
+    
+    this.rewardsService.redeemReward(reward.id).subscribe({
+      next: (result) => {
+        this.canjeando = false;
         
-        // Recargar puntos del usuario
-        this.pointsService.getUserPoints().subscribe({
-          next: (response) => {
-            this.userPoints = response.puntosActuales;
+        if (result.success) {
+          this.toastService.showSuccess(result.message);
+          
+          // Recargar puntos del usuario
+          this.pointsService.getUserPoints().subscribe({
+            next: (response) => {
+              this.userPoints = response.puntosActuales;
+            }
+          });
+          
+          this.loadUserRedemptions();
+          this.loadRewards(); // Recargar para actualizar stock
+          
+          // Cerrar modal
+          this.closeRewardModal();
+          
+          // Mostrar información del canje
+          if (result.canje) {
+            this.showRedemptionDetails(result.canje);
           }
-        });
-        
-        this.loadUserRedemptions();
-        this.loadRewards(); // Recargar para actualizar stock
-        
-        // Cerrar modal
-        this.closeRewardModal();
-        
-        // Mostrar información del canje
-        if (result.canje) {
-          this.showRedemptionDetails(result.canje);
+        } else {
+          this.toastService.showError(result.message);
         }
-      } else {
-        this.toastService.showError(result.message);
+      },
+      error: (error) => {
+        console.error('❌ Error canjeando recompensa:', error);
+        this.canjeando = false;
+        this.toastService.showError('Error al canjear la recompensa');
       }
-    },
-    error: (error) => {
-      console.error('❌ Error canjeando recompensa:', error);
-      this.canjeando = false;
-      this.toastService.showError('Error al canjear la recompensa');
-    }
-  });
-}
+    });
+  }
 
   closeRewardModal(): void {
     const modalElement = document.getElementById('rewardModal');
@@ -257,20 +257,20 @@ export class RewardsComponent implements OnInit {
   }
 
   useRedemption(canje: CanjeRecompensa): void {
-  const confirmed = confirm(
-    `¿Marcar como usado el canje "${canje.nombreRecompensa}"?\n\n` +
-    `Código: ${canje.codigo}`
-  );
-  if (confirmed) {
-    const success = this.rewardsService.markRedemptionAsUsed(canje.id);
-    
-    if (success) {
-      this.toastService.showSuccess('Canje marcado como usado');
-      this.loadUserRedemptions();
-    } else {
-      this.toastService.showError('Error al marcar canje como usado');
+    const confirmed = confirm(
+      `¿Marcar como usado el canje "${canje.nombreRecompensa}"?\n\n` +
+      `Código: ${canje.codigo}`
+    );
+    if (confirmed) {
+      const success = this.rewardsService.markRedemptionAsUsed(canje.id);
+      
+      if (success) {
+        this.toastService.showSuccess('Canje marcado como usado');
+        this.loadUserRedemptions();
+      } else {
+        this.toastService.showError('Error al marcar canje como usado');
+      }
     }
-  }
   }
 
   copyRedemptionCode(code: string): void {
@@ -396,7 +396,7 @@ export class RewardsComponent implements OnInit {
     return parts.join(' • ');
   }
 
-  // ==================== MÉTODOS PARA FECHAS - SIN DUPLICACIÓN ====================
+  // ==================== MÉTODOS PARA FECHAS ====================
 
   /**
    * Verificar si un canje está expirado
@@ -453,7 +453,7 @@ export class RewardsComponent implements OnInit {
     return !canje.usado && !this.isExpired(canje.fechaExpiracion);
   }
 
-  // ==================== NAVEGACIÓN ====================
+  // ==================== NAVEGACIÓN (MÉTODOS FALTANTES AGREGADOS) ====================
 
   goToProfile(): void {
     this.router.navigate(['/profile']);
@@ -463,8 +463,12 @@ export class RewardsComponent implements OnInit {
     this.router.navigate(['/movies']);
   }
 
-
   goToBar(): void {
     this.router.navigate(['/bar']);
+  }
+
+  // 🆕 MÉTODO FALTANTE: Navegar al historial de puntos
+  goToPointsHistory(): void {
+    this.router.navigate(['/points-history']);
   }
 }
