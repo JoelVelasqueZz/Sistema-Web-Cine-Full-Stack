@@ -1,9 +1,10 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
+import { Observable, of, from } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { CartItem } from './cart.service';
 import { AuthService } from './auth.service'; // 🆕 IMPORTAR
+import { PayPalResult, PaypalSimulationService } from './paypal-simulation.service';
 
 @Injectable({
   providedIn: 'root'
@@ -14,7 +15,8 @@ export class OrderService {
 
   constructor(
     private http: HttpClient,
-    private authService: AuthService // 🆕 INYECTAR
+    private authService: AuthService,
+    private paypalService: PaypalSimulationService // 🆕 INYECTAR
   ) {
     console.log('🆕 OrderService inicializado con autenticación');
   }
@@ -139,44 +141,38 @@ export class OrderService {
   /**
    * Simular proceso de PayPal
    */
-  simulatePayPal(orderData: any, returnUrl?: string, cancelUrl?: string): Observable<PayPalSimulationResponse> {
-    const payload = { orderData, returnUrl, cancelUrl };
-    const headers = this.getAuthHeaders(); // 🆕 AGREGAR HEADERS
+ simulatePayPal(paypalOrderData: any): Observable<any> {
+  // Convertir la Promise a Observable usando 'from'
+  return from(new Promise((resolve) => {
+    // Mostrar información en consola
+    console.log('🎯 Simulando PayPal con datos:', paypalOrderData);
     
-    return this.http.post<ApiResponse<any>>(`${this.API_URL}/checkout/paypal/simulate`, payload, { headers }).pipe(
-      map(response => {
-        if (response.success) {
-          return {
-            success: true,
-            transactionId: response.data.transactionId,
-            payerId: response.data.payerId,
-            paymentStatus: response.data.paymentStatus,
-            amount: response.data.amount,
-            message: 'Simulación de PayPal exitosa'
-          };
-        }
-        return {
-          success: false,
-          transactionId: '',
-          payerId: '',
-          paymentStatus: '',
-          amount: '',
-          message: response.message || 'Error en simulación de PayPal'
-        };
-      }),
-      catchError(error => {
-        console.error('❌ Error en simulación PayPal:', error);
-        return of({
-          success: false,
-          transactionId: '',
-          payerId: '',
-          paymentStatus: '',
-          amount: '',
-          message: error.error?.message || 'Error en PayPal'
+    // Usar el servicio de PayPal
+    this.paypalService.simulatePayPalRedirect(paypalOrderData)
+      .then((result: PayPalResult) => {
+        console.log('✅ PayPal exitoso:', result);
+        resolve({
+          success: true,
+          message: 'Pago con PayPal completado exitosamente',
+          transactionId: result.transactionId,
+          payerId: result.payerId,
+          paymentStatus: result.paymentStatus,
+          timestamp: result.timestamp
         });
       })
-    );
-  }
+      .catch((error) => {
+        console.error('❌ Error en PayPal:', error);
+        resolve({
+          success: false,
+          message: error.error || 'Error en el proceso de PayPal',
+          error: error
+        });
+      });
+  })).pipe(
+    // Convertir Promise a Observable
+    map(result => result)
+  );
+}
 
   /**
    * Procesar pago final
@@ -483,7 +479,7 @@ export interface Order {
   total_entradas: number;
   total_productos_bar: number;
 }
-
+ 
 export interface OrderDetails extends Order {
   impuestos: number;
   cargo_servicio: number;

@@ -10,7 +10,7 @@ import { AuthService } from '../../services/auth.service';
 import { UserService } from '../../services/user.service';
 
 @Component({
-  selector: 'app-checkout',
+  selector: 'app-checkout', 
   standalone: false,
   templateUrl: './checkout.component.html',
   styleUrls: ['./checkout.component.css']
@@ -70,7 +70,7 @@ export class CheckoutComponent implements OnInit {
   ngOnInit(): void {
     this.inicializarCheckout();
   }
-
+  
   // ==================== INICIALIZACIÓN ====================
 
   inicializarCheckout(): void {
@@ -317,38 +317,51 @@ export class CheckoutComponent implements OnInit {
     }, 2000);
   }
 
-  procesarPayPal(): void {
-    console.log('Iniciando proceso PayPal...');
-    this.toastService.showInfo('🔄 Redirigiendo a PayPal...');
-    
-    const paypalOrderData = {
-      orderId: this.generateTempOrderId(),
-      total: this.total.toFixed(2),
-      email: this.datosCheckout.email,
-      items: this.cartItems
-    };
-    
-    this.orderService.simulatePayPal(paypalOrderData).subscribe({
-      next: (result) => {
-        if (result.success) {
-          this.toastService.showSuccess('✅ Pago con PayPal exitoso!');
-          this.finalizarPago({
-            transactionId: result.transactionId,
-            payerId: result.payerId,
-            paymentStatus: result.paymentStatus
-          });
-        } else {
-          this.procesandoPago = false;
-          this.toastService.showError('❌ ' + result.message);
-        }
-      },
-      error: (error) => {
-        console.error('❌ Error en PayPal:', error);
-        this.procesandoPago = false;
-        this.toastService.showError('❌ Error de conexión con PayPal');
+ procesarPayPal(): void {
+  console.log('🚀 Iniciando proceso PayPal...');
+  
+  // Verificar si PayPal está disponible
+  if (!this.paypalService.isPayPalAvailable()) {
+    this.procesandoPago = false;
+    this.toastService.showError('❌ PayPal no está disponible. ' + this.paypalService.getPopupInstructions());
+    return;
+  }
+  
+  this.toastService.showInfo('🔄 Abriendo PayPal...');
+  
+  const paypalOrderData = {
+    orderId: this.generateTempOrderId(),
+    total: this.total.toFixed(2),
+    email: this.datosCheckout.email,
+    items: this.cartItems,
+    timestamp: new Date().toISOString()
+  };
+  
+  // Llamar directamente al servicio de PayPal
+  this.paypalService.simulatePayPalRedirect(paypalOrderData)
+    .then((result: PayPalResult) => {
+      console.log('✅ PayPal completado:', result);
+      this.toastService.showSuccess('✅ Pago con PayPal exitoso!');
+      
+      // Finalizar pago con los datos de PayPal
+      this.finalizarPago({
+        transactionId: result.transactionId,
+        payerId: result.payerId,
+        paymentStatus: result.paymentStatus,
+        timestamp: result.timestamp
+      });
+    })
+    .catch((error) => {
+      console.error('❌ Error en PayPal:', error);
+      this.procesandoPago = false;
+      
+      if (error.error?.includes('popup')) {
+        this.toastService.showError('❌ ' + error.error + ' Verifica la configuración de tu navegador.');
+      } else {
+        this.toastService.showError('❌ ' + (error.error || 'Error en el proceso de PayPal'));
       }
     });
-  }
+}
 
   finalizarPago(paypalData?: any): void {
     const paymentData: PaymentData = {
