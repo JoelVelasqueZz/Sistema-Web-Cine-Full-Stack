@@ -1,5 +1,5 @@
 // models/Order.js
-const pool = require('../config/database');
+const { pool } = require('../config/database'); // 🔧 CORRECCIÓN: Destructuring del pool
 
 class Order {
   constructor() {
@@ -227,6 +227,108 @@ class Order {
       return result.rows;
     } catch (error) {
       console.error('Error al obtener órdenes del usuario:', error);
+      throw error;
+    }
+  }
+
+  // ==================== ACTUALIZAR ORDEN ====================
+  
+  async updateOrderStatus(orderId, estado, paypal_data = null) {
+    try {
+      let query = `
+        UPDATE ordenes 
+        SET estado = $1, fecha_actualizacion = CURRENT_TIMESTAMP
+      `;
+      
+      let values = [estado];
+      let paramCount = 2;
+      
+      if (paypal_data) {
+        query += `, paypal_transaction_id = $${paramCount++}, paypal_payer_id = $${paramCount++}, paypal_status = $${paramCount++}`;
+        values.push(paypal_data.transaction_id, paypal_data.payer_id, paypal_data.status);
+      }
+      
+      query += ` WHERE id = $${paramCount} RETURNING *`;
+      values.push(orderId);
+      
+      const result = await this.pool.query(query, values);
+      return result.rows[0];
+    } catch (error) {
+      console.error('Error al actualizar estado de orden:', error);
+      throw error;
+    }
+  }
+
+  // ==================== CANCELAR ORDEN ====================
+  
+  async cancelOrder(orderId, userId = null) {
+    try {
+      let query = `
+        UPDATE ordenes 
+        SET estado = 'cancelada', fecha_actualizacion = CURRENT_TIMESTAMP
+        WHERE id = $1 AND estado = 'pendiente'
+      `;
+      
+      let values = [orderId];
+      
+      if (userId !== null) {
+        query += ` AND usuario_id = $2`;
+        values.push(userId);
+      }
+      
+      query += ` RETURNING *`;
+      
+      const result = await this.pool.query(query, values);
+      
+      if (result.rows.length === 0) {
+        if (userId !== null) {
+          // Verificar si la orden existe pero no pertenece al usuario
+          const orderCheck = await this.pool.query('SELECT estado, usuario_id FROM ordenes WHERE id = $1', [orderId]);
+          if (orderCheck.rows.length === 0) {
+            throw new Error('Orden no encontrada');
+          } else if (orderCheck.rows[0].estado !== 'pendiente') {
+            throw new Error('Solo se pueden cancelar órdenes pendientes');
+          } else {
+            throw new Error('No tienes permisos para cancelar esta orden');
+          }
+        } else {
+          throw new Error('Orden no encontrada o no se puede cancelar');
+        }
+      }
+      
+      return { success: true, order: result.rows[0] };
+    } catch (error) {
+      console.error('Error al cancelar orden:', error);
+      throw error;
+    }
+  }
+
+  // ==================== ESTADÍSTICAS ====================
+  
+  async getOrderStats(userId = null) {
+    try {
+      let query = `
+        SELECT 
+          COUNT(*) as total_ordenes,
+          COUNT(CASE WHEN estado = 'completada' THEN 1 END) as ordenes_completadas,
+          COUNT(CASE WHEN estado = 'pendiente' THEN 1 END) as ordenes_pendientes,
+          COUNT(CASE WHEN estado = 'cancelada' THEN 1 END) as ordenes_canceladas,
+          COALESCE(SUM(CASE WHEN estado = 'completada' THEN total ELSE 0 END), 0) as total_ingresos,
+          COALESCE(AVG(CASE WHEN estado = 'completada' THEN total ELSE NULL END), 0) as ticket_promedio
+        FROM ordenes
+      `;
+      
+      const values = [];
+      
+      if (userId) {
+        query += ` WHERE usuario_id = $1`;
+        values.push(userId);
+      }
+      
+      const result = await this.pool.query(query, values);
+      return result.rows[0];
+    } catch (error) {
+      console.error('Error al obtener estadísticas de órdenes:', error);
       throw error;
     }
   }

@@ -17,18 +17,18 @@ router.use(authenticateToken);
  * @desc Obtener puntos del usuario actual
  * @access Private
  */
-router.get('/',
-  pointsController.getUserPoints
-);
+router.get('/', (req, res) => {
+  pointsController.getUserPoints(req, res);
+});
 
 /**
  * @route GET /api/points/stats
  * @desc Obtener estadísticas completas de puntos del usuario
  * @access Private
  */
-router.get('/stats',
-  pointsController.getUserPointsStats
-);
+router.get('/stats', (req, res) => {
+  pointsController.getUserPointsStats(req, res);
+});
 
 /**
  * @route GET /api/points/history
@@ -47,7 +47,9 @@ router.get('/history',
       .withMessage('Límite debe estar entre 1 y 100')
   ],
   validation,
-  pointsController.getPointsHistory
+  (req, res) => {
+    pointsController.getPointsHistory(req, res);
+  }
 );
 
 /**
@@ -55,9 +57,9 @@ router.get('/history',
  * @desc Obtener configuración del sistema de puntos
  * @access Private
  */
-router.get('/config',
-  pointsController.getSystemConfig
-);
+router.get('/config', (req, res) => {
+  pointsController.getSystemConfig(req, res);
+});
 
 // ==================== RUTAS DE SISTEMA DE REFERIDOS ====================
 
@@ -66,18 +68,27 @@ router.get('/config',
  * @desc Obtener código de referido del usuario
  * @access Private
  */
-router.get('/referral/code',
-  pointsController.getReferralCode
-);
+router.get('/referral/code', (req, res) => {
+  pointsController.getReferralCode(req, res);
+});
 
 /**
  * @route POST /api/points/referral/create
  * @desc Crear código de referido para el usuario
  * @access Private
  */
-router.post('/referral/create',
-  pointsController.createReferralCode
-);
+router.post('/referral/create', (req, res) => {
+  pointsController.createReferralCode(req, res);
+});
+
+/**
+ * @route GET /api/points/referral/create
+ * @desc Crear código de referido para el usuario (GET también)
+ * @access Private
+ */
+router.get('/referral/create', (req, res) => {
+  pointsController.createReferralCode(req, res);
+});
 
 /**
  * @route POST /api/points/referral/apply
@@ -94,7 +105,9 @@ router.post('/referral/apply',
       .withMessage('Código debe contener solo letras mayúsculas y números')
   ],
   validation,
-  pointsController.applyReferralCode
+  (req, res) => {
+    pointsController.applyReferralCode(req, res);
+  }
 );
 
 /**
@@ -102,9 +115,9 @@ router.post('/referral/apply',
  * @desc Obtener lista de usuarios referidos
  * @access Private
  */
-router.get('/referral/list',
-  pointsController.getUserReferrals
-);
+router.get('/referral/list', (req, res) => {
+  pointsController.getUserReferrals(req, res);
+});
 
 // ==================== RUTAS DE GESTIÓN DE PUNTOS ====================
 
@@ -113,9 +126,9 @@ router.get('/referral/list',
  * @desc Otorgar puntos de bienvenida al usuario
  * @access Private
  */
-router.post('/welcome',
-  pointsController.giveWelcomePoints
-);
+router.post('/welcome', (req, res) => {
+  pointsController.giveWelcomePoints(req, res);
+});
 
 /**
  * @route POST /api/points/use
@@ -137,24 +150,8 @@ router.post('/use',
       .withMessage('Metadata debe ser un objeto')
   ],
   validation,
-  pointsController.usePoints
-);
-
-/**
- * @route GET /api/points/check/:puntos
- * @desc Verificar si el usuario puede usar cierta cantidad de puntos
- * @access Private
- */
-router.get('/check/:puntos',
-  [
-    param('puntos')
-      .isInt({ min: 1 })
-      .withMessage('Cantidad de puntos debe ser un número mayor a 0')
-  ],
-  validation,
   (req, res) => {
-    // Redirigir a la ruta con query parameter
-    res.redirect(`/api/points/check?puntos=${req.params.puntos}`);
+    pointsController.usePoints(req, res);
   }
 );
 
@@ -170,7 +167,9 @@ router.get('/check',
       .withMessage('Cantidad de puntos requerida')
   ],
   validation,
-  pointsController.checkPointsAvailability
+  (req, res) => {
+    pointsController.checkPointsAvailability(req, res);
+  }
 );
 
 // ==================== RUTAS DE ADMINISTRACIÓN ====================
@@ -199,7 +198,9 @@ router.post('/admin/add',
       .withMessage('Metadata debe ser un objeto')
   ],
   validation,
-  pointsController.addPointsManually
+  (req, res) => {
+    pointsController.addPointsManually(req, res);
+  }
 );
 
 /**
@@ -220,7 +221,9 @@ router.get('/admin/analytics',
       .withMessage('Fecha de fin inválida (formato ISO8601)')
   ],
   validation,
-  pointsController.getPointsAnalytics
+  (req, res) => {
+    pointsController.getPointsAnalytics(req, res);
+  }
 );
 
 /**
@@ -237,7 +240,9 @@ router.get('/admin/top-users',
       .withMessage('Límite debe estar entre 1 y 100')
   ],
   validation,
-  pointsController.getTopUsers
+  (req, res) => {
+    pointsController.getTopUsers(req, res);
+  }
 );
 
 /**
@@ -257,11 +262,14 @@ router.get('/admin/user/:userId',
     try {
       const { userId } = req.params;
       
-      // Temporalmente redirigir a la función existente
-      // En una implementación completa, crearías un método específico
-      req.user = { id: parseInt(userId) }; // Simular usuario para la consulta
+      // Temporalmente modificar el request para simular el usuario
+      const originalUser = req.user;
+      req.user = { ...req.user, id: parseInt(userId) };
       
       await pointsController.getUserPointsStats(req, res);
+      
+      // Restaurar el usuario original
+      req.user = originalUser;
     } catch (error) {
       res.status(500).json({
         success: false,
@@ -297,10 +305,14 @@ router.get('/admin/user/:userId/history',
     try {
       const { userId } = req.params;
       
-      // Temporalmente redirigir a la función existente
-      req.user = { id: parseInt(userId) };
+      // Temporalmente modificar el request para simular el usuario
+      const originalUser = req.user;
+      req.user = { ...req.user, id: parseInt(userId) };
       
       await pointsController.getPointsHistory(req, res);
+      
+      // Restaurar el usuario original
+      req.user = originalUser;
     } catch (error) {
       res.status(500).json({
         success: false,

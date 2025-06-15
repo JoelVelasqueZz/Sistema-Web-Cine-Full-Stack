@@ -5,6 +5,15 @@ class OrderController {
   constructor() {
     this.orderModel = new Order();
     this.pointsModel = new Points();
+    
+    // 🔧 AGREGAR ESTAS LÍNEAS:
+    this.getUserOrders = this.getUserOrders.bind(this);
+    this.getOrderById = this.getOrderById.bind(this);
+    this.createOrder = this.createOrder.bind(this);
+    this.getOrderStats = this.getOrderStats.bind(this);
+    this.cancelOrder = this.cancelOrder.bind(this);
+    this.updateOrderStatus = this.updateOrderStatus.bind(this);
+    this.processPurchase = this.processPurchase.bind(this);
   }
 
   // ==================== CREAR NUEVA ORDEN ====================

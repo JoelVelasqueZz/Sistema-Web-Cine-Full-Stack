@@ -221,29 +221,45 @@ class Points {
   }
 
   async processPointsForPurchase(userId, totalCompra, orderDetails = null) {
-    try {
-      const puntosGanados = Math.floor(totalCompra * this.PUNTOS_POR_DOLAR);
+  try {
+    const puntosGanados = Math.floor(totalCompra * this.PUNTOS_POR_DOLAR);
+    
+    if (puntosGanados > 0) {
+      console.log(`Otorgando ${puntosGanados} puntos al usuario ${userId}`);
       
-      if (puntosGanados > 0) {
-        console.log(`Otorgando ${puntosGanados} puntos al usuario ${userId}`);
-        return {
-          success: true,
-          puntos_agregados: puntosGanados,
-          puntos_nuevos: puntosGanados
-        };
-      }
+      // 🔧 IMPLEMENTAR ACTUALIZACIÓN REAL EN BD:
+      const updateQuery = `
+        INSERT INTO puntos_usuario (usuario_id, puntos_actuales, total_ganados, total_usados)
+        VALUES ($1, $2, $2, 0)
+        ON CONFLICT (usuario_id) 
+        DO UPDATE SET 
+          puntos_actuales = puntos_usuario.puntos_actuales + $2,
+          total_ganados = puntos_usuario.total_ganados + $2,
+          fecha_actualizacion = CURRENT_TIMESTAMP
+        RETURNING puntos_actuales, total_ganados
+      `;
+      
+      const result = await this.pool.query(updateQuery, [userId, puntosGanados]);
       
       return {
         success: true,
-        puntos_agregados: 0,
-        message: 'No se generaron puntos para esta compra'
+        puntos_agregados: puntosGanados,
+        puntos_nuevos: result.rows[0].puntos_actuales,
+        total_ganados: result.rows[0].total_ganados
       };
-      
-    } catch (error) {
-      console.error('Error al procesar puntos por compra:', error);
-      throw error;
     }
+    
+    return {
+      success: true,
+      puntos_agregados: 0,
+      message: 'No se generaron puntos para esta compra'
+    };
+    
+  } catch (error) {
+    console.error('Error al procesar puntos por compra:', error);
+    throw error;
   }
+}
 }
 
 module.exports = Points;

@@ -5,6 +5,101 @@ class CheckoutController {
   constructor() {
     this.orderModel = new Order();
     this.pointsModel = new Points();
+    
+    // 🔧 SOLUCIÓN: Bind de métodos para mantener contexto
+    this.initializeCheckout = this.initializeCheckout.bind(this);
+    this.validateAvailability = this.validateAvailability.bind(this);
+    this.applyPoints = this.applyPoints.bind(this);
+    this.simulatePayPal = this.simulatePayPal.bind(this);
+    this.processPayment = this.processPayment.bind(this);
+  }
+
+  // ==================== INICIALIZAR CHECKOUT ====================
+  
+  async initializeCheckout(req, res) {
+    try {
+      console.log('🛒 Inicializando proceso de checkout...');
+      
+      const userId = req.user?.id;
+      const { cartItems } = req.body;
+      
+      if (!cartItems || !Array.isArray(cartItems) || cartItems.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'El carrito está vacío'
+        });
+      }
+
+      // Validar items del carrito
+      const validation = this.validateAndProcessCart(cartItems);
+      if (!validation.valid) {
+        return res.status(400).json({
+          success: false,
+          message: 'Items del carrito inválidos',
+          errors: validation.errors
+        });
+      }
+
+      // Calcular totales
+      const totals = this.calculateTotals(validation.processedItems);
+      
+      // Obtener puntos del usuario
+      let userPoints = null;
+      let pointsToEarn = 0;
+      try {
+        const pointsData = await this.pointsModel.getUserPoints(userId);
+        const config = await this.pointsModel.getSystemConfig();
+        userPoints = pointsData.puntos_actuales || 0;
+        pointsToEarn = Math.floor(totals.total * config.puntos_por_dolar);
+      } catch (error) {
+        console.error('⚠️ Error obteniendo puntos del usuario:', error);
+      }
+
+      // Preparar respuesta
+      const checkoutData = {
+        user: {
+          id: userId,
+          points: userPoints
+        },
+        cart: {
+          items: validation.processedItems,
+          summary: {
+            totalItems: validation.processedItems.reduce((sum, item) => sum + item.cantidad, 0),
+            totalPeliculas: validation.processedItems
+              .filter(item => item.tipo === 'pelicula')
+              .reduce((sum, item) => sum + item.cantidad, 0),
+            totalProductosBar: validation.processedItems
+              .filter(item => item.tipo === 'bar')
+              .reduce((sum, item) => sum + item.cantidad, 0)
+          }
+        },
+        totals,
+        points: {
+          available: userPoints,
+          toEarn: pointsToEarn,
+          value: userPoints ? this.pointsModel.getPointsValue(userPoints) : 0
+        },
+        paymentMethods: ['tarjeta', 'paypal'],
+        policies: {
+          serviceFeePercent: 5,
+          taxPercent: 8,
+          cancellationPolicy: 'Las órdenes pueden cancelarse hasta 2 horas antes de la función'
+        }
+      };
+
+      res.json({
+        success: true,
+        data: checkoutData
+      });
+
+    } catch (error) {
+      console.error('❌ Error inicializando checkout:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al inicializar el checkout',
+        error: process.env.NODE_ENV === 'development' ? error.message : 'Error interno'
+      });
+    }
   }
 
   // ==================== VALIDAR DISPONIBILIDAD ====================
@@ -134,6 +229,86 @@ class CheckoutController {
         success: false,
         message: 'Error en la simulación de PayPal',
         error: process.env.NODE_ENV === 'development' ? error.message : 'Error interno'
+      });
+    }
+  }
+
+  // ==================== PROCESAR PAGO ====================
+
+  async processPayment(req, res) {
+    try {
+      console.log('💳 Procesando pago...');
+      
+      const userId = req.user?.id;
+      const paymentData = req.body;
+      
+      // Validar datos de pago
+      const validation = this.validatePaymentData(paymentData);
+      if (!validation.valid) {
+        return res.status(400).json({
+          success: false,
+          message: 'Datos de pago inválidos',
+          errors: validation.errors
+        });
+      }
+
+      // Preparar datos de la orden
+      const orderData = await this.prepareOrderData(userId, paymentData);
+      
+      // Crear la orden
+      const orderResult = await this.orderModel.createOrder(orderData);
+      
+      if (!orderResult.success) {
+        throw new Error('Error al crear la orden');
+      }
+
+      // Procesar puntos (no bloquear si falla)
+      let pointsResult = null;
+      try {
+        pointsResult = await this.pointsModel.processPointsForPurchase(
+          userId,
+          orderData.total,
+          {
+            order_id: orderResult.orderId,
+            payment_method: paymentData.metodo_pago,
+            items: paymentData.cartItems
+          }
+        );
+      } catch (error) {
+        console.error('⚠️ Error procesando puntos:', error);
+      }
+
+      // Responder con éxito
+      res.status(201).json({
+        success: true,
+        message: 'Pago procesado exitosamente',
+        data: {
+          orderId: orderResult.orderId,
+          fechaCreacion: orderResult.fechaCreacion,
+          total: orderData.total,
+          metodoPago: paymentData.metodo_pago,
+          estado: 'completada',
+          puntos: pointsResult ? {
+            ganados: pointsResult.puntos_agregados || 0,
+            total: pointsResult.puntos_nuevos || 0
+          } : null,
+          // Datos para confirmación
+          confirmacion: {
+            numeroOrden: orderResult.orderId,
+            email: paymentData.email_cliente,
+            nombre: paymentData.nombre_cliente,
+            items: paymentData.cartItems.length,
+            fecha: orderResult.fechaCreacion
+          }
+        }
+      });
+
+    } catch (error) {
+      console.error('❌ Error procesando pago:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al procesar el pago',
+        error: process.env.NODE_ENV === 'development' ? error.message : 'Error interno del servidor'
       });
     }
   }
@@ -397,171 +572,6 @@ class CheckoutController {
 
   generatePayerId() {
     return Math.random().toString(36).substring(2, 15).toUpperCase();
-  }
-   async initializeCheckout(req, res) {
-    try {
-      console.log('🛒 Inicializando proceso de checkout...');
-      
-      const userId = req.user?.id;
-      const { cartItems } = req.body;
-      
-      if (!cartItems || !Array.isArray(cartItems) || cartItems.length === 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'El carrito está vacío'
-        });
-      }
-
-      // Validar items del carrito
-      const validation = this.validateAndProcessCart(cartItems);
-      if (!validation.valid) {
-        return res.status(400).json({
-          success: false,
-          message: 'Items del carrito inválidos',
-          errors: validation.errors
-        });
-      }
-
-      // Calcular totales
-      const totals = this.calculateTotals(validation.processedItems);
-      
-      // Obtener puntos del usuario
-      let userPoints = null;
-      let pointsToEarn = 0;
-      try {
-        const pointsData = await this.pointsModel.getUserPoints(userId);
-        const config = await this.pointsModel.getSystemConfig();
-        userPoints = pointsData.puntos_actuales || 0;
-        pointsToEarn = Math.floor(totals.total * config.puntos_por_dolar);
-      } catch (error) {
-        console.error('⚠️ Error obteniendo puntos del usuario:', error);
-      }
-
-      // Preparar respuesta
-      const checkoutData = {
-        user: {
-          id: userId,
-          points: userPoints
-        },
-        cart: {
-          items: validation.processedItems,
-          summary: {
-            totalItems: validation.processedItems.reduce((sum, item) => sum + item.cantidad, 0),
-            totalPeliculas: validation.processedItems
-              .filter(item => item.tipo === 'pelicula')
-              .reduce((sum, item) => sum + item.cantidad, 0),
-            totalProductosBar: validation.processedItems
-              .filter(item => item.tipo === 'bar')
-              .reduce((sum, item) => sum + item.cantidad, 0)
-          }
-        },
-        totals,
-        points: {
-          available: userPoints,
-          toEarn: pointsToEarn,
-          value: userPoints ? this.pointsModel.getPointsValue(userPoints) : 0
-        },
-        paymentMethods: ['tarjeta', 'paypal'],
-        policies: {
-          serviceFeePercent: 5,
-          taxPercent: 8,
-          cancellationPolicy: 'Las órdenes pueden cancelarse hasta 2 horas antes de la función'
-        }
-      };
-
-      res.json({
-        success: true,
-        data: checkoutData
-      });
-
-    } catch (error) {
-      console.error('❌ Error inicializando checkout:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Error al inicializar el checkout',
-        error: process.env.NODE_ENV === 'development' ? error.message : 'Error interno'
-      });
-    }
-  }
-
-  // ==================== PROCESAR PAGO ====================
-
-  async processPayment(req, res) {
-    try {
-      console.log('💳 Procesando pago...');
-      
-      const userId = req.user?.id;
-      const paymentData = req.body;
-      
-      // Validar datos de pago
-      const validation = this.validatePaymentData(paymentData);
-      if (!validation.valid) {
-        return res.status(400).json({
-          success: false,
-          message: 'Datos de pago inválidos',
-          errors: validation.errors
-        });
-      }
-
-      // Preparar datos de la orden
-      const orderData = await this.prepareOrderData(userId, paymentData);
-      
-      // Crear la orden
-      const orderResult = await this.orderModel.createOrder(orderData);
-      
-      if (!orderResult.success) {
-        throw new Error('Error al crear la orden');
-      }
-
-      // Procesar puntos (no bloquear si falla)
-      let pointsResult = null;
-      try {
-        pointsResult = await this.pointsModel.processPointsForPurchase(
-          userId,
-          orderData.total,
-          {
-            order_id: orderResult.orderId,
-            payment_method: paymentData.metodo_pago,
-            items: paymentData.cartItems
-          }
-        );
-      } catch (error) {
-        console.error('⚠️ Error procesando puntos:', error);
-      }
-
-      // Responder con éxito
-      res.status(201).json({
-        success: true,
-        message: 'Pago procesado exitosamente',
-        data: {
-          orderId: orderResult.orderId,
-          fechaCreacion: orderResult.fechaCreacion,
-          total: orderData.total,
-          metodoPago: paymentData.metodo_pago,
-          estado: 'completada',
-          puntos: pointsResult ? {
-            ganados: pointsResult.puntos_agregados || 0,
-            total: pointsResult.puntos_nuevos || 0
-          } : null,
-          // Datos para confirmación
-          confirmacion: {
-            numeroOrden: orderResult.orderId,
-            email: paymentData.email_cliente,
-            nombre: paymentData.nombre_cliente,
-            items: paymentData.cartItems.length,
-            fecha: orderResult.fechaCreacion
-          }
-        }
-      });
-
-    } catch (error) {
-      console.error('❌ Error procesando pago:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Error al procesar el pago',
-        error: process.env.NODE_ENV === 'development' ? error.message : 'Error interno del servidor'
-      });
-    }
   }
 }
 
