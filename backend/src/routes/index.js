@@ -19,10 +19,9 @@ router.get('/', (req, res) => {
       history: '/api/history',
       comingSoon: '/api/coming-soon',
       bar: '/api/bar',
-      orders: '/api/orders', // 🆕 NUEVO
-      points: '/api/points', // 🆕 NUEVO
-      // rewards: '/api/rewards', // Para futuro
-      // admin: '/api/admin' // Para futuro
+      orders: '/api/orders',
+      points: '/api/points',
+      rewards: '/api/rewards' // 🆕 ACTIVADO
     }
   });
 });
@@ -63,15 +62,14 @@ router.get('/health', (req, res) => {
       history: 'OK',
       comingSoon: 'OK',
       bar: 'OK',
-      orders: 'OK', // 🆕 NUEVO
-      points: 'OK', // 🆕 NUEVO
-      database: 'OK'
+      orders: 'OK',
+      points: 'OK',
+      rewards: 'OK' // 🆕 NUEVO
     }
   });
 });
 
 // ==================== RUTAS DE MÓDULOS EXISTENTES ====================
-
 // Rutas de autenticación
 router.use('/auth', require('./auth'));
 
@@ -96,26 +94,24 @@ router.use('/coming-soon', require('./comingSoon'));
 // Rutas de productos del bar
 router.use('/bar', require('./bar'));
 
-// ==================== 🆕 NUEVAS RUTAS - SISTEMA DE ÓRDENES Y PUNTOS ====================
-
-// 🆕 NUEVA - Rutas de órdenes y checkout
+// ==================== RUTAS DE ÓRDENES Y PUNTOS ====================
+// Rutas de órdenes y checkout
 router.use('/orders', require('./orders'));
 
-// 🆕 NUEVA - Rutas de puntos y referidos
+// Rutas de puntos y referidos
 router.use('/points', require('./points'));
+
+// ==================== 🆕 NUEVAS RUTAS - SISTEMA DE RECOMPENSAS ====================
+// 🆕 NUEVA - Rutas de recompensas y canjes
+router.use('/rewards', require('./rewards'));
 
 // ==================== RUTAS FUTURAS (COMENTADAS) ====================
 // Estas se pueden activar cuando las implementes
-
-// Rutas de recompensas
-// router.use('/rewards', require('./rewards'));
-
-// Rutas de administración
+// Rutas de administración general
 // router.use('/admin', require('./admin'));
 
 // ==================== MANEJO DE RUTAS NO ENCONTRADAS ====================
-
-// 🆕 AGREGADO: Middleware para rutas no encontradas
+// Middleware para rutas no encontradas
 router.use('*', (req, res) => {
   res.status(404).json({
     success: false,
@@ -134,8 +130,9 @@ router.use('*', (req, res) => {
       '/api/history',
       '/api/coming-soon',
       '/api/bar',
-      '/api/orders', // 🆕 NUEVO
-      '/api/points'  // 🆕 NUEVO
+      '/api/orders',
+      '/api/points',
+      '/api/rewards' // 🆕 NUEVO
     ],
     suggestion: 'Verifica la URL y el método HTTP'
   });
