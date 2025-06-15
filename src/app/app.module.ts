@@ -43,12 +43,17 @@ import { FooterComponent } from './components/footer/footer.component';
 import { AdminBarComponent } from './components/admin/admin-bar/admin-bar.component';
 import { RewardsComponent } from './components/rewards/rewards.component';
 
+import { OrderService } from './services/order.service';
+
+
 // 🎬 COMPONENTES DE FUNCIONES
 import { FunctionAdminComponent } from './components/admin/function-admin/function-admin.component';
 import { FunctionListComponent } from './components/function-list/function-list.component';
 import { FunctionDetailComponent } from './components/function-detail/function-detail.component';
 // 🎬 COMPONENTE STANDALONE
 import { AdminComingSoonComponent } from './components/admin/admin-coming-soon/admin-coming-soon.component';
+import { OrderHistoryComponent } from './components/order-history/order-history.component';
+import { PointsHistoryComponent } from './components/points-history/points-history.component';
 
 @NgModule({
   declarations: [
@@ -83,7 +88,7 @@ import { AdminComingSoonComponent } from './components/admin/admin-coming-soon/a
     // 🎬 COMPONENTES DE FUNCIONES (NO standalone)
     FunctionAdminComponent,
     FunctionListComponent,
-    FunctionDetailComponent
+    FunctionDetailComponent,
     // ❌ AdminComingSoonComponent NO VA AQUÍ porque es standalone
   ],
   imports: [
@@ -93,7 +98,10 @@ import { AdminComingSoonComponent } from './components/admin/admin-coming-soon/a
     HttpClientModule,
     ReactiveFormsModule,
     FormsModule,
-    AdminComingSoonComponent  // ✅ COMPONENTE STANDALONE VA EN IMPORTS
+    AdminComingSoonComponent,
+
+    OrderHistoryComponent,
+    PointsHistoryComponent  // ✅ COMPONENTE STANDALONE VA EN IMPORTS
   ],
   providers: [
     AuthService,
@@ -102,7 +110,8 @@ import { AdminComingSoonComponent } from './components/admin/admin-coming-soon/a
     PaypalSimulationService,
     AdminService,
     BarService,
-    FunctionService
+    FunctionService,
+    OrderService
   ],
   bootstrap: [AppComponent]
 })

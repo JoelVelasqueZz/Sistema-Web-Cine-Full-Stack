@@ -1,4 +1,7 @@
 import { Injectable } from '@angular/core';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Observable, BehaviorSubject, of } from 'rxjs';
+import { catchError, map, tap } from 'rxjs/operators';
 import { AuthService } from './auth.service';
 
 @Injectable({
@@ -6,407 +9,365 @@ import { AuthService } from './auth.service';
 })
 export class PointsService {
 
-  // Configuración del sistema de puntos
-  private readonly PUNTOS_POR_DOLAR = 1;
-  private readonly PUNTOS_BIENVENIDA = 50;
-  private readonly PUNTOS_REFERIDO = 100; // Para quien refiere
-  private readonly PUNTOS_NUEVO_USUARIO = 25; // Para el nuevo usuario
+  private readonly API_URL = `http://localhost:3000/api/points`;
+  private userPointsSubject = new BehaviorSubject<number>(0);
+  public userPoints$ = this.userPointsSubject.asObservable();
 
-  constructor(private authService: AuthService) {
-    console.log('Servicio de puntos inicializado!');
+  constructor(
+    private http: HttpClient,
+    private authService: AuthService
+  ) {
+    console.log('🆕 PointsService actualizado con API backend');
+    this.loadUserPoints();
   }
 
-  // ==================== GESTIÓN DE PUNTOS PRINCIPALES ====================
+  // ==================== MÉTODOS PRINCIPALES DE PUNTOS ====================
 
   /**
-   * Obtener puntos actuales del usuario
+   * Obtener puntos actuales del usuario desde la API
    */
-  getUserPoints(userId: number): number {
-    const pointsKey = `user_points_${userId}`;
-    const points = localStorage.getItem(pointsKey);
-    return points ? parseInt(points) : 0;
-  }
-
-  /**
-   * Agregar puntos al usuario
-   */
-  addPoints(userId: number, puntos: number, concepto: string, metadata?: any): boolean {
-    try {
-      const puntosActuales = this.getUserPoints(userId);
-      const nuevosPuntos = puntosActuales + puntos;
-      
-      // Actualizar puntos
-      const pointsKey = `user_points_${userId}`;
-      localStorage.setItem(pointsKey, nuevosPuntos.toString());
-      
-      // Registrar transacción
-      this.addPointsTransaction(userId, {
-        tipo: 'ganancia',
-        puntos: puntos,
-        concepto: concepto,
-        fecha: new Date().toISOString(),
-        puntosAnteriores: puntosActuales,
-        puntosNuevos: nuevosPuntos,
-        metadata: metadata
-      });
-
-      console.log(`+${puntos} puntos agregados a usuario ${userId}: ${concepto}`);
-      return true;
-    } catch (error) {
-      console.error('Error al agregar puntos:', error);
-      return false;
-    }
+  getUserPoints(): Observable<UserPointsResponse> {
+    return this.http.get<ApiResponse<UserPointsData>>(`${this.API_URL}`).pipe(
+      map(response => {
+        if (response.success && response.data) {
+          this.userPointsSubject.next(response.data.puntos_actuales || 0);
+          return {
+            puntosActuales: response.data.puntos_actuales || 0,
+            totalGanados: response.data.total_ganados || 0,
+            totalUsados: response.data.total_usados || 0
+          };
+        }
+        return { puntosActuales: 0, totalGanados: 0, totalUsados: 0 };
+      }),
+      catchError(error => {
+        console.error('❌ Error al obtener puntos del usuario:', error);
+        return of({ puntosActuales: 0, totalGanados: 0, totalUsados: 0 });
+      })
+    );
   }
 
   /**
-   * Usar/canjear puntos del usuario
+   * Obtener estadísticas completas de puntos
    */
-  usePoints(userId: number, puntos: number, concepto: string, metadata?: any): boolean {
-    try {
-      const puntosActuales = this.getUserPoints(userId);
-      
-      if (puntosActuales < puntos) {
-        console.log('Puntos insuficientes');
+  getUserPointsStats(): Observable<PointsStats> {
+    return this.http.get<ApiResponse<PointsStats>>(`${this.API_URL}/stats`).pipe(
+      map(response => response.success ? response.data : this.getDefaultStats()),
+      catchError(error => {
+        console.error('❌ Error al obtener estadísticas de puntos:', error);
+        return of(this.getDefaultStats());
+      })
+    );
+  }
+
+  /**
+   * Obtener historial de transacciones de puntos
+   */
+  getPointsHistory(page: number = 1, limit: number = 20): Observable<PointsTransaction[]> {
+    const params = { page: page.toString(), limit: limit.toString() };
+    
+    return this.http.get<ApiResponse<PointsTransaction[]>>(`${this.API_URL}/history`, { params }).pipe(
+      map(response => response.success ? response.data : []),
+      catchError(error => {
+        console.error('❌ Error al obtener historial de puntos:', error);
+        return of([]);
+      })
+    );
+  }
+
+  /**
+   * Usar puntos del usuario
+   */
+  usePoints(puntos: number, concepto: string, metadata?: any): Observable<boolean> {
+    const payload = { puntos, concepto, metadata };
+    
+    return this.http.post<ApiResponse<any>>(`${this.API_URL}/use`, payload).pipe(
+      map(response => {
+        if (response.success) {
+          this.loadUserPoints(); // Recargar puntos después de usar
+          return true;
+        }
         return false;
-      }
-      
-      const nuevosPuntos = puntosActuales - puntos;
-      
-      // Actualizar puntos
-      const pointsKey = `user_points_${userId}`;
-      localStorage.setItem(pointsKey, nuevosPuntos.toString());
-      
-      // Registrar transacción
-      this.addPointsTransaction(userId, {
-        tipo: 'uso',
-        puntos: puntos,
-        concepto: concepto,
-        fecha: new Date().toISOString(),
-        puntosAnteriores: puntosActuales,
-        puntosNuevos: nuevosPuntos,
-        metadata: metadata
-      });
+      }),
+      catchError(error => {
+        console.error('❌ Error al usar puntos:', error);
+        return of(false);
+      })
+    );
+  }
 
-      console.log(`-${puntos} puntos usados por usuario ${userId}: ${concepto}`);
-      return true;
-    } catch (error) {
-      console.error('Error al usar puntos:', error);
-      return false;
-    }
+  /**
+   * Verificar si el usuario puede usar cierta cantidad de puntos
+   */
+  canUsePoints(puntos: number): Observable<boolean> {
+    const params = { puntos: puntos.toString() };
+    
+    return this.http.get<ApiResponse<any>>(`${this.API_URL}/check`, { params }).pipe(
+      map(response => response.success && response.data.puede_usar),
+      catchError(error => {
+        console.error('❌ Error al verificar puntos:', error);
+        return of(false);
+      })
+    );
   }
 
   // ==================== SISTEMA DE REFERIDOS ====================
 
   /**
-   * Generar código de referido para el usuario
-   */
-  generateReferralCode(userId: number): string {
-    const user = this.authService.findUserById(userId);
-    if (!user) return '';
-    
-    // Generar código único basado en nombre y ID
-    const nombre = user.nombre.replace(/\s+/g, '').toUpperCase();
-    const codigo = `${nombre.substring(0, 3)}${userId}${Date.now().toString().slice(-3)}`;
-    
-    // Guardar código del usuario
-    const codesKey = `referral_codes`;
-    const codes = this.getReferralCodes();
-    codes[codigo] = userId;
-    localStorage.setItem(codesKey, JSON.stringify(codes));
-    
-    // Guardar código personal del usuario
-    localStorage.setItem(`user_referral_code_${userId}`, codigo);
-    
-    return codigo;
-  }
-
-  /**
    * Obtener código de referido del usuario
    */
-  getUserReferralCode(userId: number): string {
-    let codigo = localStorage.getItem(`user_referral_code_${userId}`);
-    if (!codigo) {
-      codigo = this.generateReferralCode(userId);
-    }
-    return codigo;
+  getReferralCode(): Observable<string> {
+    return this.http.get<ApiResponse<any>>(`${this.API_URL}/referral/code`).pipe(
+      map(response => response.success ? response.data.codigo : ''),
+      catchError(error => {
+        console.error('❌ Error al obtener código de referido:', error);
+        return of('');
+      })
+    );
   }
 
   /**
-   * Validar y aplicar código de referido
+   * Crear código de referido para el usuario
    */
-  applyReferralCode(newUserId: number, referralCode: string): boolean {
-    try {
-      const codes = this.getReferralCodes();
-      const referrerId = codes[referralCode.toUpperCase()];
-      
-      if (!referrerId) {
-        console.log('Código de referido inválido');
-        return false;
-      }
-      
-      if (referrerId === newUserId) {
-        console.log('No puedes usar tu propio código de referido');
-        return false;
-      }
-      
-      // Verificar que el nuevo usuario no haya usado ya un código
-      const hasUsedCode = localStorage.getItem(`used_referral_${newUserId}`);
-      if (hasUsedCode) {
-        console.log('El usuario ya usó un código de referido');
-        return false;
-      }
-      
-      // Otorgar puntos al referidor
-      this.addPoints(
-        referrerId, 
-        this.PUNTOS_REFERIDO, 
-        'Referido exitoso',
-        { referredUserId: newUserId, referralCode }
-      );
-      
-      // Otorgar puntos al nuevo usuario
-      this.addPoints(
-        newUserId, 
-        this.PUNTOS_NUEVO_USUARIO, 
-        'Bienvenida por código de referido',
-        { referrerId, referralCode }
-      );
-      
-      // Marcar código como usado
-      localStorage.setItem(`used_referral_${newUserId}`, referralCode);
-      
-      // Registrar referido
-      this.addReferralRecord(referrerId, newUserId, referralCode);
-      
-      console.log(`Código de referido aplicado: ${referralCode}`);
-      return true;
-    } catch (error) {
-      console.error('Error al aplicar código de referido:', error);
-      return false;
-    }
+  createReferralCode(): Observable<string> {
+    return this.http.post<ApiResponse<any>>(`${this.API_URL}/referral/create`, {}).pipe(
+      map(response => response.success ? response.data.codigo : ''),
+      catchError(error => {
+        console.error('❌ Error al crear código de referido:', error);
+        return of('');
+      })
+    );
   }
 
   /**
-   * Obtener usuarios referidos por un usuario
+   * Aplicar código de referido
    */
-  getUserReferrals(userId: number): ReferralRecord[] {
-    const referralsKey = `user_referrals_${userId}`;
-    const referrals = localStorage.getItem(referralsKey);
+  applyReferralCode(codigo: string): Observable<ReferralResult> {
+    const payload = { codigo };
     
-    if (referrals) {
-      try {
-        return JSON.parse(referrals);
-      } catch (error) {
-        console.error('Error al obtener referidos:', error);
-        return [];
-      }
-    }
-    return [];
-  }
-
-  // ==================== PUNTOS POR COMPRAS ====================
-
-  /**
-   * Calcular y otorgar puntos por compra
-   */
-  processPointsForPurchase(userId: number, totalCompra: number, items: any[]): number {
-    const puntosGanados = Math.floor(totalCompra * this.PUNTOS_POR_DOLAR);
-    
-    if (puntosGanados > 0) {
-      this.addPoints(
-        userId,
-        puntosGanados,
-        'Compra realizada',
-        { 
-          totalCompra, 
-          items: items.map(item => ({
-            tipo: item.tipo,
-            nombre: item.tipo === 'pelicula' ? item.pelicula?.titulo : item.barProduct?.nombre,
-            cantidad: item.cantidad,
-            precio: item.subtotal
-          }))
+    return this.http.post<ApiResponse<any>>(`${this.API_URL}/referral/apply`, payload).pipe(
+      map(response => {
+        if (response.success) {
+          this.loadUserPoints(); // Recargar puntos después de aplicar código
+          return {
+            success: true,
+            message: response.message || 'Código aplicado exitosamente',
+            puntosGanados: response.data?.puntos_ganados || 0
+          };
         }
-      );
-    }
-    
-    return puntosGanados;
+        return {
+          success: false,
+          message: response.message || 'Error al aplicar código',
+          puntosGanados: 0
+        };
+      }),
+      catchError(error => {
+        console.error('❌ Error al aplicar código de referido:', error);
+        return of({
+          success: false,
+          message: error.error?.message || 'Error al aplicar código de referido',
+          puntosGanados: 0
+        });
+      })
+    );
   }
 
   /**
-   * Dar puntos de bienvenida a nuevo usuario
+   * Obtener lista de usuarios referidos
    */
-  giveWelcomePoints(userId: number): boolean {
-    const welcomeKey = `welcome_points_${userId}`;
-    const alreadyGiven = localStorage.getItem(welcomeKey);
-    
-    if (!alreadyGiven) {
-      const success = this.addPoints(
-        userId,
-        this.PUNTOS_BIENVENIDA,
-        'Puntos de bienvenida',
-        { isWelcomeBonus: true }
-      );
-      
-      if (success) {
-        localStorage.setItem(welcomeKey, 'true');
-      }
-      
-      return success;
-    }
-    
-    return false;
+  getUserReferrals(): Observable<ReferralRecord[]> {
+    return this.http.get<ApiResponse<ReferralRecord[]>>(`${this.API_URL}/referral/list`).pipe(
+      map(response => response.success ? response.data : []),
+      catchError(error => {
+        console.error('❌ Error al obtener referidos:', error);
+        return of([]);
+      })
+    );
   }
 
-  // ==================== HISTORIAL DE TRANSACCIONES ====================
+  // ==================== PUNTOS DE BIENVENIDA ====================
 
   /**
-   * Obtener historial de transacciones de puntos
+   * Otorgar puntos de bienvenida
    */
-  getPointsHistory(userId: number): PointsTransaction[] {
-    const historyKey = `points_history_${userId}`;
-    const history = localStorage.getItem(historyKey);
-    
-    if (history) {
-      try {
-        return JSON.parse(history).sort((a: PointsTransaction, b: PointsTransaction) => 
-          new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
-        );
-      } catch (error) {
-        console.error('Error al obtener historial de puntos:', error);
-        return [];
-      }
-    }
-    return [];
+  giveWelcomePoints(): Observable<boolean> {
+    return this.http.post<ApiResponse<any>>(`${this.API_URL}/welcome`, {}).pipe(
+      map(response => {
+        if (response.success) {
+          this.loadUserPoints(); // Recargar puntos después de otorgar bienvenida
+          return true;
+        }
+        return false;
+      }),
+      catchError(error => {
+        console.error('❌ Error al otorgar puntos de bienvenida:', error);
+        return of(false);
+      })
+    );
   }
 
-  /**
-   * Obtener estadísticas de puntos del usuario
-   */
-  getUserPointsStats(userId: number): PointsStats {
-    const history = this.getPointsHistory(userId);
-    const referrals = this.getUserReferrals(userId);
-    
-    const totalGanados = history
-      .filter(t => t.tipo === 'ganancia')
-      .reduce((sum, t) => sum + t.puntos, 0);
-      
-    const totalUsados = history
-      .filter(t => t.tipo === 'uso')
-      .reduce((sum, t) => sum + t.puntos, 0);
-    
-    const puntosActuales = this.getUserPoints(userId);
-    
-    return {
-      puntosActuales,
-      totalGanados,
-      totalUsados,
-      totalReferidos: referrals.length,
-      ultimaActividad: history.length > 0 ? history[0].fecha : null
-    };
-  }
-
-  // ==================== MÉTODOS AUXILIARES PRIVADOS ====================
-
-  private addPointsTransaction(userId: number, transaction: PointsTransaction): void {
-    const historyKey = `points_history_${userId}`;
-    const history = this.getPointsHistory(userId);
-    
-    history.unshift(transaction);
-    
-    // Mantener solo los últimos 100 registros
-    const limitedHistory = history.slice(0, 100);
-    
-    localStorage.setItem(historyKey, JSON.stringify(limitedHistory));
-  }
-
-  private getReferralCodes(): { [code: string]: number } {
-    const codesKey = `referral_codes`;
-    const codes = localStorage.getItem(codesKey);
-    
-    if (codes) {
-      try {
-        return JSON.parse(codes);
-      } catch (error) {
-        console.error('Error al obtener códigos de referido:', error);
-        return {};
-      }
-    }
-    return {};
-  }
-
-  private addReferralRecord(referrerId: number, referredUserId: number, code: string): void {
-    const referralsKey = `user_referrals_${referrerId}`;
-    const referrals = this.getUserReferrals(referrerId);
-    
-    const referredUser = this.authService.findUserById(referredUserId);
-    
-    const newReferral: ReferralRecord = {
-      userId: referredUserId,
-      userName: referredUser?.nombre || 'Usuario',
-      userEmail: referredUser?.email || '',
-      fecha: new Date().toISOString(),
-      codigo: code,
-      puntosGanados: this.PUNTOS_REFERIDO
-    };
-    
-    referrals.push(newReferral);
-    localStorage.setItem(referralsKey, JSON.stringify(referrals));
-  }
-
-  // ==================== MÉTODOS PÚBLICOS ADICIONALES ====================
-
-  /**
-   * Verificar si el usuario puede usar cierta cantidad de puntos
-   */
-  canUsePoints(userId: number, puntos: number): boolean {
-    return this.getUserPoints(userId) >= puntos;
-  }
-
-  /**
-   * Obtener valor en dólares de los puntos
-   */
-  getPointsValue(puntos: number): number {
-    return puntos / this.PUNTOS_POR_DOLAR;
-  }
+  // ==================== CONFIGURACIÓN DEL SISTEMA ====================
 
   /**
    * Obtener configuración del sistema de puntos
    */
-  getPointsConfig() {
+  getSystemConfig(): Observable<PointsConfig> {
+    return this.http.get<ApiResponse<PointsConfig>>(`${this.API_URL}/config`).pipe(
+      map(response => response.success ? response.data : this.getDefaultConfig()),
+      catchError(error => {
+        console.error('❌ Error al obtener configuración:', error);
+        return of(this.getDefaultConfig());
+      })
+    );
+  }
+
+  /**
+   * Calcular valor en dólares de una cantidad de puntos
+   */
+  getPointsValue(puntos: number): Observable<number> {
+    return this.http.get<ApiResponse<any>>(`${this.API_URL}/value/${puntos}`).pipe(
+      map(response => response.success ? response.data.valor_dolares : 0),
+      catchError(error => {
+        console.error('❌ Error al calcular valor de puntos:', error);
+        return of(0);
+      })
+    );
+  }
+
+  // ==================== MÉTODOS AUXILIARES ====================
+
+  /**
+   * Cargar puntos del usuario al inicializar
+   */
+  private loadUserPoints(): void {
+    this.getUserPoints().subscribe();
+  }
+
+  /**
+   * Obtener estadísticas por defecto
+   */
+  private getDefaultStats(): PointsStats {
+  return {
+    puntosActuales: 0,
+    totalGanados: 0,
+    totalUsados: 0,
+    valorEnDolares: 0,
+    ultimaActividad: null,
+    totalReferidos: 0 // 🆕 AGREGAR ESTA LÍNEA
+  };
+}
+
+  /**
+   * Obtener configuración por defecto
+   */
+  private getDefaultConfig(): PointsConfig {
     return {
-      puntosPorDolar: this.PUNTOS_POR_DOLAR,
-      puntosBienvenida: this.PUNTOS_BIENVENIDA,
-      puntosReferido: this.PUNTOS_REFERIDO,
-      puntosNuevoUsuario: this.PUNTOS_NUEVO_USUARIO
+      puntos_por_dolar: 1,
+      puntos_bienvenida: 50,
+      puntos_referido: 100,
+      puntos_nuevo_usuario: 25
     };
+  }
+
+  // ==================== MÉTODOS LEGACY (PARA COMPATIBILIDAD) ====================
+
+  /**
+   * Métodos legacy para mantener compatibilidad con código existente
+   */
+  getUserPoints_Legacy(userId: number): number {
+    // Retorna el valor actual del BehaviorSubject
+    return this.userPointsSubject.value;
+  }
+
+  getPointsConfig_Legacy() {
+    return {
+      puntosPorDolar: 1,
+      puntosBienvenida: 50,
+      puntosReferido: 100,
+      puntosNuevoUsuario: 25
+    };
+  }
+
+  getUserReferralCode_Legacy(userId: number): string {
+    // Para mantener compatibilidad, pero se debe migrar a getReferralCode()
+    return 'REF' + userId + Date.now().toString().slice(-4);
+  }
+
+  processPointsForPurchase_Legacy(userId: number, totalCompra: number, items: any[]): number {
+    // Este método ahora se maneja en el backend durante el checkout
+    return Math.floor(totalCompra * 1); // 1 punto por dólar
+  }
+
+  getPointsValue_Legacy(puntos: number): number {
+    return puntos / 1; // 1 punto = $1
+  }
+
+  getUserPointsStats_Legacy(userId: number): PointsStats {
+    return this.getDefaultStats();
   }
 }
 
 // ==================== INTERFACES ====================
 
-export interface PointsTransaction {
-  tipo: 'ganancia' | 'uso';
-  puntos: number;
-  concepto: string;
-  fecha: string;
-  puntosAnteriores: number;
-  puntosNuevos: number;
-  metadata?: any;
+export interface ApiResponse<T> {
+  success: boolean;
+  message?: string;
+  data: T;
+  pagination?: any;
 }
 
-export interface ReferralRecord {
-  userId: number;
-  userName: string;
-  userEmail: string;
-  fecha: string;
-  codigo: string;
-  puntosGanados: number;
+export interface UserPointsData {
+  puntos_actuales: number;
+  total_ganados: number;
+  total_usados: number;
+}
+
+export interface UserPointsResponse {
+  puntosActuales: number;
+  totalGanados: number;
+  totalUsados: number;
 }
 
 export interface PointsStats {
   puntosActuales: number;
   totalGanados: number;
   totalUsados: number;
-  totalReferidos: number;
+  valorEnDolares: number;
   ultimaActividad: string | null;
+  totalReferidos: number; // 🆕 AGREGAR ESTA LÍNEA (sin ?)
+}
+
+export interface PointsTransaction {
+  id: number;
+  tipo: 'ganancia' | 'uso';
+  puntos: number;
+  concepto: string;
+  puntosAnteriores: number;
+  puntosNuevos: number;
+  metadata?: any;
+  fecha: string;
+}
+
+export interface ReferralRecord {
+  id: number;
+  referido: {
+    id: number;
+    nombre: string;
+    email: string;
+  };
+  codigoUsado: string;
+  puntosOtorgados: number;
+  fechaReferido: string;
+}
+
+export interface ReferralResult {
+  success: boolean;
+  message: string;
+  puntosGanados: number;
+}
+
+export interface PointsConfig {
+  puntos_por_dolar: number;
+  puntos_bienvenida: number;
+  puntos_referido: number;
+  puntos_nuevo_usuario: number;
 }

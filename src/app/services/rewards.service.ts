@@ -1,4 +1,6 @@
 import { Injectable } from '@angular/core';
+import { Observable, of } from 'rxjs';
+import { map, catchError } from 'rxjs/operators';
 import { PointsService } from './points.service';
 
 @Injectable({
@@ -208,7 +210,7 @@ export class RewardsService {
   ];
 
   constructor(private pointsService: PointsService) {
-    console.log('Servicio de recompensas inicializado!');
+    console.log('🆕 Servicio de recompensas actualizado para API!');
   }
 
   // ==================== OBTENER RECOMPENSAS ====================
@@ -243,124 +245,162 @@ export class RewardsService {
   }
 
   /**
-   * Obtener recompensas que el usuario puede canjear
+   * 🔧 CORREGIDO: Obtener recompensas que el usuario puede canjear
    */
-  getAffordableRewards(userId: number): Recompensa[] {
-    const userPoints = this.pointsService.getUserPoints(userId);
-    return this.getAllRewards().filter(r => r.puntosRequeridos <= userPoints);
+  getAffordableRewards(): Observable<Recompensa[]> {
+    return this.pointsService.getUserPoints().pipe(
+      map(response => {
+        const userPoints = response.puntosActuales;
+        return this.getAllRewards().filter(r => r.puntosRequeridos <= userPoints);
+      }),
+      catchError(error => {
+        console.error('❌ Error obteniendo recompensas disponibles:', error);
+        return of([]);
+      })
+    );
   }
 
   // ==================== CANJE DE RECOMPENSAS ====================
 
   /**
-   * Canjear una recompensa
+   * 🔧 CORREGIDO: Canjear una recompensa
    */
-  redeemReward(userId: number, rewardId: number): RedeemResult {
-    try {
+  redeemReward(rewardId: number): Observable<RedeemResult> {
+    return new Observable(observer => {
       const recompensa = this.getReward(rewardId);
       
       if (!recompensa) {
-        return {
+        observer.next({
           success: false,
           message: 'Recompensa no encontrada',
           canjeId: ''
-        };
+        });
+        observer.complete();
+        return;
       }
 
-      // Validaciones
-      const validation = this.validateRedemption(userId, recompensa);
-      if (!validation.valid) {
-        return {
-          success: false,
-          message: validation.message,
-          canjeId: ''
-        };
-      }
+      // Validar con API
+      this.validateRedemption(recompensa).subscribe({
+        next: (validation) => {
+          if (!validation.valid) {
+            observer.next({
+              success: false,
+              message: validation.message,
+              canjeId: ''
+            });
+            observer.complete();
+            return;
+          }
 
-      // Usar puntos
-      const pointsUsed = this.pointsService.usePoints(
-        userId,
-        recompensa.puntosRequeridos,
-        `Canje: ${recompensa.nombre}`,
-        { rewardId: rewardId, rewardName: recompensa.nombre }
-      );
+          // Usar puntos mediante API
+          this.pointsService.usePoints(
+            recompensa.puntosRequeridos,
+            `Canje: ${recompensa.nombre}`,
+            { rewardId: rewardId, rewardName: recompensa.nombre }
+          ).subscribe({
+            next: (pointsUsed) => {
+              if (!pointsUsed) {
+                observer.next({
+                  success: false,
+                  message: 'Error al procesar los puntos',
+                  canjeId: ''
+                });
+                observer.complete();
+                return;
+              }
 
-      if (!pointsUsed) {
-        return {
-          success: false,
-          message: 'Error al procesar los puntos',
-          canjeId: ''
-        };
-      }
+              // Reducir stock
+              recompensa.stock--;
 
-      // Reducir stock
-      recompensa.stock--;
-
-      // Registrar canje
-      const canje = this.createRedemptionRecord(userId, recompensa);
-      
-      return {
-        success: true,
-        message: `¡Recompensa "${recompensa.nombre}" canjeada exitosamente!`,
-        canjeId: canje.id,
-        canje: canje
-      };
-
-    } catch (error) {
-      console.error('Error al canjear recompensa:', error);
-      return {
-        success: false,
-        message: 'Error interno al procesar el canje',
-        canjeId: ''
-      };
-    }
+              // Crear registro de canje
+              const canje = this.createRedemptionRecord(recompensa);
+              
+              observer.next({
+                success: true,
+                message: `¡Recompensa "${recompensa.nombre}" canjeada exitosamente!`,
+                canjeId: canje.id,
+                canje: canje
+              });
+              observer.complete();
+            },
+            error: (error) => {
+              console.error('❌ Error usando puntos:', error);
+              observer.next({
+                success: false,
+                message: 'Error al procesar los puntos',
+                canjeId: ''
+              });
+              observer.complete();
+            }
+          });
+        },
+        error: (error) => {
+          console.error('❌ Error validando canje:', error);
+          observer.next({
+            success: false,
+            message: 'Error al validar el canje',
+            canjeId: ''
+          });
+          observer.complete();
+        }
+      });
+    });
   }
 
   /**
-   * Validar si el usuario puede canjear una recompensa
+   * 🔧 CORREGIDO: Validar si el usuario puede canjear una recompensa
    */
-  validateRedemption(userId: number, recompensa: Recompensa): ValidationResult {
+  validateRedemption(recompensa: Recompensa): Observable<ValidationResult> {
     // Verificar si está disponible
     if (!recompensa.disponible) {
-      return { valid: false, message: 'Esta recompensa no está disponible' };
+      return of({ valid: false, message: 'Esta recompensa no está disponible' });
     }
 
     // Verificar stock
     if (recompensa.stock <= 0) {
-      return { valid: false, message: 'Esta recompensa está agotada' };
+      return of({ valid: false, message: 'Esta recompensa está agotada' });
     }
 
-    // Verificar puntos suficientes
-    const userPoints = this.pointsService.getUserPoints(userId);
-    if (userPoints < recompensa.puntosRequeridos) {
-      const faltantes = recompensa.puntosRequeridos - userPoints;
-      return { 
-        valid: false, 
-        message: `Te faltan ${faltantes} puntos para canjear esta recompensa` 
-      };
-    }
+    // Verificar puntos suficientes mediante API
+    return this.pointsService.getUserPoints().pipe(
+      map(response => {
+        const userPoints = response.puntosActuales;
+        
+        if (userPoints < recompensa.puntosRequeridos) {
+          const faltantes = recompensa.puntosRequeridos - userPoints;
+          return { 
+            valid: false, 
+            message: `Te faltan ${faltantes} puntos para canjear esta recompensa` 
+          };
+        }
 
-    // Verificar límite por usuario
-    const userRedemptions = this.getUserRedemptions(userId);
-    const sameRewardCount = userRedemptions.filter(r => r.recompensaId === recompensa.id).length;
-    
-    if (sameRewardCount >= recompensa.limitePorUsuario) {
-      return { 
-        valid: false, 
-        message: `Has alcanzado el límite de ${recompensa.limitePorUsuario} canjes para esta recompensa` 
-      };
-    }
+        // Verificar límite por usuario (usando localStorage por ahora)
+        const userRedemptions = this.getUserRedemptions();
+        const sameRewardCount = userRedemptions.filter(r => r.recompensaId === recompensa.id).length;
+        
+        if (sameRewardCount >= recompensa.limitePorUsuario) {
+          return { 
+            valid: false, 
+            message: `Has alcanzado el límite de ${recompensa.limitePorUsuario} canjes para esta recompensa` 
+          };
+        }
 
-    return { valid: true, message: 'Validación exitosa' };
+        return { valid: true, message: 'Validación exitosa' };
+      }),
+      catchError(error => {
+        console.error('❌ Error en validación:', error);
+        return of({ valid: false, message: 'Error al validar puntos' });
+      })
+    );
   }
 
   // ==================== HISTORIAL DE CANJES ====================
 
   /**
-   * Obtener canjes del usuario
+   * 🔧 SIMPLIFICADO: Obtener canjes del usuario (sin userId)
    */
-  getUserRedemptions(userId: number): CanjeRecompensa[] {
-    const redemptionsKey = `user_redemptions_${userId}`;
+  getUserRedemptions(): CanjeRecompensa[] {
+    const redemptionsKey = `user_redemptions`;
     const redemptions = localStorage.getItem(redemptionsKey);
     
     if (redemptions) {
@@ -379,8 +419,8 @@ export class RewardsService {
   /**
    * Obtener canjes activos (no expirados ni usados)
    */
-  getActiveRedemptions(userId: number): CanjeRecompensa[] {
-    const redemptions = this.getUserRedemptions(userId);
+  getActiveRedemptions(): CanjeRecompensa[] {
+    const redemptions = this.getUserRedemptions();
     const now = new Date();
     
     return redemptions.filter(canje => {
@@ -392,16 +432,16 @@ export class RewardsService {
   /**
    * Marcar canje como usado
    */
-  markRedemptionAsUsed(userId: number, canjeId: string): boolean {
+  markRedemptionAsUsed(canjeId: string): boolean {
     try {
-      const redemptions = this.getUserRedemptions(userId);
+      const redemptions = this.getUserRedemptions();
       const canje = redemptions.find(r => r.id === canjeId);
       
       if (canje && !canje.usado) {
         canje.usado = true;
         canje.fechaUso = new Date().toISOString();
         
-        const redemptionsKey = `user_redemptions_${userId}`;
+        const redemptionsKey = `user_redemptions`;
         localStorage.setItem(redemptionsKey, JSON.stringify(redemptions));
         
         return true;
@@ -416,7 +456,7 @@ export class RewardsService {
 
   // ==================== MÉTODOS AUXILIARES PRIVADOS ====================
 
-  private createRedemptionRecord(userId: number, recompensa: Recompensa): CanjeRecompensa {
+  private createRedemptionRecord(recompensa: Recompensa): CanjeRecompensa {
     const now = new Date();
     const expiry = new Date(now.getTime() + (recompensa.validezDias * 24 * 60 * 60 * 1000));
     
@@ -435,8 +475,8 @@ export class RewardsService {
     };
 
     // Guardar canje
-    const redemptionsKey = `user_redemptions_${userId}`;
-    const redemptions = this.getUserRedemptions(userId);
+    const redemptionsKey = `user_redemptions`;
+    const redemptions = this.getUserRedemptions();
     redemptions.unshift(canje);
     
     // Mantener solo los últimos 50 canjes
@@ -459,7 +499,7 @@ export class RewardsService {
     return code;
   }
 
-  // ==================== MÉTODOS ADICIONALES ====================
+  // ==================== MÉTODOS ADICIONALES ACTUALIZADOS ====================
 
   /**
    * Buscar recompensas por nombre
@@ -485,9 +525,9 @@ export class RewardsService {
   /**
    * Obtener estadísticas de canjes del usuario
    */
-  getUserRedemptionStats(userId: number): RedemptionStats {
-    const redemptions = this.getUserRedemptions(userId);
-    const active = this.getActiveRedemptions(userId);
+  getUserRedemptionStats(): RedemptionStats {
+    const redemptions = this.getUserRedemptions();
+    const active = this.getActiveRedemptions();
     
     const totalPuntosUsados = redemptions.reduce((sum, r) => sum + r.puntosUsados, 0);
     const totalCanjes = redemptions.length;
@@ -499,9 +539,10 @@ export class RewardsService {
       recompensasFrecuentes[r.nombreRecompensa] = (recompensasFrecuentes[r.nombreRecompensa] || 0) + 1;
     });
     
-    const recompensaFavorita = Object.keys(recompensasFrecuentes).reduce((a, b) => 
-      recompensasFrecuentes[a] > recompensasFrecuentes[b] ? a : b, 'Ninguna'
-    );
+    const recompensaFavorita = Object.keys(recompensasFrecuentes).length > 0 ? 
+      Object.keys(recompensasFrecuentes).reduce((a, b) => 
+        recompensasFrecuentes[a] > recompensasFrecuentes[b] ? a : b
+      ) : 'Ninguna';
 
     return {
       totalCanjes,
@@ -514,46 +555,64 @@ export class RewardsService {
   }
 
   /**
-   * Verificar si una recompensa está disponible para el usuario
+   * 🔧 CORREGIDO: Verificar si una recompensa está disponible para el usuario
    */
-  isRewardAvailableForUser(userId: number, rewardId: number): boolean {
+  isRewardAvailableForUser(rewardId: number): Observable<boolean> {
     const recompensa = this.getReward(rewardId);
-    if (!recompensa) return false;
+    if (!recompensa) return of(false);
     
-    const validation = this.validateRedemption(userId, recompensa);
-    return validation.valid;
+    return this.validateRedemption(recompensa).pipe(
+      map(validation => validation.valid),
+      catchError(() => of(false))
+    );
   }
 
   /**
-   * Obtener próximas recompensas que el usuario puede alcanzar
+   * 🔧 CORREGIDO: Obtener próximas recompensas que el usuario puede alcanzar
    */
-  getUpcomingRewards(userId: number, limit: number = 5): Recompensa[] {
-    const userPoints = this.pointsService.getUserPoints(userId);
-    
-    return this.getAllRewards()
-      .filter(r => r.puntosRequeridos > userPoints)
-      .sort((a, b) => a.puntosRequeridos - b.puntosRequeridos)
-      .slice(0, limit);
+  getUpcomingRewards(limit: number = 5): Observable<Recompensa[]> {
+    return this.pointsService.getUserPoints().pipe(
+      map(response => {
+        const userPoints = response.puntosActuales;
+        
+        return this.getAllRewards()
+          .filter(r => r.puntosRequeridos > userPoints)
+          .sort((a, b) => a.puntosRequeridos - b.puntosRequeridos)
+          .slice(0, limit);
+      }),
+      catchError(error => {
+        console.error('❌ Error obteniendo próximas recompensas:', error);
+        return of([]);
+      })
+    );
   }
 
   /**
-   * Calcular tiempo estimado para alcanzar una recompensa
+   * 🔧 CORREGIDO: Calcular tiempo estimado para alcanzar una recompensa
    */
-  getTimeToReward(userId: number, rewardId: number): string {
+  getTimeToReward(rewardId: number): Observable<string> {
     const recompensa = this.getReward(rewardId);
-    if (!recompensa) return 'Recompensa no encontrada';
+    if (!recompensa) return of('Recompensa no encontrada');
     
-    const userPoints = this.pointsService.getUserPoints(userId);
-    const puntosNecesarios = recompensa.puntosRequeridos - userPoints;
-    
-    if (puntosNecesarios <= 0) return 'Ya puedes canjear esta recompensa';
-    
-    // Estimar basado en promedio de puntos por compra ($15 promedio = 15 puntos)
-    const puntosPromedioPorCompra = 15;
-    const comprasNecesarias = Math.ceil(puntosNecesarios / puntosPromedioPorCompra);
-    
-    if (comprasNecesarias === 1) return '1 compra más';
-    return `${comprasNecesarias} compras más`;
+    return this.pointsService.getUserPoints().pipe(
+      map(response => {
+        const userPoints = response.puntosActuales;
+        const puntosNecesarios = recompensa.puntosRequeridos - userPoints;
+        
+        if (puntosNecesarios <= 0) return 'Ya puedes canjear esta recompensa';
+        
+        // Estimar basado en promedio de puntos por compra ($15 promedio = 15 puntos)
+        const puntosPromedioPorCompra = 15;
+        const comprasNecesarias = Math.ceil(puntosNecesarios / puntosPromedioPorCompra);
+        
+        if (comprasNecesarias === 1) return '1 compra más';
+        return `${comprasNecesarias} compras más`;
+      }),
+      catchError(error => {
+        console.error('❌ Error calculando tiempo:', error);
+        return of('No se pudo calcular');
+      })
+    );
   }
 }
 

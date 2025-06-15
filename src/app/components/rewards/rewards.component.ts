@@ -63,14 +63,17 @@ export class RewardsComponent implements OnInit {
 
   // ==================== CARGA DE DATOS ====================
 
-  loadUserData(): void {
-    const currentUser = this.authService.getCurrentUser();
-    if (currentUser) {
-      this.userId = currentUser.id;
-      this.userPoints = this.pointsService.getUserPoints(this.userId);
-      this.loadUserRedemptions();
+  private loadUserData(): void {
+  this.pointsService.getUserPoints().subscribe({
+    next: (response) => {
+      this.userPoints = response.puntosActuales;
+    },
+    error: (error) => {
+      console.error('❌ Error cargando puntos:', error);
+      this.userPoints = 0;
     }
-  }
+  });
+}
 
   loadRewards(): void {
     this.cargando = true;
@@ -83,10 +86,10 @@ export class RewardsComponent implements OnInit {
     }, 1000);
   }
 
-  loadUserRedemptions(): void {
-    this.userRedemptions = this.rewardsService.getUserRedemptions(this.userId);
-    this.activeRedemptions = this.rewardsService.getActiveRedemptions(this.userId);
-  }
+  private loadUserRedemptions(): void {
+  this.userRedemptions = this.rewardsService.getUserRedemptions();
+  this.activeRedemptions = this.rewardsService.getActiveRedemptions();
+}
 
   // ==================== FILTRADO Y BÚSQUEDA ====================
 
@@ -184,16 +187,22 @@ export class RewardsComponent implements OnInit {
   }
 
   redeemReward(reward: Recompensa): void {
-    this.canjeando = true;
-
-    setTimeout(() => {
-      const result = this.rewardsService.redeemReward(this.userId, reward.id);
+  this.canjeando = true;
+  
+  this.rewardsService.redeemReward(reward.id).subscribe({
+    next: (result) => {
+      this.canjeando = false;
       
       if (result.success) {
         this.toastService.showSuccess(result.message);
         
-        // Actualizar datos del usuario
-        this.userPoints = this.pointsService.getUserPoints(this.userId);
+        // Recargar puntos del usuario
+        this.pointsService.getUserPoints().subscribe({
+          next: (response) => {
+            this.userPoints = response.puntosActuales;
+          }
+        });
+        
         this.loadUserRedemptions();
         this.loadRewards(); // Recargar para actualizar stock
         
@@ -207,10 +216,14 @@ export class RewardsComponent implements OnInit {
       } else {
         this.toastService.showError(result.message);
       }
-      
+    },
+    error: (error) => {
+      console.error('❌ Error canjeando recompensa:', error);
       this.canjeando = false;
-    }, 1500);
-  }
+      this.toastService.showError('Error al canjear la recompensa');
+    }
+  });
+}
 
   closeRewardModal(): void {
     const modalElement = document.getElementById('rewardModal');
@@ -244,20 +257,20 @@ export class RewardsComponent implements OnInit {
   }
 
   useRedemption(canje: CanjeRecompensa): void {
-    const confirmed = confirm(
-      `¿Marcar como usado el canje "${canje.nombreRecompensa}"?\n\n` +
-      `Código: ${canje.codigo}`
-    );
-
-    if (confirmed) {
-      const success = this.rewardsService.markRedemptionAsUsed(this.userId, canje.id);
-      if (success) {
-        this.toastService.showSuccess('Canje marcado como usado');
-        this.loadUserRedemptions();
-      } else {
-        this.toastService.showError('Error al marcar canje como usado');
-      }
+  const confirmed = confirm(
+    `¿Marcar como usado el canje "${canje.nombreRecompensa}"?\n\n` +
+    `Código: ${canje.codigo}`
+  );
+  if (confirmed) {
+    const success = this.rewardsService.markRedemptionAsUsed(canje.id);
+    
+    if (success) {
+      this.toastService.showSuccess('Canje marcado como usado');
+      this.loadUserRedemptions();
+    } else {
+      this.toastService.showError('Error al marcar canje como usado');
     }
+  }
   }
 
   copyRedemptionCode(code: string): void {

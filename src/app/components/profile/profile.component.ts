@@ -58,11 +58,12 @@ export class ProfileComponent implements OnInit {
     this.loadUserData();
   }
 
-  loadUserData(): void {
+  // 🔧 MÉTODO ACTUALIZADO CON CORRECCIONES
+  private loadUserData(): void {
     this.currentUser = this.authService.getCurrentUser();
     
     if (this.currentUser) {
-      // 🔥 CORREGIDO: Cargar estadísticas del usuario usando Observable
+      // 🔧 CORREGIDO: Usar Observable correctamente
       this.userService.getUserStats(this.currentUser.id).subscribe({
         next: (stats) => {
           this.userStats = stats;
@@ -70,7 +71,6 @@ export class ProfileComponent implements OnInit {
         },
         error: (error) => {
           console.error('❌ Error al cargar estadísticas de usuario:', error);
-          // Usar estadísticas por defecto si falla
           this.userStats = {
             totalFavoritas: 0,
             totalVistas: 0,
@@ -80,36 +80,67 @@ export class ProfileComponent implements OnInit {
         }
       });
 
-      // 🆕 CARGAR FAVORITAS REALES SEPARADAMENTE
-      this.userService.getUserFavorites().subscribe({
-        next: (favoritas) => {
-          this.realFavoritesCount = favoritas.length;
-          console.log('❤️ Favoritas reales cargadas:', this.realFavoritesCount);
+      // 🔧 CORREGIDO: Cargar puntos con Observable
+      this.pointsService.getUserPoints().subscribe({
+        next: (response) => {
+          this.pointsStats = {
+            puntosActuales: response.puntosActuales,
+            totalGanados: response.totalGanados,
+            totalUsados: response.totalUsados,
+            valorEnDolares: response.puntosActuales / 1, // 1 punto = $1
+            ultimaActividad: new Date().toISOString(),
+            totalReferidos: 0 // 🆕 AGREGAR ESTA LÍNEA (por ahora en 0)
+          };
+          this.userPoints = response.puntosActuales;
+
+          // 🆕 CARGAR REFERIDOS SEPARADAMENTE
+          this.pointsService.getUserReferrals().subscribe({
+            next: (referrals) => {
+              if (this.pointsStats) {
+                this.pointsStats.totalReferidos = referrals.length;
+              }
+            },
+            error: (error) => {
+              console.error('❌ Error cargando referidos:', error);
+            }
+          });
         },
         error: (error) => {
-          console.error('❌ Error al cargar favoritas:', error);
-          this.realFavoritesCount = 0;
+          console.error('❌ Error cargando puntos:', error);
+          this.userPoints = 0;
+          this.pointsStats = {
+            puntosActuales: 0,
+            totalGanados: 0,
+            totalUsados: 0,
+            valorEnDolares: 0,
+            ultimaActividad: null,
+            totalReferidos: 0 // 🆕 AGREGAR ESTA LÍNEA
+          };
         }
       });
-      
-      // 🆕 CARGAR ESTADÍSTICAS DE PUNTOS (si tienes PointsService)
-      if (this.pointsService) {
-        this.pointsStats = this.pointsService.getUserPointsStats(this.currentUser.id);
-        this.userPoints = this.pointsService.getUserPoints(this.currentUser.id);
-        
-        // 🆕 OBTENER CÓDIGO DE REFERIDO
-        this.referralCode = this.pointsService.getUserReferralCode(this.currentUser.id);
-        
-        // 🆕 DAR PUNTOS DE BIENVENIDA SI ES NUEVO USUARIO
-        this.pointsService.giveWelcomePoints(this.currentUser.id);
-      }
-      
-      // Inicializar formulario con datos actuales
-      this.profileForm = {
-        nombre: this.currentUser.nombre,
-        email: this.currentUser.email,
-        avatar: this.currentUser.avatar
-      };
+
+      // 🔧 CORREGIDO: Obtener código de referido
+      this.pointsService.getReferralCode().subscribe({
+        next: (code) => {
+          this.referralCode = code;
+        },
+        error: (error) => {
+          console.error('❌ Error obteniendo código de referido:', error);
+          this.referralCode = '';
+        }
+      });
+
+      // 🔧 CORREGIDO: Dar puntos de bienvenida
+      this.pointsService.giveWelcomePoints().subscribe({
+        next: (success) => {
+          if (success) {
+            console.log('✅ Puntos de bienvenida otorgados');
+          }
+        },
+        error: (error) => {
+          console.error('❌ Error con puntos de bienvenida:', error);
+        }
+      });
     }
   }
 
@@ -307,17 +338,29 @@ export class ProfileComponent implements OnInit {
   }
 
   /**
-   * Obtener valor en dólares de los puntos
+   * 🔧 MÉTODO CORREGIDO: Obtener valor en dólares de los puntos
+   */
+  getUserPointsValue(): number {
+    return this.userPoints / 1; // 1 punto = $1
+  }
+
+  /**
+   * 🔧 MÉTODO AGREGADO: Obtener valor de puntos (método adicional requerido)
    */
   getPointsValue(): number {
-    return this.pointsService.getPointsValue(this.userPoints);
+    return this.userPoints / 1; // 1 punto = $1
   }
 
   /**
    * Obtener configuración de puntos para mostrar información
    */
   getPointsConfig() {
-    return this.pointsService.getPointsConfig();
+    return {
+      puntosPorDolar: 1,
+      puntosBienvenida: 50,
+      puntosReferido: 100,
+      puntosNuevoUsuario: 25
+    };
   }
 
   /**
@@ -379,3 +422,4 @@ export class ProfileComponent implements OnInit {
     alert(message);
   }
 }
+
