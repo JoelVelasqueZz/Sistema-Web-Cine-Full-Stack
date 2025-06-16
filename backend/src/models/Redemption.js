@@ -1,4 +1,4 @@
-// backend/src/models/Redemption.js
+// backend/src/models/Redemption.js - VERSIÓN FINAL CORREGIDA
 const db = require('../config/database');
 const Reward = require('./Reward');
 const Points = require('./Points');
@@ -11,10 +11,22 @@ class Redemption {
    * Crear un nuevo canje de recompensa
    */
   static async create(userId, rewardId, pointsUsed) {
-    const client = await db.getClient();
+    let client = null;
+    let isUsingPool = false;
     
     try {
-      await client.query('BEGIN');
+      // Intentar usar pool si está disponible
+      if (db.pool) {
+        client = await db.pool.connect();
+        isUsingPool = true;
+        await client.query('BEGIN');
+      } else if (db.getClient) {
+        client = await db.getClient();
+        await client.query('BEGIN');
+      } else {
+        // Usar db.query directamente
+        await db.query('BEGIN');
+      }
 
       // 1. Verificar que el usuario puede canjear
       const canRedeem = await Reward.canUserRedeem(userId, rewardId);
@@ -47,15 +59,22 @@ class Redemption {
         recompensa_valor: reward.valor
       };
 
-      const redemptionResult = await client.query(createRedemptionQuery, [
-        userId, rewardId, codigoCanje, pointsUsed, fechaExpiracion, JSON.stringify(metadata)
-      ]);
+      const redemptionResult = client ? 
+        await client.query(createRedemptionQuery, [
+          userId, rewardId, codigoCanje, pointsUsed, fechaExpiracion, JSON.stringify(metadata)
+        ]) : 
+        await db.query(createRedemptionQuery, [
+          userId, rewardId, codigoCanje, pointsUsed, fechaExpiracion, JSON.stringify(metadata)
+        ]);
 
       const redemption = redemptionResult.rows[0];
 
-      // 5. Usar puntos del usuario
-      await Points.usePoints(client, userId, pointsUsed, 
-        `Canje de recompensa: ${reward.nombre}`, 
+      // 5. 🔧 CORRECCIÓN: Usar instancia de Points y método usePoints correcto
+      const pointsInstance = new Points();
+      await pointsInstance.usePoints(
+        userId, 
+        pointsUsed, 
+        `Canje de recompensa: ${reward.nombre}`,
         { 
           redemption_id: redemption.id,
           reward_id: rewardId,
@@ -70,10 +89,20 @@ class Redemption {
           SET stock = stock - 1 
           WHERE id = $1 AND stock > 0
         `;
-        await client.query(reduceStockQuery, [rewardId]);
+        
+        if (client) {
+          await client.query(reduceStockQuery, [rewardId]);
+        } else {
+          await db.query(reduceStockQuery, [rewardId]);
+        }
       }
 
-      await client.query('COMMIT');
+      // Confirmar transacción
+      if (client) {
+        await client.query('COMMIT');
+      } else {
+        await db.query('COMMIT');
+      }
 
       // 7. Formatear respuesta
       return {
@@ -92,11 +121,28 @@ class Redemption {
       };
 
     } catch (error) {
-      await client.query('ROLLBACK');
+      // Rollback en caso de error
+      try {
+        if (client) {
+          await client.query('ROLLBACK');
+        } else {
+          await db.query('ROLLBACK');
+        }
+      } catch (rollbackError) {
+        console.error('❌ Error en rollback:', rollbackError);
+      }
+      
       console.error('❌ Error en Redemption.create:', error);
       throw error;
     } finally {
-      client.release();
+      // Liberar cliente si se usó pool
+      if (client) {
+        if (isUsingPool && client.release) {
+          client.release();
+        } else if (client.release) {
+          client.release();
+        }
+      }
     }
   }
 
@@ -351,12 +397,12 @@ class Redemption {
       let paramCount = 1;
 
       if (rewardId) {
-        query += ` WHERE cr.recompensa_id = ${paramCount}`;
+        query += ` WHERE cr.recompensa_id = $${paramCount}`;
         values.push(rewardId);
         paramCount++;
       }
 
-      query += ` ORDER BY cr.fecha_canje DESC LIMIT ${paramCount} OFFSET ${paramCount + 1}`;
+      query += ` ORDER BY cr.fecha_canje DESC LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
       values.push(limit, offset);
 
       const result = await db.query(query, values);

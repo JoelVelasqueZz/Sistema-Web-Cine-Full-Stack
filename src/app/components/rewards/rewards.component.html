@@ -495,7 +495,7 @@
   </div>
 </div>
 
-<!-- ==================== MODAL DE RECOMPENSA ==================== -->
+<!-- ==================== MODAL DE RECOMPENSA - IMAGEN CORREGIDA ==================== -->
 <div class="modal fade" id="rewardModal" tabindex="-1" aria-labelledby="rewardModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content" *ngIf="selectedReward">
@@ -511,10 +511,12 @@
         <!-- Imagen y descripción -->
         <div class="row mb-4">
           <div class="col-md-4">
-            <img [src]="selectedReward.imagen_url || 'assets/images/default-reward.png'"
+            <!-- 🔧 CORRECCIÓN: Usar getRewardImageUrl() en lugar de imagen_url directa -->
+            <img [src]="getRewardImageUrl(selectedReward)"
                  class="img-fluid rounded shadow-sm"
                  [alt]="selectedReward.nombre"
-                 (error)="onRewardImageError($event)">
+                 (error)="onRewardImageError($event, selectedReward)"
+                 style="width: 100%; height: 200px; object-fit: cover;">
           </div>
           <div class="col-md-8">
             <h6 class="text-success mb-2">{{ selectedReward.nombre }}</h6>
