@@ -1,6 +1,8 @@
 import { Injectable } from '@angular/core';
-import { Observable, of } from 'rxjs';
-import { map, catchError } from 'rxjs/operators';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Observable, BehaviorSubject, of } from 'rxjs';
+import { map, catchError, tap } from 'rxjs/operators';
+import { AuthService } from './auth.service';
 import { PointsService } from './points.service';
 
 @Injectable({
@@ -8,218 +10,89 @@ import { PointsService } from './points.service';
 })
 export class RewardsService {
 
-  private recompensas: Recompensa[] = [
-    // 🎬 RECOMPENSAS DE PELÍCULAS
-    {
-      id: 1,
-      nombre: 'Entrada Gratis',
-      descripcion: 'Una entrada gratuita para cualquier función estándar',
-      categoria: 'peliculas',
-      puntosRequeridos: 850,
-      imagen: 'assets/recompensas/gratis.png',
-      disponible: true,
-      stock: 50,
-      tipo: 'descuento',
-      valor: 8.50,
-      limitePorUsuario: 5,
-      validezDias: 30,
-      terminos: [
-        'Válido para funciones en horarios estándar (lunes a jueves)',
-        'No aplicable para estrenos o funciones VIP',
-        'Sujeto a disponibilidad de asientos'
-      ]
-    },
-    {
-      id: 2,
-      nombre: 'Entrada VIP Gratis',
-      descripcion: 'Una entrada gratuita para sala VIP con asientos premium',
-      categoria: 'peliculas',
-      puntosRequeridos: 1200,
-      imagen: 'assets/recompensas/vip.png',
-      disponible: true,
-      stock: 20,
-      tipo: 'descuento',
-      valor: 12.00,
-      limitePorUsuario: 2,
-      validezDias: 30,
-      terminos: [
-        'Válido para salas VIP con asientos reclinables',
-        'Incluye servicio premium',
-        'Sujeto a disponibilidad'
-      ]
-    },
-    {
-      id: 3,
-      nombre: 'Descuento 50% Entrada',
-      descripcion: '50% de descuento en tu próxima entrada',
-      categoria: 'peliculas',
-      puntosRequeridos: 425,
-      imagen: 'assets/recompensas/50.png',
-      disponible: true,
-      stock: 100,
-      tipo: 'descuento',
-      valor: 4.25,
-      limitePorUsuario: 10,
-      validezDias: 15,
-      terminos: [
-        'Aplicable a cualquier función',
-        'No acumulable con otras promociones',
-        'Válido por 15 días desde el canje'
-      ]
-    },
+  private readonly API_URL = 'http://localhost:3000/api/rewards';
+  
+  // Cache local para mejor performance
+  private rewardsCache = new BehaviorSubject<Recompensa[]>([]);
+  public rewards$ = this.rewardsCache.asObservable();
+  
+  private userRedemptionsCache = new BehaviorSubject<CanjeRecompensa[]>([]);
+  public userRedemptions$ = this.userRedemptionsCache.asObservable();
 
-    // 🍿 RECOMPENSAS DEL BAR
-    {
-      id: 4,
-      nombre: 'Combo Popcorn + Bebida',
-      descripcion: 'Popcorn grande + bebida mediana gratis',
-      categoria: 'bar',
-      puntosRequeridos: 650,
-      imagen: 'assets/recompensas/popcorn.png',
-      disponible: true,
-      stock: 75,
-      tipo: 'producto',
-      valor: 6.50,
-      limitePorUsuario: 8,
-      validezDias: 20,
-      terminos: [
-        'Combo incluye popcorn grande y bebida mediana',
-        'Válido en todas las funciones',
-        'Recoger en el mostrador del bar'
-      ]
-    },
-    {
-      id: 5,
-      nombre: 'Dulces Premium',
-      descripcion: 'Selección de dulces premium (3 productos)',
-      categoria: 'bar',
-      puntosRequeridos: 450,
-      imagen: 'assets/recompensas/dulces.png',
-      disponible: true,
-      stock: 60,
-      tipo: 'producto',
-      valor: 4.50,
-      limitePorUsuario: 6,
-      validezDias: 25,
-      terminos: [
-        'Incluye 3 productos de dulcería premium',
-        'Selección disponible según stock',
-        'Válido en horario de funciones'
-      ]
-    },
-    {
-      id: 6,
-      nombre: 'Descuento 25% Bar',
-      descripcion: '25% de descuento en productos del bar',
-      categoria: 'bar',
-      puntosRequeridos: 300,
-      imagen: 'assets/recompensas/25.png',
-      disponible: true,
-      stock: 150,
-      tipo: 'descuento',
-      valor: 0, // Porcentaje
-      limitePorUsuario: 15,
-      validezDias: 10,
-      terminos: [
-        'Descuento aplicable en todos los productos del bar',
-        'Máximo descuento de $15 por compra',
-        'No válido para combos ya promocionales'
-      ]
-    },
-
-    // 🎁 RECOMPENSAS ESPECIALES
-    {
-      id: 7,
-      nombre: 'Experiencia Completa',
-      descripcion: '2 entradas + combo grande + descuento estacionamiento',
-      categoria: 'especial',
-      puntosRequeridos: 2000,
-      imagen: 'assets/recompensas/completa.png',
-      disponible: true,
-      stock: 15,
-      tipo: 'paquete',
-      valor: 25.00,
-      limitePorUsuario: 1,
-      validezDias: 45,
-      terminos: [
-        'Incluye 2 entradas estándar para cualquier función',
-        'Combo grande: 2 popcorns + 2 bebidas + dulces',
-        'Descuento 50% en estacionamiento',
-        'Válido por 45 días desde el canje'
-      ]
-    },
-    {
-      id: 8,
-      nombre: 'Entrada Estreno',
-      descripcion: 'Entrada para función de estreno + poster exclusivo',
-      categoria: 'especial',
-      puntosRequeridos: 1500,
-      imagen: 'assets/recompensas/estreno.png',
-      disponible: true,
-      stock: 30,
-      tipo: 'experiencia',
-      valor: 15.00,
-      limitePorUsuario: 2,
-      validezDias: 60,
-      terminos: [
-        'Válido para funciones de estreno los primeros 3 días',
-        'Incluye poster exclusivo de la película',
-        'Sujeto a disponibilidad de funciones de estreno'
-      ]
-    },
-
-    // 💳 DESCUENTOS Y CÓDIGOS
-    {
-      id: 9,
-      nombre: 'Código 15% Descuento',
-      descripcion: 'Código de 15% descuento para tu próxima compra online',
-      categoria: 'descuentos',
-      puntosRequeridos: 200,
-      imagen: 'assets/recompensas/15.png',
-      disponible: true,
-      stock: 200,
-      tipo: 'codigo',
-      valor: 0, // Porcentaje
-      limitePorUsuario: 20,
-      validezDias: 7,
-      terminos: [
-        'Código válido solo para compras online',
-        'Aplicable a entradas y productos del bar',
-        'Máximo descuento de $10 por compra'
-      ]
-    },
-    {
-      id: 10,
-      nombre: 'Puntos Bonus x2',
-      descripcion: 'Duplica los puntos en tu próxima compra',
-      categoria: 'especial',
-      puntosRequeridos: 500,
-      imagen: 'assets/recompensas/bonus.png',
-      disponible: true,
-      stock: 80,
-      tipo: 'bonus',
-      valor: 0,
-      limitePorUsuario: 3,
-      validezDias: 14,
-      terminos: [
-        'Duplica los puntos ganados en tu próxima compra',
-        'Válido para compras de mínimo $10',
-        'Aplicable una sola vez por usuario'
-      ]
-    }
-  ];
-
-  constructor(private pointsService: PointsService) {
-    console.log('🆕 Servicio de recompensas actualizado para API!');
+  constructor(
+    private http: HttpClient,
+    private authService: AuthService,
+    private pointsService: PointsService
+  ) {
+    console.log('🏆 RewardsService conectado a API:', this.API_URL);
+    this.initializeService();
   }
 
-  // ==================== OBTENER RECOMPENSAS ====================
+  // ==================== INICIALIZACIÓN ====================
+
+  private initializeService(): void {
+    // Cargar recompensas si el usuario está autenticado
+    if (this.authService.isLoggedIn()) {
+      this.loadAllRewards();
+      this.loadUserRedemptions();
+    }
+
+    // Suscribirse a cambios de autenticación
+    this.authService.authStatus$.subscribe(isLoggedIn => {
+      if (isLoggedIn) {
+        this.loadAllRewards();
+        this.loadUserRedemptions();
+      } else {
+        this.rewardsCache.next([]);
+        this.userRedemptionsCache.next([]);
+      }
+    });
+  }
+
+  // ==================== OBTENER RECOMPENSAS (API) ====================
 
   /**
-   * Obtener todas las recompensas disponibles
+   * Cargar todas las recompensas desde la API
+   */
+  loadAllRewards(): void {
+    this.getAllRewardsFromAPI().subscribe({
+      next: (rewards) => {
+        this.rewardsCache.next(rewards);
+        console.log(`✅ ${rewards.length} recompensas cargadas desde API`);
+      },
+      error: (error) => {
+        console.error('❌ Error cargando recompensas:', error);
+        // Fallback a datos mock si la API falla
+        this.rewardsCache.next(this.getMockRewards());
+      }
+    });
+  }
+
+  /**
+   * Obtener todas las recompensas desde la API
+   */
+  private getAllRewardsFromAPI(): Observable<Recompensa[]> {
+    const headers = this.getAuthHeaders();
+    
+    return this.http.get<ApiResponse<Recompensa[]>>(`${this.API_URL}`, { headers }).pipe(
+      map(response => {
+        if (response.success && response.data) {
+          return response.data.map(reward => this.transformApiReward(reward));
+        }
+        return [];
+      }),
+      catchError(error => {
+        console.error('❌ Error en API de recompensas:', error);
+        return of([]);
+      })
+    );
+  }
+
+  /**
+   * Obtener todas las recompensas (desde cache o API)
    */
   getAllRewards(): Recompensa[] {
-    return this.recompensas.filter(r => r.disponible && r.stock > 0);
+    return this.rewardsCache.value.filter(r => r.disponible && r.stock > 0);
   }
 
   /**
@@ -233,135 +106,104 @@ export class RewardsService {
    * Obtener una recompensa específica
    */
   getReward(rewardId: number): Recompensa | null {
-    return this.recompensas.find(r => r.id === rewardId) || null;
+    return this.rewardsCache.value.find(r => r.id === rewardId) || null;
   }
 
   /**
-   * Obtener categorías disponibles
+   * Obtener categorías disponibles desde la API
    */
-  getCategories(): string[] {
-    const categories = [...new Set(this.recompensas.map(r => r.categoria))];
-    return categories;
-  }
-
-  /**
-   * 🔧 CORREGIDO: Obtener recompensas que el usuario puede canjear
-   */
-  getAffordableRewards(): Observable<Recompensa[]> {
-    return this.pointsService.getUserPoints().pipe(
-      map(response => {
-        const userPoints = response.puntosActuales;
-        return this.getAllRewards().filter(r => r.puntosRequeridos <= userPoints);
-      }),
+  getCategories(): Observable<string[]> {
+    const headers = this.getAuthHeaders();
+    
+    return this.http.get<ApiResponse<string[]>>(`${this.API_URL}/categories`, { headers }).pipe(
+      map(response => response.success ? response.data : ['peliculas', 'bar', 'especial', 'descuentos']),
       catchError(error => {
-        console.error('❌ Error obteniendo recompensas disponibles:', error);
-        return of([]);
+        console.error('❌ Error obteniendo categorías:', error);
+        return of(['peliculas', 'bar', 'especial', 'descuentos']);
       })
     );
   }
 
-  // ==================== CANJE DE RECOMPENSAS ====================
+  /**
+   * Buscar recompensas
+   */
+  searchRewards(query: string): Recompensa[] {
+    const searchTerm = query.toLowerCase();
+    return this.getAllRewards().filter(r => 
+      r.nombre.toLowerCase().includes(searchTerm) ||
+      r.descripcion.toLowerCase().includes(searchTerm)
+    );
+  }
+
+  // ==================== CANJE DE RECOMPENSAS (API) ====================
 
   /**
-   * 🔧 CORREGIDO: Canjear una recompensa
+   * Canjear una recompensa mediante la API
    */
   redeemReward(rewardId: number): Observable<RedeemResult> {
-    return new Observable(observer => {
-      const recompensa = this.getReward(rewardId);
-      
-      if (!recompensa) {
-        observer.next({
+    if (!this.authService.isLoggedIn()) {
+      return of({
+        success: false,
+        message: 'Debes iniciar sesión para canjear recompensas',
+        canjeId: ''
+      });
+    }
+
+    const headers = this.getAuthHeaders();
+    
+    return this.http.post<ApiResponse<any>>(`${this.API_URL}/redeem/${rewardId}`, {}, { headers }).pipe(
+      map(response => {
+        if (response.success && response.data) {
+          // Actualizar cache local
+          this.loadAllRewards();
+          this.loadUserRedemptions();
+          
+          // Refrescar puntos del usuario
+          this.pointsService.refreshPoints();
+          
+          return {
+            success: true,
+            message: response.message || 'Recompensa canjeada exitosamente',
+            canjeId: response.data.canje?.id || '',
+            canje: response.data.canje ? this.transformApiRedemption(response.data.canje) : undefined
+          };
+        }
+        
+        return {
           success: false,
-          message: 'Recompensa no encontrada',
+          message: response.message || 'Error al canjear recompensa',
+          canjeId: ''
+        };
+      }),
+      catchError(error => {
+        console.error('❌ Error canjeando recompensa:', error);
+        return of({
+          success: false,
+          message: error.error?.message || 'Error al procesar el canje',
           canjeId: ''
         });
-        observer.complete();
-        return;
-      }
-
-      // Validar con API
-      this.validateRedemption(recompensa).subscribe({
-        next: (validation) => {
-          if (!validation.valid) {
-            observer.next({
-              success: false,
-              message: validation.message,
-              canjeId: ''
-            });
-            observer.complete();
-            return;
-          }
-
-          // Usar puntos mediante API
-          this.pointsService.usePoints(
-            recompensa.puntosRequeridos,
-            `Canje: ${recompensa.nombre}`,
-            { rewardId: rewardId, rewardName: recompensa.nombre }
-          ).subscribe({
-            next: (pointsUsed) => {
-              if (!pointsUsed) {
-                observer.next({
-                  success: false,
-                  message: 'Error al procesar los puntos',
-                  canjeId: ''
-                });
-                observer.complete();
-                return;
-              }
-
-              // Reducir stock
-              recompensa.stock--;
-
-              // Crear registro de canje
-              const canje = this.createRedemptionRecord(recompensa);
-              
-              observer.next({
-                success: true,
-                message: `¡Recompensa "${recompensa.nombre}" canjeada exitosamente!`,
-                canjeId: canje.id,
-                canje: canje
-              });
-              observer.complete();
-            },
-            error: (error) => {
-              console.error('❌ Error usando puntos:', error);
-              observer.next({
-                success: false,
-                message: 'Error al procesar los puntos',
-                canjeId: ''
-              });
-              observer.complete();
-            }
-          });
-        },
-        error: (error) => {
-          console.error('❌ Error validando canje:', error);
-          observer.next({
-            success: false,
-            message: 'Error al validar el canje',
-            canjeId: ''
-          });
-          observer.complete();
-        }
-      });
-    });
+      })
+    );
   }
 
   /**
-   * 🔧 CORREGIDO: Validar si el usuario puede canjear una recompensa
+   * Validar si el usuario puede canjear una recompensa
    */
   validateRedemption(recompensa: Recompensa): Observable<ValidationResult> {
-    // Verificar si está disponible
+    if (!this.authService.isLoggedIn()) {
+      return of({ valid: false, message: 'Debes iniciar sesión' });
+    }
+
+    // Verificaciones básicas
     if (!recompensa.disponible) {
       return of({ valid: false, message: 'Esta recompensa no está disponible' });
     }
 
-    // Verificar stock
     if (recompensa.stock <= 0) {
       return of({ valid: false, message: 'Esta recompensa está agotada' });
     }
 
-    // Verificar puntos suficientes mediante API
+    // Verificar puntos con el servicio de puntos
     return this.pointsService.getUserPoints().pipe(
       map(response => {
         const userPoints = response.puntosActuales;
@@ -374,8 +216,8 @@ export class RewardsService {
           };
         }
 
-        // Verificar límite por usuario (usando localStorage por ahora)
-        const userRedemptions = this.getUserRedemptions();
+        // Verificar límite por usuario
+        const userRedemptions = this.userRedemptionsCache.value;
         const sameRewardCount = userRedemptions.filter(r => r.recompensaId === recompensa.id).length;
         
         if (sameRewardCount >= recompensa.limitePorUsuario) {
@@ -394,33 +236,60 @@ export class RewardsService {
     );
   }
 
-  // ==================== HISTORIAL DE CANJES ====================
+  // ==================== HISTORIAL DE CANJES (API) ====================
 
   /**
-   * 🔧 SIMPLIFICADO: Obtener canjes del usuario (sin userId)
+   * Cargar canjes del usuario desde la API
+   */
+  loadUserRedemptions(): void {
+    this.getUserRedemptionsFromAPI().subscribe({
+      next: (redemptions) => {
+        this.userRedemptionsCache.next(redemptions);
+        console.log(`✅ ${redemptions.length} canjes del usuario cargados`);
+      },
+      error: (error) => {
+        console.error('❌ Error cargando canjes del usuario:', error);
+        this.userRedemptionsCache.next([]);
+      }
+    });
+  }
+
+  /**
+   * Obtener canjes del usuario desde la API
+   */
+  private getUserRedemptionsFromAPI(): Observable<CanjeRecompensa[]> {
+    if (!this.authService.isLoggedIn()) {
+      return of([]);
+    }
+
+    const headers = this.getAuthHeaders();
+    
+    return this.http.get<ApiResponse<any[]>>(`${this.API_URL}/my/redemptions`, { headers }).pipe(
+      map(response => {
+        if (response.success && response.data) {
+          return response.data.map(redemption => this.transformApiRedemption(redemption));
+        }
+        return [];
+      }),
+      catchError(error => {
+        console.error('❌ Error obteniendo canjes del usuario:', error);
+        return of([]);
+      })
+    );
+  }
+
+  /**
+   * Obtener canjes del usuario (desde cache)
    */
   getUserRedemptions(): CanjeRecompensa[] {
-    const redemptionsKey = `user_redemptions`;
-    const redemptions = localStorage.getItem(redemptionsKey);
-    
-    if (redemptions) {
-      try {
-        return JSON.parse(redemptions).sort((a: CanjeRecompensa, b: CanjeRecompensa) => 
-          new Date(b.fechaCanje).getTime() - new Date(a.fechaCanje).getTime()
-        );
-      } catch (error) {
-        console.error('Error al obtener canjes:', error);
-        return [];
-      }
-    }
-    return [];
+    return this.userRedemptionsCache.value;
   }
 
   /**
    * Obtener canjes activos (no expirados ni usados)
    */
   getActiveRedemptions(): CanjeRecompensa[] {
-    const redemptions = this.getUserRedemptions();
+    const redemptions = this.userRedemptionsCache.value;
     const now = new Date();
     
     return redemptions.filter(canje => {
@@ -430,193 +299,201 @@ export class RewardsService {
   }
 
   /**
-   * Marcar canje como usado
+   * Marcar canje como usado mediante la API
    */
-  markRedemptionAsUsed(canjeId: string): boolean {
-    try {
-      const redemptions = this.getUserRedemptions();
-      const canje = redemptions.find(r => r.id === canjeId);
-      
-      if (canje && !canje.usado) {
-        canje.usado = true;
-        canje.fechaUso = new Date().toISOString();
-        
-        const redemptionsKey = `user_redemptions`;
-        localStorage.setItem(redemptionsKey, JSON.stringify(redemptions));
-        
-        return true;
-      }
-      
-      return false;
-    } catch (error) {
-      console.error('Error al marcar canje como usado:', error);
-      return false;
+  markRedemptionAsUsed(canjeId: string): Observable<boolean> {
+    if (!this.authService.isLoggedIn()) {
+      return of(false);
     }
-  }
 
-  // ==================== MÉTODOS AUXILIARES PRIVADOS ====================
-
-  private createRedemptionRecord(recompensa: Recompensa): CanjeRecompensa {
-    const now = new Date();
-    const expiry = new Date(now.getTime() + (recompensa.validezDias * 24 * 60 * 60 * 1000));
+    const headers = this.getAuthHeaders();
     
-    const canje: CanjeRecompensa = {
-      id: this.generateCanjeId(),
-      recompensaId: recompensa.id,
-      nombreRecompensa: recompensa.nombre,
-      descripcion: recompensa.descripcion,
-      tipo: recompensa.tipo,
-      valor: recompensa.valor,
-      codigo: this.generateRedemptionCode(),
-      fechaCanje: now.toISOString(),
-      fechaExpiracion: expiry.toISOString(),
-      usado: false,
-      puntosUsados: recompensa.puntosRequeridos
-    };
-
-    // Guardar canje
-    const redemptionsKey = `user_redemptions`;
-    const redemptions = this.getUserRedemptions();
-    redemptions.unshift(canje);
-    
-    // Mantener solo los últimos 50 canjes
-    const limitedRedemptions = redemptions.slice(0, 50);
-    localStorage.setItem(redemptionsKey, JSON.stringify(limitedRedemptions));
-    
-    return canje;
-  }
-
-  private generateCanjeId(): string {
-    return 'CANJE-' + Date.now().toString() + Math.random().toString(36).substr(2, 5).toUpperCase();
-  }
-
-  private generateRedemptionCode(): string {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let code = '';
-    for (let i = 0; i < 8; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return code;
-  }
-
-  // ==================== MÉTODOS ADICIONALES ACTUALIZADOS ====================
-
-  /**
-   * Buscar recompensas por nombre
-   */
-  searchRewards(query: string): Recompensa[] {
-    const searchTerm = query.toLowerCase();
-    return this.getAllRewards().filter(r => 
-      r.nombre.toLowerCase().includes(searchTerm) ||
-      r.descripcion.toLowerCase().includes(searchTerm)
+    return this.http.patch<ApiResponse<any>>(`${this.API_URL}/use/${canjeId}`, {}, { headers }).pipe(
+      map(response => {
+        if (response.success) {
+          // Actualizar cache local
+          this.loadUserRedemptions();
+          return true;
+        }
+        return false;
+      }),
+      catchError(error => {
+        console.error('❌ Error marcando canje como usado:', error);
+        return of(false);
+      })
     );
   }
 
-  /**
-   * Obtener recompensas ordenadas por puntos
-   */
-  getRewardsSortedByPoints(ascending: boolean = true): Recompensa[] {
-    const rewards = this.getAllRewards();
-    return rewards.sort((a, b) => 
-      ascending ? a.puntosRequeridos - b.puntosRequeridos : b.puntosRequeridos - a.puntosRequeridos
-    );
-  }
+  // ==================== MÉTODOS AUXILIARES ====================
 
   /**
-   * Obtener estadísticas de canjes del usuario
+   * Obtener headers de autenticación
    */
-  getUserRedemptionStats(): RedemptionStats {
-    const redemptions = this.getUserRedemptions();
-    const active = this.getActiveRedemptions();
-    
-    const totalPuntosUsados = redemptions.reduce((sum, r) => sum + r.puntosUsados, 0);
-    const totalCanjes = redemptions.length;
-    const canjesUsados = redemptions.filter(r => r.usado).length;
-    
-    // Recompensas más canjeadas
-    const recompensasFrecuentes: { [key: string]: number } = {};
-    redemptions.forEach(r => {
-      recompensasFrecuentes[r.nombreRecompensa] = (recompensasFrecuentes[r.nombreRecompensa] || 0) + 1;
+  private getAuthHeaders(): HttpHeaders {
+    const token = this.authService.getToken();
+    return new HttpHeaders({
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
     });
-    
-    const recompensaFavorita = Object.keys(recompensasFrecuentes).length > 0 ? 
-      Object.keys(recompensasFrecuentes).reduce((a, b) => 
-        recompensasFrecuentes[a] > recompensasFrecuentes[b] ? a : b
-      ) : 'Ninguna';
+  }
 
+  /**
+   * Transformar recompensa de API a formato frontend
+   */
+  private transformApiReward(apiReward: any): Recompensa {
     return {
-      totalCanjes,
-      canjesActivos: active.length,
-      canjesUsados,
-      totalPuntosUsados,
-      recompensaFavorita,
-      ultimoCanje: redemptions.length > 0 ? redemptions[0].fechaCanje : null
+      id: apiReward.id,
+      nombre: apiReward.nombre,
+      descripcion: apiReward.descripcion,
+      categoria: apiReward.categoria,
+      puntosRequeridos: apiReward.puntos_requeridos,
+      imagen: apiReward.imagen || 'assets/recompensas/default.png',
+      disponible: apiReward.disponible,
+      stock: apiReward.stock,
+      tipo: apiReward.tipo,
+      valor: parseFloat(apiReward.valor) || 0,
+      limitePorUsuario: apiReward.limite_por_usuario || 1,
+      validezDias: apiReward.validez_dias || 30,
+      terminos: apiReward.terminos || []
     };
   }
 
   /**
-   * 🔧 CORREGIDO: Verificar si una recompensa está disponible para el usuario
+   * Transformar canje de API a formato frontend
    */
-  isRewardAvailableForUser(rewardId: number): Observable<boolean> {
-    const recompensa = this.getReward(rewardId);
-    if (!recompensa) return of(false);
-    
-    return this.validateRedemption(recompensa).pipe(
-      map(validation => validation.valid),
-      catchError(() => of(false))
-    );
+  private transformApiRedemption(apiRedemption: any): CanjeRecompensa {
+    return {
+      id: apiRedemption.id,
+      recompensaId: apiRedemption.recompensa_id,
+      nombreRecompensa: apiRedemption.recompensa?.nombre || apiRedemption.nombre_recompensa || 'Recompensa desconocida',
+      descripcion: apiRedemption.recompensa?.descripcion || apiRedemption.descripcion || '',
+      tipo: apiRedemption.recompensa?.tipo || apiRedemption.tipo || 'producto',
+      valor: parseFloat(apiRedemption.recompensa?.valor || apiRedemption.valor) || 0,
+      codigo: apiRedemption.codigo_canje,
+      fechaCanje: apiRedemption.fecha_canje,
+      fechaExpiracion: apiRedemption.fecha_expiracion,
+      fechaUso: apiRedemption.fecha_uso,
+      usado: apiRedemption.usado,
+      puntosUsados: apiRedemption.puntos_usados
+    };
   }
 
   /**
-   * 🔧 CORREGIDO: Obtener próximas recompensas que el usuario puede alcanzar
+   * Datos mock como fallback si la API falla
    */
-  getUpcomingRewards(limit: number = 5): Observable<Recompensa[]> {
+  private getMockRewards(): Recompensa[] {
+    return [
+      {
+        id: 1,
+        nombre: 'Entrada Gratis',
+        descripcion: 'Una entrada gratuita para cualquier función estándar',
+        categoria: 'peliculas',
+        puntosRequeridos: 850,
+        imagen: 'assets/recompensas/entrada-gratis.png',
+        disponible: true,
+        stock: 50,
+        tipo: 'descuento',
+        valor: 8.50,
+        limitePorUsuario: 5,
+        validezDias: 30,
+        terminos: [
+          'Válido para funciones en horarios estándar (lunes a jueves)',
+          'No aplicable para estrenos o funciones VIP',
+          'Sujeto a disponibilidad de asientos'
+        ]
+      },
+      {
+        id: 2,
+        nombre: 'Combo Popcorn + Bebida',
+        descripcion: 'Popcorn grande + bebida mediana gratis',
+        categoria: 'bar',
+        puntosRequeridos: 650,
+        imagen: 'assets/recompensas/combo-popcorn.png',
+        disponible: true,
+        stock: 75,
+        tipo: 'producto',
+        valor: 6.50,
+        limitePorUsuario: 8,
+        validezDias: 20,
+        terminos: [
+          'Combo incluye popcorn grande y bebida mediana',
+          'Válido en todas las funciones',
+          'Recoger en el mostrador del bar'
+        ]
+      }
+    ];
+  }
+
+  // ==================== MÉTODOS PARA HELPERS ====================
+
+  /**
+   * Formatear fecha para mostrar
+   */
+  formatDate(dateString: string): string {
+    return new Date(dateString).toLocaleDateString('es-ES', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  }
+
+  /**
+   * Verificar si un canje está expirado
+   */
+  isExpired(fechaExpiracion: string): boolean {
+    return new Date(fechaExpiracion) <= new Date();
+  }
+
+  /**
+   * Verificar si un canje está activo
+   */
+  isActive(canje: CanjeRecompensa): boolean {
+    return !canje.usado && !this.isExpired(canje.fechaExpiracion);
+  }
+
+  /**
+   * Obtener recompensas que el usuario puede canjear
+   */
+  getAffordableRewards(): Observable<Recompensa[]> {
     return this.pointsService.getUserPoints().pipe(
       map(response => {
         const userPoints = response.puntosActuales;
-        
-        return this.getAllRewards()
-          .filter(r => r.puntosRequeridos > userPoints)
-          .sort((a, b) => a.puntosRequeridos - b.puntosRequeridos)
-          .slice(0, limit);
+        return this.getAllRewards().filter(r => r.puntosRequeridos <= userPoints);
       }),
       catchError(error => {
-        console.error('❌ Error obteniendo próximas recompensas:', error);
+        console.error('❌ Error obteniendo recompensas disponibles:', error);
         return of([]);
       })
     );
   }
 
   /**
-   * 🔧 CORREGIDO: Calcular tiempo estimado para alcanzar una recompensa
+   * Refrescar cache de recompensas
    */
-  getTimeToReward(rewardId: number): Observable<string> {
-    const recompensa = this.getReward(rewardId);
-    if (!recompensa) return of('Recompensa no encontrada');
-    
-    return this.pointsService.getUserPoints().pipe(
-      map(response => {
-        const userPoints = response.puntosActuales;
-        const puntosNecesarios = recompensa.puntosRequeridos - userPoints;
-        
-        if (puntosNecesarios <= 0) return 'Ya puedes canjear esta recompensa';
-        
-        // Estimar basado en promedio de puntos por compra ($15 promedio = 15 puntos)
-        const puntosPromedioPorCompra = 15;
-        const comprasNecesarias = Math.ceil(puntosNecesarios / puntosPromedioPorCompra);
-        
-        if (comprasNecesarias === 1) return '1 compra más';
-        return `${comprasNecesarias} compras más`;
-      }),
-      catchError(error => {
-        console.error('❌ Error calculando tiempo:', error);
-        return of('No se pudo calcular');
-      })
+  refreshRewards(): void {
+    this.loadAllRewards();
+    this.loadUserRedemptions();
+  }
+
+  /**
+   * Verificar si el servicio está disponible
+   */
+  isServiceAvailable(): Observable<boolean> {
+    return this.http.get<any>(`${this.API_URL}/health`).pipe(
+      map(() => true),
+      catchError(() => of(false))
     );
   }
 }
 
 // ==================== INTERFACES ====================
+
+export interface ApiResponse<T> {
+  success: boolean;
+  message?: string;
+  data: T;
+  pagination?: any;
+}
 
 export interface Recompensa {
   id: number;
@@ -628,7 +505,7 @@ export interface Recompensa {
   disponible: boolean;
   stock: number;
   tipo: 'descuento' | 'producto' | 'paquete' | 'experiencia' | 'codigo' | 'bonus';
-  valor: number; // Valor en dólares o porcentaje según el tipo
+  valor: number;
   limitePorUsuario: number;
   validezDias: number;
   terminos: string[];
@@ -646,7 +523,7 @@ export interface CanjeRecompensa {
   fechaExpiracion: string;
   fechaUso?: string;
   usado: boolean;
-  puntosUsados: number;
+  puntosUsados: number; 
 }
 
 export interface RedeemResult {
@@ -659,13 +536,4 @@ export interface RedeemResult {
 export interface ValidationResult {
   valid: boolean;
   message: string;
-}
-
-export interface RedemptionStats {
-  totalCanjes: number;
-  canjesActivos: number;
-  canjesUsados: number;
-  totalPuntosUsados: number;
-  recompensaFavorita: string;
-  ultimoCanje: string | null;
 }

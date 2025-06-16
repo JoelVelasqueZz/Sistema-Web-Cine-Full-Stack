@@ -1,5 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
 import { PointsService } from '../../services/points.service';
 import { RewardsService, Recompensa, CanjeRecompensa } from '../../services/rewards.service';
@@ -11,7 +12,7 @@ import { ToastService } from '../../services/toast.service';
   templateUrl: './rewards.component.html',
   styleUrls: ['./rewards.component.css']
 })
-export class RewardsComponent implements OnInit {
+export class RewardsComponent implements OnInit, OnDestroy {
 
   // Estados del componente
   cargando: boolean = true;
@@ -42,6 +43,9 @@ export class RewardsComponent implements OnInit {
   // Recompensa seleccionada para modal
   selectedReward: Recompensa | null = null;
 
+  // Suscripciones
+  private subscriptions = new Subscription();
+
   constructor(
     public authService: AuthService,
     private pointsService: PointsService,
@@ -57,38 +61,102 @@ export class RewardsComponent implements OnInit {
       return;
     }
 
-    this.loadUserData();
+    this.loadInitialData();
+    this.setupSubscriptions();
+  }
+
+  ngOnDestroy(): void {
+    this.subscriptions.unsubscribe();
+  }
+
+  // ==================== INICIALIZACIÓN ====================
+
+  private loadInitialData(): void {
+    this.cargando = true;
+    
+    // Cargar puntos del usuario
+    this.loadUserPoints();
+    
+    // Cargar recompensas
     this.loadRewards();
+    
+    // Cargar categorías
+    this.loadCategories();
+    
+    // Cargar canjes del usuario
+    this.loadUserRedemptions();
+  }
+
+  private setupSubscriptions(): void {
+    // Suscribirse a cambios en puntos
+    this.subscriptions.add(
+      this.pointsService.userPoints$.subscribe(points => {
+        this.userPoints = points;
+        this.applyFilters(); // Reaplica filtros cuando cambian los puntos
+      })
+    );
+
+    // Suscribirse a cambios en recompensas
+    this.subscriptions.add(
+      this.rewardsService.rewards$.subscribe(rewards => {
+        this.allRewards = rewards;
+        this.applyFilters();
+        
+        if (this.cargando && rewards.length > 0) {
+          this.cargando = false;
+        }
+      })
+    );
+
+    // Suscribirse a cambios en canjes
+    this.subscriptions.add(
+      this.rewardsService.userRedemptions$.subscribe(redemptions => {
+        this.userRedemptions = redemptions;
+        this.activeRedemptions = this.rewardsService.getActiveRedemptions();
+      })
+    );
   }
 
   // ==================== CARGA DE DATOS ====================
 
-  private loadUserData(): void {
-    this.pointsService.getUserPoints().subscribe({
-      next: (response) => {
-        this.userPoints = response.puntosActuales;
-      },
-      error: (error) => {
-        console.error('❌ Error cargando puntos:', error);
-        this.userPoints = 0;
-      }
-    });
+  private loadUserPoints(): void {
+    this.subscriptions.add(
+      this.pointsService.getUserPoints().subscribe({
+        next: (response) => {
+          this.userPoints = response.puntosActuales;
+          console.log('✅ Puntos del usuario cargados:', this.userPoints);
+        },
+        error: (error) => {
+          console.error('❌ Error cargando puntos:', error);
+          this.userPoints = 0;
+        }
+      })
+    );
   }
 
-  loadRewards(): void {
-    this.cargando = true;
-    
-    setTimeout(() => {
-      this.allRewards = this.rewardsService.getAllRewards();
-      this.categories = ['todas', ...this.rewardsService.getCategories()];
-      this.applyFilters();
-      this.cargando = false;
-    }, 1000);
+  private loadRewards(): void {
+    // El servicio ya carga automáticamente las recompensas
+    this.rewardsService.loadAllRewards();
+  }
+
+  private loadCategories(): void {
+    this.subscriptions.add(
+      this.rewardsService.getCategories().subscribe({
+        next: (categories) => {
+          this.categories = ['todas', ...categories];
+          console.log('✅ Categorías cargadas:', this.categories);
+        },
+        error: (error) => {
+          console.error('❌ Error cargando categorías:', error);
+          this.categories = ['todas', 'peliculas', 'bar', 'especial', 'descuentos'];
+        }
+      })
+    );
   }
 
   private loadUserRedemptions(): void {
-    this.userRedemptions = this.rewardsService.getUserRedemptions();
-    this.activeRedemptions = this.rewardsService.getActiveRedemptions();
+    // El servicio ya carga automáticamente los canjes
+    this.rewardsService.loadUserRedemptions();
   }
 
   // ==================== FILTRADO Y BÚSQUEDA ====================
@@ -103,10 +171,11 @@ export class RewardsComponent implements OnInit {
 
     // Filtro por término de búsqueda
     if (this.searchTerm.trim()) {
-      filtered = this.rewardsService.searchRewards(this.searchTerm);
-      if (this.selectedCategory !== 'todas') {
-        filtered = filtered.filter(reward => reward.categoria === this.selectedCategory);
-      }
+      const searchTerm = this.searchTerm.toLowerCase();
+      filtered = filtered.filter(reward => 
+        reward.nombre.toLowerCase().includes(searchTerm) ||
+        reward.descripcion.toLowerCase().includes(searchTerm)
+      );
     }
 
     // Filtro por asequibles
@@ -189,40 +258,37 @@ export class RewardsComponent implements OnInit {
   redeemReward(reward: Recompensa): void {
     this.canjeando = true;
     
-    this.rewardsService.redeemReward(reward.id).subscribe({
-      next: (result) => {
-        this.canjeando = false;
-        
-        if (result.success) {
-          this.toastService.showSuccess(result.message);
+    this.subscriptions.add(
+      this.rewardsService.redeemReward(reward.id).subscribe({
+        next: (result) => {
+          this.canjeando = false;
           
-          // Recargar puntos del usuario
-          this.pointsService.getUserPoints().subscribe({
-            next: (response) => {
-              this.userPoints = response.puntosActuales;
+          if (result.success) {
+            this.toastService.showSuccess(result.message);
+            
+            // Cerrar modal
+            this.closeRewardModal();
+            
+            // Mostrar información del canje
+            if (result.canje) {
+              this.showRedemptionDetails(result.canje);
             }
-          });
-          
-          this.loadUserRedemptions();
-          this.loadRewards(); // Recargar para actualizar stock
-          
-          // Cerrar modal
-          this.closeRewardModal();
-          
-          // Mostrar información del canje
-          if (result.canje) {
-            this.showRedemptionDetails(result.canje);
+            
+            // Cambiar a la vista de mis canjes
+            setTimeout(() => {
+              this.switchView('my-rewards');
+            }, 2000);
+          } else {
+            this.toastService.showError(result.message);
           }
-        } else {
-          this.toastService.showError(result.message);
+        },
+        error: (error) => {
+          console.error('❌ Error canjeando recompensa:', error);
+          this.canjeando = false;
+          this.toastService.showError('Error al canjear la recompensa');
         }
-      },
-      error: (error) => {
-        console.error('❌ Error canjeando recompensa:', error);
-        this.canjeando = false;
-        this.toastService.showError('Error al canjear la recompensa');
-      }
-    });
+      })
+    );
   }
 
   closeRewardModal(): void {
@@ -251,9 +317,6 @@ export class RewardsComponent implements OnInit {
 
   switchView(view: 'catalog' | 'my-rewards'): void {
     this.currentView = view;
-    if (view === 'my-rewards') {
-      this.loadUserRedemptions();
-    }
   }
 
   useRedemption(canje: CanjeRecompensa): void {
@@ -261,15 +324,23 @@ export class RewardsComponent implements OnInit {
       `¿Marcar como usado el canje "${canje.nombreRecompensa}"?\n\n` +
       `Código: ${canje.codigo}`
     );
+    
     if (confirmed) {
-      const success = this.rewardsService.markRedemptionAsUsed(canje.id);
-      
-      if (success) {
-        this.toastService.showSuccess('Canje marcado como usado');
-        this.loadUserRedemptions();
-      } else {
-        this.toastService.showError('Error al marcar canje como usado');
-      }
+      this.subscriptions.add(
+        this.rewardsService.markRedemptionAsUsed(canje.id).subscribe({
+          next: (success) => {
+            if (success) {
+              this.toastService.showSuccess('Canje marcado como usado');
+            } else {
+              this.toastService.showError('Error al marcar canje como usado');
+            }
+          },
+          error: (error) => {
+            console.error('❌ Error marcando canje como usado:', error);
+            this.toastService.showError('Error al marcar canje como usado');
+          }
+        })
+      );
     }
   }
 
@@ -277,7 +348,15 @@ export class RewardsComponent implements OnInit {
     navigator.clipboard.writeText(code).then(() => {
       this.toastService.showSuccess('Código copiado al portapapeles');
     }).catch(() => {
-      this.toastService.showError('Error al copiar código');
+      // Fallback para navegadores sin soporte
+      const textArea = document.createElement('textarea');
+      textArea.value = code;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      
+      this.toastService.showSuccess('Código copiado al portapapeles');
     });
   }
 
@@ -288,16 +367,6 @@ export class RewardsComponent implements OnInit {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
-    });
-  }
-
-  formatDateTime(dateString: string): string {
-    return new Date(dateString).toLocaleString('es-ES', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
     });
   }
 
@@ -398,62 +467,41 @@ export class RewardsComponent implements OnInit {
 
   // ==================== MÉTODOS PARA FECHAS ====================
 
-  /**
-   * Verificar si un canje está expirado
-   */
   isExpired(fechaExpiracion: string): boolean {
     return new Date(fechaExpiracion) <= new Date();
   }
 
-  /**
-   * Verificar si un canje está activo (no usado y no expirado)
-   */
   isActive(canje: CanjeRecompensa): boolean {
     return !canje.usado && !this.isExpired(canje.fechaExpiracion);
   }
 
-  /**
-   * Verificar si un canje está usado
-   */
   isUsed(canje: CanjeRecompensa): boolean {
     return canje.usado;
   }
 
-  /**
-   * Obtener clase CSS para el estado del canje
-   */
   getCanjeStatusClass(canje: CanjeRecompensa): string {
     if (this.isUsed(canje)) return 'bg-secondary';
     if (this.isActive(canje)) return 'bg-success';
     return 'bg-warning'; // Expirado
   }
 
-  /**
-   * Obtener texto del estado del canje
-   */
   getCanjeStatusText(canje: CanjeRecompensa): string {
     if (this.isUsed(canje)) return 'Usado';
     if (this.isActive(canje)) return 'Activo';
     return 'Expirado';
   }
 
-  /**
-   * Obtener icono del estado del canje
-   */
   getCanjeStatusIcon(canje: CanjeRecompensa): string {
     if (this.isUsed(canje)) return 'fas fa-check';
     if (this.isActive(canje)) return 'fas fa-clock';
     return 'fas fa-times';
   }
 
-  /**
-   * Verificar si se puede marcar como usado
-   */
   canMarkAsUsed(canje: CanjeRecompensa): boolean {
     return !canje.usado && !this.isExpired(canje.fechaExpiracion);
   }
 
-  // ==================== NAVEGACIÓN (MÉTODOS FALTANTES AGREGADOS) ====================
+  // ==================== NAVEGACIÓN ====================
 
   goToProfile(): void {
     this.router.navigate(['/profile']);
@@ -467,8 +515,212 @@ export class RewardsComponent implements OnInit {
     this.router.navigate(['/bar']);
   }
 
-  // 🆕 MÉTODO FALTANTE: Navegar al historial de puntos
   goToPointsHistory(): void {
     this.router.navigate(['/points-history']);
+  }
+
+  // ==================== MÉTODOS DE RECARGA ====================
+
+  refreshData(): void {
+    this.cargando = true;
+    this.rewardsService.refreshRewards();
+    this.loadUserPoints();
+    this.toastService.showInfo('Datos actualizados');
+  }
+
+  // ==================== HANDLERS DE EVENTOS ====================
+
+  onRewardImageError(event: any): void {
+    // Fallback para imágenes que no cargan
+    event.target.src = 'assets/recompensas/default.png';
+  }
+
+  onModalShow(): void {
+    // Acciones cuando se muestra el modal
+    console.log('Modal de recompensa mostrado');
+  }
+
+  onModalHide(): void {
+    // Acciones cuando se oculta el modal
+    this.selectedReward = null;
+    console.log('Modal de recompensa ocultado');
+  }
+
+  // ==================== MÉTODOS DE VALIDACIÓN ====================
+
+  validateRewardAccess(reward: Recompensa): boolean {
+    return reward.disponible && reward.stock > 0;
+  }
+
+  getValidationMessage(reward: Recompensa): string {
+    if (!reward.disponible) {
+      return 'Esta recompensa no está disponible';
+    }
+    
+    if (reward.stock <= 0) {
+      return 'Esta recompensa está agotada';
+    }
+    
+    if (!this.canAffordReward(reward)) {
+      const missing = reward.puntosRequeridos - this.userPoints;
+      return `Te faltan ${missing} puntos`;
+    }
+    
+    return 'Recompensa disponible';
+  }
+
+  // ==================== MÉTODOS DE ESTADÍSTICAS ====================
+
+  getTotalRedemptions(): number {
+    return this.userRedemptions.length;
+  }
+
+  getTotalActiveRedemptions(): number {
+    return this.activeRedemptions.length;
+  }
+
+  getTotalPointsUsed(): number {
+    return this.userRedemptions.reduce((total, canje) => total + canje.puntosUsados, 0);
+  }
+
+  getMostUsedCategory(): string {
+    if (this.userRedemptions.length === 0) return 'Ninguna';
+    
+    const categoryCounts: { [key: string]: number } = {};
+    
+    this.userRedemptions.forEach(canje => {
+      const reward = this.allRewards.find(r => r.id === canje.recompensaId);
+      if (reward) {
+        const category = reward.categoria;
+        categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+      }
+    });
+    
+    let mostUsedCategory = '';
+    let maxCount = 0;
+    
+    Object.entries(categoryCounts).forEach(([category, count]) => {
+      if (count > maxCount) {
+        maxCount = count;
+        mostUsedCategory = category;
+      }
+    });
+    
+    return this.getCategoryName(mostUsedCategory) || 'Ninguna';
+  }
+
+  // ==================== MÉTODOS PARA EXPORTAR DATOS ====================
+
+  exportRedemptionHistory(): void {
+    if (this.userRedemptions.length === 0) {
+      this.toastService.showWarning('No tienes canjes para exportar');
+      return;
+    }
+
+    try {
+      const csvHeaders = ['Fecha Canje', 'Recompensa', 'Código', 'Puntos Usados', 'Estado', 'Válido Hasta'];
+      const csvData = this.userRedemptions.map(canje => [
+        this.formatDate(canje.fechaCanje),
+        canje.nombreRecompensa,
+        canje.codigo,
+        canje.puntosUsados.toString(),
+        this.getCanjeStatusText(canje),
+        this.formatDate(canje.fechaExpiracion)
+      ]);
+
+      const csvContent = [csvHeaders, ...csvData]
+        .map(row => row.join(','))
+        .join('\n');
+
+      // Crear y descargar archivo
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `historial-canjes-${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+
+      this.toastService.showSuccess('Historial de canjes exportado');
+    } catch (error) {
+      console.error('Error al exportar:', error);
+      this.toastService.showError('Error al exportar el historial');
+    }
+  }
+
+  // ==================== MÉTODOS DE BÚSQUEDA AVANZADA ====================
+
+  searchRewardsByPoints(maxPoints: number): Recompensa[] {
+    return this.allRewards.filter(reward => 
+      reward.puntosRequeridos <= maxPoints && reward.disponible && reward.stock > 0
+    );
+  }
+
+  getRecommendedRewards(): Recompensa[] {
+    // Recomendaciones basadas en los puntos actuales y historial
+    const affordable = this.searchRewardsByPoints(this.userPoints);
+    const mostUsedCategory = this.getMostUsedCategory();
+    
+    // Priorizar recompensas de la categoría más usada
+    const recommended = affordable.filter(reward => 
+      this.getCategoryName(reward.categoria) === mostUsedCategory
+    );
+    
+    // Si no hay suficientes, agregar otras recompensas asequibles
+    if (recommended.length < 3) {
+      const others = affordable.filter(reward => 
+        this.getCategoryName(reward.categoria) !== mostUsedCategory
+      );
+      recommended.push(...others.slice(0, 3 - recommended.length));
+    }
+    
+    return recommended.slice(0, 3);
+  }
+
+  // ==================== MÉTODOS DE ANIMACIONES ====================
+
+  animateRewardCard(element: HTMLElement): void {
+    element.classList.add('animate__animated', 'animate__pulse');
+    setTimeout(() => {
+      element.classList.remove('animate__animated', 'animate__pulse');
+    }, 1000);
+  }
+
+  // ==================== MÉTODOS DE ACCESIBILIDAD ====================
+
+  announceToScreenReader(message: string): void {
+    // Para lectores de pantalla
+    const announcement = document.createElement('div');
+    announcement.setAttribute('aria-live', 'polite');
+    announcement.setAttribute('aria-atomic', 'true');
+    announcement.className = 'sr-only';
+    announcement.textContent = message;
+    
+    document.body.appendChild(announcement);
+    
+    setTimeout(() => {
+      document.body.removeChild(announcement);
+    }, 1000);
+  }
+
+  // ==================== MÉTODOS PARA DEBUGGING ====================
+
+  logRewardsState(): void {
+    if (!this.authService.isAdmin()) return;
+    
+    console.log('=== REWARDS COMPONENT STATE ===');
+    console.log('User Points:', this.userPoints);
+    console.log('All Rewards:', this.allRewards.length);
+    console.log('Filtered Rewards:', this.filteredRewards.length);
+    console.log('User Redemptions:', this.userRedemptions.length);
+    console.log('Active Redemptions:', this.activeRedemptions.length);
+    console.log('Current View:', this.currentView);
+    console.log('Filters:', {
+      category: this.selectedCategory,
+      search: this.searchTerm,
+      affordable: this.showOnlyAffordable,
+      sort: this.sortBy
+    });
+    console.log('================================');
   }
 }

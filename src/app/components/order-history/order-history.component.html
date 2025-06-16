@@ -296,13 +296,13 @@
                 </thead>
                 <tbody>
                   <tr *ngFor="let item of selectedOrder.items_peliculas">
-                    <td>{{ item.pelicula_titulo }}</td>
+                    <td>{{ item.peliculaTitulo }}</td>
                     <td>
-                      {{ item.funcion_sala }}<br>
-                      <small class="text-muted">{{ item.funcion_fecha }} - {{ item.funcion_hora }}</small>
+                      {{ item.funcionSala }}<br>
+                      <small class="text-muted">{{ item.funcionFecha }} - {{ item.funcionHora }}</small>
                     </td>
                     <td>{{ item.cantidad }}</td>
-                    <td>{{ formatCurrency(item.precio_unitario) }}</td>
+                    <td>{{ formatCurrency(item.precioUnitario) }}</td>
                     <td>{{ formatCurrency(item.subtotal) }}</td>
                   </tr>
                 </tbody>
@@ -329,12 +329,12 @@
                 <tbody>
                   <tr *ngFor="let item of selectedOrder.items_bar">
                     <td>
-                      {{ item.producto_nombre }}
+                      {{ item.productoNombre }}
                       <br>
-                      <small class="text-muted">{{ item.producto_categoria }}</small>
+                      <small class="text-muted">{{ item.productoCategoria }}</small>
                     </td>
                     <td>{{ item.cantidad }}</td>
-                    <td>{{ formatCurrency(item.precio_unitario) }}</td>
+                    <td>{{ formatCurrency(item.precioUnitario) }}</td>
                     <td>{{ formatCurrency(item.subtotal) }}</td>
                   </tr>
                 </tbody>

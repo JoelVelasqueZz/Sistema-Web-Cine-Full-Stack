@@ -1,16 +1,17 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { OrderService, Order, OrderDetails, OrderStats } from '../../services/order.service';
 import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../services/toast.service';
 
 @Component({
   selector: 'app-order-history',
-  standalone: false, // ✅ IMPORTANTE: Debe ser false para usar en app.module.ts
+  standalone: false,
   templateUrl: './order-history.component.html',
   styleUrls: ['./order-history.component.css']
 })
-export class OrderHistoryComponent implements OnInit {
+export class OrderHistoryComponent implements OnInit, OnDestroy {
 
   orders: Order[] = [];
   stats: OrderStats | null = null;
@@ -20,16 +21,22 @@ export class OrderHistoryComponent implements OnInit {
   loading: boolean = true;
   loadingStats: boolean = true;
   loadingOrderDetails: boolean = false;
+  loadingMore: boolean = false;
   
   // Paginación
   currentPage: number = 1;
   itemsPerPage: number = 10;
   hasMoreOrders: boolean = false;
+  totalOrders: number = 0;
   
   // Filtros
   filterStatus: string = 'all';
   filterPaymentMethod: string = 'all';
+  filterDateRange: string = 'all';
   showFilters: boolean = false;
+
+  // Suscripciones
+  private subscriptions = new Subscription();
 
   constructor(
     private orderService: OrderService,
@@ -40,10 +47,21 @@ export class OrderHistoryComponent implements OnInit {
 
   ngOnInit(): void {
     if (!this.authService.isLoggedIn()) {
+      this.toastService.showWarning('Debes iniciar sesión para ver tu historial');
       this.router.navigate(['/login']);
       return;
     }
     
+    this.loadInitialData();
+  }
+
+  ngOnDestroy(): void {
+    this.subscriptions.unsubscribe();
+  }
+
+  // ==================== INICIALIZACIÓN ====================
+
+  private loadInitialData(): void {
     this.loadOrders();
     this.loadStats();
   }
@@ -51,56 +69,71 @@ export class OrderHistoryComponent implements OnInit {
   // ==================== CARGAR DATOS ====================
 
   loadOrders(page: number = 1): void {
-    this.loading = true;
+    if (page === 1) {
+      this.loading = true;
+    } else {
+      this.loadingMore = true;
+    }
     
-    this.orderService.getUserOrders(page, this.itemsPerPage).subscribe({
-      next: (orders) => {
-        if (page === 1) {
-          this.orders = orders;
-        } else {
-          this.orders = [...this.orders, ...orders];
+    this.subscriptions.add(
+      this.orderService.getUserOrders(page, this.itemsPerPage).subscribe({
+        next: (orders: Order[]) => {
+          if (page === 1) {
+            this.orders = orders;
+          } else {
+            this.orders = [...this.orders, ...orders];
+          }
+          
+          this.hasMoreOrders = orders.length === this.itemsPerPage;
+          this.currentPage = page;
+          this.totalOrders = this.orders.length;
+          
+          if (page === 1) {
+            this.loading = false;
+          } else {
+            this.loadingMore = false;
+          }
+          
+          console.log(`✅ ${orders.length} órdenes cargadas (página ${page})`);
+        },
+        error: (error) => {
+          console.error('❌ Error cargando órdenes:', error);
+          this.loading = false;
+          this.loadingMore = false;
+          this.toastService.showError('Error al cargar el historial de órdenes');
         }
-        
-        this.hasMoreOrders = orders.length === this.itemsPerPage;
-        this.currentPage = page;
-        this.loading = false;
-        
-        console.log(`✅ ${orders.length} órdenes cargadas (página ${page})`);
-      },
-      error: (error) => {
-        console.error('❌ Error cargando órdenes:', error);
-        this.loading = false;
-        this.toastService.showError('Error al cargar el historial de órdenes');
-      }
-    });
+      })
+    );
   }
 
   loadStats(): void {
     this.loadingStats = true;
     
-    this.orderService.getOrderStats().subscribe({
-      next: (stats) => {
-        this.stats = stats;
-        this.loadingStats = false;
-        console.log('✅ Estadísticas de órdenes cargadas:', stats);
-      },
-      error: (error) => {
-        console.error('❌ Error cargando estadísticas:', error);
-        this.loadingStats = false;
-        this.stats = {
-          totalOrdenes: 0,
-          ordenesCompletadas: 0,
-          ordenesPendientes: 0,
-          ordenesCanceladas: 0,
-          totalIngresos: 0,
-          ticketPromedio: 0
-        };
-      }
-    });
+    this.subscriptions.add(
+      this.orderService.getOrderStats().subscribe({
+        next: (stats) => {
+          this.stats = stats;
+          this.loadingStats = false;
+          console.log('✅ Estadísticas de órdenes cargadas:', stats);
+        },
+        error: (error) => {
+          console.error('❌ Error cargando estadísticas:', error);
+          this.loadingStats = false;
+          this.stats = {
+            totalOrdenes: 0,
+            ordenesCompletadas: 0,
+            ordenesPendientes: 0,
+            ordenesCanceladas: 0,
+            totalIngresos: 0,
+            ticketPromedio: 0
+          };
+        }
+      })
+    );
   }
 
   loadMoreOrders(): void {
-    if (this.hasMoreOrders && !this.loading) {
+    if (this.hasMoreOrders && !this.loadingMore) {
       this.loadOrders(this.currentPage + 1);
     }
   }
@@ -110,43 +143,71 @@ export class OrderHistoryComponent implements OnInit {
   viewOrderDetails(orderId: string): void {
     this.loadingOrderDetails = true;
     
-    this.orderService.getOrderById(orderId).subscribe({
-      next: (orderDetails) => {
-        this.selectedOrder = orderDetails;
-        this.loadingOrderDetails = false;
-        
-        if (orderDetails) {
-          console.log('✅ Detalles de orden cargados:', orderDetails);
-          this.showOrderModal();
-        } else {
-          this.toastService.showError('No se pudieron cargar los detalles de la orden');
-        }
-      },
-      error: (error) => {
-        console.error('❌ Error cargando detalles de orden:', error);
-        this.loadingOrderDetails = false;
-        this.toastService.showError('Error al cargar los detalles de la orden');
-      }
-    });
-  }
-
-  cancelOrder(orderId: string): void {
-    if (confirm('¿Estás seguro de que quieres cancelar esta orden?')) {
-      this.orderService.cancelOrder(orderId).subscribe({
-        next: (success) => {
-          if (success) {
-            this.toastService.showSuccess('Orden cancelada exitosamente');
-            this.loadOrders(); // Recargar lista
+    this.subscriptions.add(
+      this.orderService.getOrderById(orderId).subscribe({
+        next: (orderDetails) => {
+          this.selectedOrder = orderDetails;
+          this.loadingOrderDetails = false;
+          
+          if (orderDetails) {
+            console.log('✅ Detalles de orden cargados:', orderDetails);
+            this.showOrderModal();
           } else {
-            this.toastService.showError('No se pudo cancelar la orden');
+            this.toastService.showError('No se pudieron cargar los detalles de la orden');
           }
         },
         error: (error) => {
-          console.error('❌ Error cancelando orden:', error);
-          this.toastService.showError('Error al cancelar la orden');
+          console.error('❌ Error cargando detalles de orden:', error);
+          this.loadingOrderDetails = false;
+          this.toastService.showError('Error al cargar los detalles de la orden');
         }
-      });
+      })
+    );
+  }
+
+  cancelOrder(orderId: string): void {
+    const order = this.orders.find(o => o.id === orderId);
+    
+    if (!order) {
+      this.toastService.showError('Orden no encontrada');
+      return;
     }
+
+    if (!this.canCancelOrder(order)) {
+      this.toastService.showWarning('Esta orden no se puede cancelar');
+      return;
+    }
+
+    const confirmed = confirm(
+      `¿Estás seguro de que quieres cancelar la orden #${orderId.substring(0, 8)}?\n\n` +
+      `Total: ${this.formatCurrency(order.total)}\n` +
+      `Esta acción no se puede deshacer.`
+    );
+
+    if (confirmed) {
+      this.subscriptions.add(
+        this.orderService.cancelOrder(orderId).subscribe({
+          next: (success) => {
+            if (success) {
+              this.toastService.showSuccess('Orden cancelada exitosamente');
+              this.refreshData();
+            } else {
+              this.toastService.showError('No se pudo cancelar la orden');
+            }
+          },
+          error: (error) => {
+            console.error('❌ Error cancelando orden:', error);
+            this.toastService.showError('Error al cancelar la orden');
+          }
+        })
+      );
+    }
+  }
+
+  reorderItems(order: Order): void {
+    this.toastService.showInfo(
+      `Función de reordenar próximamente disponible para la orden #${order.id.substring(0, 8)}`
+    );
   }
 
   // ==================== MÉTODOS DE FILTRADO ====================
@@ -154,13 +215,40 @@ export class OrderHistoryComponent implements OnInit {
   getFilteredOrders(): Order[] {
     let filtered = [...this.orders];
     
+    // Filtro por estado
     if (this.filterStatus !== 'all') {
       filtered = filtered.filter(order => order.estado === this.filterStatus);
     }
     
+    // Filtro por método de pago
     if (this.filterPaymentMethod !== 'all') {
       filtered = filtered.filter(order => 
         order.metodo_pago.toLowerCase().includes(this.filterPaymentMethod.toLowerCase())
+      );
+    }
+    
+    // Filtro por rango de fechas
+    if (this.filterDateRange !== 'all') {
+      const now = new Date();
+      let startDate = new Date();
+      
+      switch (this.filterDateRange) {
+        case 'today':
+          startDate.setHours(0, 0, 0, 0);
+          break;
+        case 'week':
+          startDate.setDate(now.getDate() - 7);
+          break;
+        case 'month':
+          startDate.setMonth(now.getMonth() - 1);
+          break;
+        case 'year':
+          startDate.setFullYear(now.getFullYear() - 1);
+          break;
+      }
+      
+      filtered = filtered.filter(order => 
+        new Date(order.fecha_creacion) >= startDate
       );
     }
     
@@ -170,79 +258,49 @@ export class OrderHistoryComponent implements OnInit {
   resetFilters(): void {
     this.filterStatus = 'all';
     this.filterPaymentMethod = 'all';
+    this.filterDateRange = 'all';
     this.showFilters = false;
+    this.toastService.showInfo('Filtros limpiados');
   }
 
   toggleFilters(): void {
     this.showFilters = !this.showFilters;
   }
 
+  hasActiveFilters(): boolean {
+    return this.filterStatus !== 'all' || 
+           this.filterPaymentMethod !== 'all' || 
+           this.filterDateRange !== 'all';
+  }
+
   // ==================== MÉTODOS AUXILIARES ====================
 
   formatDate(dateString: string): string {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('es-ES', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return this.orderService.formatDate(dateString);
   }
 
   formatCurrency(amount: number): string {
-    return new Intl.NumberFormat('es-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount);
+    return this.orderService.formatCurrency(amount);
   }
 
   getStatusBadgeClass(status: string): string {
-    switch (status) {
-      case 'completada':
-        return 'bg-success';
-      case 'pendiente':
-        return 'bg-warning text-dark';
-      case 'cancelada':
-        return 'bg-danger';
-      case 'reembolsada':
-        return 'bg-info';
-      default:
-        return 'bg-secondary';
-    }
+    return this.orderService.getStatusBadgeClass(status);
   }
 
   getStatusText(status: string): string {
-    switch (status) {
-      case 'completada':
-        return 'Completada';
-      case 'pendiente':
-        return 'Pendiente';
-      case 'cancelada':
-        return 'Cancelada';
-      case 'reembolsada':
-        return 'Reembolsada';
-      default:
-        return status;
-    }
+    return this.orderService.getStatusText(status);
   }
 
   getPaymentMethodIcon(method: string): string {
-    if (method.toLowerCase().includes('paypal')) {
-      return 'fab fa-paypal';
-    } else if (method.toLowerCase().includes('tarjeta')) {
-      return 'fas fa-credit-card';
-    } else {
-      return 'fas fa-money-bill';
-    }
+    return this.orderService.getPaymentMethodIcon(method);
   }
 
   canCancelOrder(order: Order): boolean {
-    return order.estado === 'pendiente';
+    return this.orderService.canCancelOrder(order);
   }
 
   getTotalItems(order: Order): number {
-    return order.total_entradas + order.total_productos_bar;
+    return this.orderService.getTotalItems(order);
   }
 
   // ==================== MÉTODOS PARA MODAL ====================
@@ -302,7 +360,14 @@ export class OrderHistoryComponent implements OnInit {
       }
     });
     
-    return mostUsed || 'N/A';
+    return this.orderService.getFormattedPaymentMethod(mostUsed) || 'N/A';
+  }
+
+  getAverageOrderValue(): number {
+    if (this.orders.length === 0) return 0;
+    
+    const total = this.orders.reduce((sum, order) => sum + order.total, 0);
+    return total / this.orders.length;
   }
 
   // ==================== MÉTODOS DE NAVEGACIÓN ====================
@@ -319,46 +384,54 @@ export class OrderHistoryComponent implements OnInit {
     this.router.navigate(['/profile']);
   }
 
-  // ==================== MÉTODO PARA REORDENAR ====================
-
-  reorderItems(order: Order): void {
-    // En una implementación real, esto recrearía los items en el carrito
-    this.toastService.showInfo('Función de reordenar próximamente disponible');
+  goToRewards(): void {
+    this.router.navigate(['/rewards']);
   }
 
   // ==================== MÉTODOS PARA EXPORTAR ====================
 
   exportOrderHistory(): void {
-    if (this.orders.length === 0) {
+    const filteredOrders = this.getFilteredOrders();
+    
+    if (filteredOrders.length === 0) {
       this.toastService.showWarning('No hay órdenes para exportar');
       return;
     }
 
-    // Crear CSV con la información de las órdenes
-    const csvHeaders = ['Fecha', 'Orden ID', 'Estado', 'Método de Pago', 'Items', 'Total'];
-    const csvData = this.orders.map(order => [
-      this.formatDate(order.fecha_creacion),
-      order.id,
-      this.getStatusText(order.estado),
-      order.metodo_pago,
-      this.getTotalItems(order).toString(),
-      this.formatCurrency(order.total)
-    ]);
+    try {
+      const csvHeaders = [
+        'Fecha', 'ID Orden', 'Estado', 'Método de Pago', 
+        'Items', 'Subtotal', 'Total'
+      ];
+      
+      const csvData = filteredOrders.map(order => [
+        this.formatDate(order.fecha_creacion),
+        order.id.substring(0, 8),
+        this.getStatusText(order.estado),
+        order.metodo_pago,
+        this.getTotalItems(order).toString(),
+        order.subtotal.toFixed(2),
+        order.total.toFixed(2)
+      ]);
 
-    const csvContent = [csvHeaders, ...csvData]
-      .map(row => row.join(','))
-      .join('\n');
+      const csvContent = [csvHeaders, ...csvData]
+        .map(row => row.join(','))
+        .join('\n');
 
-    // Crear y descargar archivo
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `historial-ordenes-${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
-    window.URL.revokeObjectURL(url);
+      // Crear y descargar archivo
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `historial-ordenes-${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      window.URL.revokeObjectURL(url);
 
-    this.toastService.showSuccess('Historial exportado exitosamente');
+      this.toastService.showSuccess('Historial exportado exitosamente');
+    } catch (error) {
+      console.error('Error al exportar:', error);
+      this.toastService.showError('Error al exportar el historial');
+    }
   }
 
   // ==================== MÉTODOS PARA DETALLES DE ORDEN ====================
@@ -385,18 +458,107 @@ export class OrderHistoryComponent implements OnInit {
     return order.items_bar && order.items_bar.length > 0;
   }
 
+  getMovieItemsTotal(order: OrderDetails): number {
+    if (!this.hasMovieItems(order)) return 0;
+    return order.items_peliculas.reduce((total, item) => total + item.subtotal, 0);
+  }
+
+  getBarItemsTotal(order: OrderDetails): number {
+    if (!this.hasBarItems(order)) return 0;
+    return order.items_bar.reduce((total, item) => total + item.subtotal, 0);
+  }
+
   // ==================== TRACKBY FUNCTIONS ====================
 
   trackByOrderId(index: number, order: Order): string {
     return order.id;
   }
 
+  trackByItemId(index: number, item: any): number {
+    return item.id;
+  }
+
   // ==================== MÉTODO PARA REFRESCAR DATOS ====================
 
   refreshData(): void {
     this.currentPage = 1;
+    this.orders = [];
     this.loadOrders();
     this.loadStats();
     this.toastService.showInfo('Datos actualizados');
+  }
+
+  // ==================== MÉTODOS PARA BÚSQUEDA ====================
+
+  searchOrders(searchTerm: string): Order[] {
+    if (!searchTerm.trim()) return this.orders;
+    
+    return this.orderService.searchOrders(this.orders, searchTerm);
+  }
+
+  // ==================== MÉTODOS DE VALIDACIÓN ====================
+
+  isValidOrder(order: Order): boolean {
+    return !!order && !!order.id && order.total > 0;
+  }
+
+  isRecentOrder(order: Order): boolean {
+    const orderDate = new Date(order.fecha_creacion);
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    return orderDate >= sevenDaysAgo;
+  }
+
+  // ==================== MÉTODOS DE UTILIDAD ====================
+
+  getOrderAge(order: Order): string {
+    const orderDate = new Date(order.fecha_creacion);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - orderDate.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) return 'Hace 1 día';
+    if (diffDays < 7) return `Hace ${diffDays} días`;
+    if (diffDays < 30) {
+      const weeks = Math.floor(diffDays / 7);
+      return weeks === 1 ? 'Hace 1 semana' : `Hace ${weeks} semanas`;
+    }
+    if (diffDays < 365) {
+      const months = Math.floor(diffDays / 30);
+      return months === 1 ? 'Hace 1 mes' : `Hace ${months} meses`;
+    }
+    
+    const years = Math.floor(diffDays / 365);
+    return years === 1 ? 'Hace 1 año' : `Hace ${years} años`;
+  }
+
+  getRangeText(): string {
+    if (this.orders.length === 0) return '0-0 de 0';
+    
+    const start = 1;
+    const end = Math.min(this.orders.length, this.currentPage * this.itemsPerPage);
+    const total = this.totalOrders;
+    
+    return `${start}-${end} de ${total}`;
+  }
+
+  // ==================== MÉTODOS PARA DEBUGGING ====================
+
+  logOrdersState(): void {
+    if (!this.authService.isAdmin()) return;
+    
+    console.log('=== ORDER HISTORY COMPONENT STATE ===');
+    console.log('Total Orders:', this.orders.length);
+    console.log('Filtered Orders:', this.getFilteredOrders().length);
+    console.log('Current Page:', this.currentPage);
+    console.log('Has More Orders:', this.hasMoreOrders);
+    console.log('Stats:', this.stats);
+    console.log('Filters:', {
+      status: this.filterStatus,
+      payment: this.filterPaymentMethod,
+      dateRange: this.filterDateRange
+    });
+    console.log('======================================');
   }
 }
