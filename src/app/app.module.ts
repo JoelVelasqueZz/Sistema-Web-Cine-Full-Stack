@@ -47,6 +47,8 @@ import { AdminDashboardComponent } from './components/admin/admin-dashboard/admi
 import { AdminMoviesComponent } from './components/admin/admin-movies/admin-movies.component';
 import { AdminUsersComponent } from './components/admin/admin-users/admin-users.component';
 import { AdminBarComponent } from './components/admin/admin-bar/admin-bar.component';
+// 🆕 ADMIN REWARDS COMPONENT (normal, no standalone)
+import { AdminRewardsComponent } from './components/admin/admin-rewards/admin-rewards.component';
 
 // 🍿 COMPONENTES DEL BAR
 import { BarListComponent } from './components/bar-list/bar-list.component';
@@ -121,7 +123,9 @@ import { AdminComingSoonComponent } from './components/admin/admin-coming-soon/a
     AdminMoviesComponent, 
     AdminUsersComponent,
     AdminBarComponent,
-    FunctionAdminComponent
+    FunctionAdminComponent,
+    // 🆕 ADMIN REWARDS COMPONENT (movido aquí correctamente)
+    AdminRewardsComponent
   ],
   imports: [
     // Módulos de Angular

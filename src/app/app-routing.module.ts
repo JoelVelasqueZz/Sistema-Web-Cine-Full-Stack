@@ -28,6 +28,8 @@ import { AdminUsersComponent } from './components/admin/admin-users/admin-users.
 import { AdminBarComponent } from './components/admin/admin-bar/admin-bar.component';
 import { AdminComingSoonComponent } from './components/admin/admin-coming-soon/admin-coming-soon.component';
 import { FunctionAdminComponent } from './components/admin/function-admin/function-admin.component';
+// 🆕 IMPORTAR ADMIN REWARDS
+import { AdminRewardsComponent } from './components/admin/admin-rewards/admin-rewards.component';
 
 // 🆕 COMPONENTES DEL SISTEMA DE PUNTOS Y RECOMPENSAS
 import { RewardsComponent } from './components/rewards/rewards.component';
@@ -209,15 +211,15 @@ const routes: Routes = [
         component: AdminBarComponent,
         data: { title: 'Gestión del Bar' }
       },
-      // 🆕 NUEVAS RUTAS DE ADMIN PARA PUNTOS Y RECOMPENSAS
+      // 🆕 RUTAS PARA PUNTOS Y RECOMPENSAS
       {
         path: 'points',
-        component: AdminDashboardComponent, // Temporal, puedes crear AdminPointsComponent
+        component: AdminDashboardComponent, // Temporal, puedes crear AdminPointsComponent después
         data: { title: 'Gestión de Puntos' }
       },
       {
-        path: 'rewards-admin',
-        component: AdminDashboardComponent, // Temporal, puedes crear AdminRewardsComponent
+        path: 'rewards', // 🔧 CORREGIDO: cambió de 'rewards-admin' a 'rewards'
+        component: AdminRewardsComponent,
         data: { title: 'Gestión de Recompensas' }
       }
     ]

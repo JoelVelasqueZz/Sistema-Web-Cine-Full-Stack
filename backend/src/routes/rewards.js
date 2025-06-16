@@ -1,362 +1,210 @@
-// src/routes/rewards.js
+// backend/src/routes/rewards.js
 const express = require('express');
 const router = express.Router();
 const rewardsController = require('../controllers/rewards/rewardsController');
 const { authenticateToken } = require('../middleware/auth');
 const { requireAdmin } = require('../middleware/admin');
-const { body, param, query } = require('express-validator');
 const validation = require('../middleware/validation');
+const { body, param, query } = require('express-validator');
 
-// ==================== RUTAS PÚBLICAS ====================
+// ==================== RUTAS PÚBLICAS/GENERALES ====================
 
 /**
- * @route GET /api/rewards
- * @desc Obtener todas las recompensas disponibles
- * @access Public
+ * GET /api/rewards
+ * Obtener todas las recompensas disponibles
  */
 router.get('/', 
-  [
-    query('categoria')
-      .optional()
-      .isIn(['peliculas', 'bar', 'especial', 'descuentos'])
-      .withMessage('Categoría inválida'),
-    query('limite')
-      .optional()
-      .isInt({ min: 1, max: 100 })
-      .withMessage('Límite debe estar entre 1 y 100')
-  ],
-  validation,
-  (req, res) => {
-    rewardsController.getAllRewards(req, res);
-  }
+  authenticateToken, // Usuario debe estar autenticado
+  rewardsController.getAllRewards
 );
 
 /**
- * @route GET /api/rewards/categories
- * @desc Obtener categorías de recompensas disponibles
- * @access Public
+ * GET /api/rewards/categories
+ * Obtener categorías de recompensas
  */
-router.get('/categories', (req, res) => {
-  rewardsController.getCategories(req, res);
-});
+router.get('/categories', 
+  authenticateToken,
+  rewardsController.getCategories
+);
 
 /**
- * @route GET /api/rewards/:id
- * @desc Obtener recompensa por ID
- * @access Public (pero con info adicional si está autenticado)
+ * GET /api/rewards/:id
+ * Obtener recompensa específica por ID
  */
 router.get('/:id',
+  authenticateToken,
   [
-    param('id')
-      .isInt({ min: 1 })
-      .withMessage('ID de recompensa inválido')
+    param('id').isInt().withMessage('ID debe ser un número entero')
   ],
   validation,
-  (req, res, next) => {
-    // Middleware opcional de autenticación
-    if (req.headers.authorization) {
-      return authenticateToken(req, res, next);
-    }
-    next();
-  },
-  (req, res) => {
-    rewardsController.getRewardById(req, res);
-  }
+  rewardsController.getRewardById
 );
 
-// ==================== RUTAS AUTENTICADAS ====================
-
-// Middleware para todas las rutas que requieren autenticación
-router.use('/redeem*', authenticateToken);
-router.use('/my*', authenticateToken);
-router.use('/validate*', authenticateToken);
-router.use('/check*', authenticateToken);
+// ==================== RUTAS DE CANJE ====================
 
 /**
- * @route POST /api/rewards/redeem/:id
- * @desc Canjear una recompensa por puntos
- * @access Private
+ * POST /api/rewards/redeem/:id
+ * Canjear una recompensa
  */
 router.post('/redeem/:id',
+  authenticateToken,
   [
-    param('id')
-      .isInt({ min: 1 })
-      .withMessage('ID de recompensa inválido')
+    param('id').isInt().withMessage('ID de recompensa inválido')
   ],
   validation,
-  (req, res) => {
-    rewardsController.redeemReward(req, res);
-  }
+  rewardsController.redeemReward
 );
 
 /**
- * @route GET /api/rewards/my/redemptions
- * @desc Obtener canjes del usuario autenticado
- * @access Private
+ * GET /api/rewards/check/:points
+ * Verificar disponibilidad de puntos para canje
+ */
+router.get('/check/:points',
+  authenticateToken,
+  [
+    param('points').isInt({ min: 1 }).withMessage('Puntos debe ser un número positivo')
+  ],
+  validation,
+  rewardsController.checkRedeemAvailability
+);
+
+// ==================== RUTAS DE MIS CANJES ====================
+
+/**
+ * GET /api/rewards/my/redemptions
+ * Obtener canjes del usuario autenticado
  */
 router.get('/my/redemptions',
+  authenticateToken,
   [
-    query('incluir_usados')
-      .optional()
-      .isIn(['true', 'false'])
-      .withMessage('incluir_usados debe ser true o false')
+    query('incluir_usados').optional().isBoolean().withMessage('incluir_usados debe ser boolean')
   ],
   validation,
-  (req, res) => {
-    rewardsController.getUserRedemptions(req, res);
-  }
+  rewardsController.getUserRedemptions
 );
 
 /**
- * @route GET /api/rewards/validate/:codigo
- * @desc Validar código de canje
- * @access Private
+ * GET /api/rewards/validate/:codigo
+ * Validar código de canje
  */
 router.get('/validate/:codigo',
+  authenticateToken,
   [
-    param('codigo')
-      .trim()
-      .isLength({ min: 4, max: 20 })
-      .withMessage('Código de canje inválido')
-      .matches(/^[A-Z0-9]+$/)
-      .withMessage('Código debe contener solo letras mayúsculas y números')
+    param('codigo').isLength({ min: 6, max: 50 }).withMessage('Código de canje inválido')
   ],
   validation,
-  (req, res) => {
-    rewardsController.validateRedemptionCode(req, res);
-  }
+  rewardsController.validateRedemptionCode
 );
 
 /**
- * @route GET /api/rewards/check/availability
- * @desc Verificar disponibilidad de puntos para canje
- * @access Private
+ * PATCH /api/rewards/use/:codigo
+ * Marcar código de canje como usado
  */
-router.get('/check/availability',
+router.patch('/use/:codigo',
+  authenticateToken,
   [
-    query('puntos')
-      .isInt({ min: 1 })
-      .withMessage('Cantidad de puntos requerida')
+    param('codigo').isLength({ min: 6, max: 50 }).withMessage('Código de canje inválido')
   ],
   validation,
-  (req, res) => {
-    rewardsController.checkRedeemAvailability(req, res);
-  }
+  rewardsController.markCodeAsUsed
 );
 
 // ==================== RUTAS DE ADMINISTRACIÓN ====================
 
-// Middleware para todas las rutas de admin
-router.use('/admin*', authenticateToken, requireAdmin);
-
 /**
- * @route POST /api/rewards/admin/create
- * @desc Crear nueva recompensa
- * @access Admin
+ * POST /api/rewards
+ * Crear nueva recompensa (ADMIN)
  */
-router.post('/admin/create',
+router.post('/',
+  authenticateToken,
+  requireAdmin,
   [
-    body('nombre')
-      .trim()
-      .isLength({ min: 3, max: 255 })
-      .withMessage('Nombre requerido (3-255 caracteres)'),
-    body('descripcion')
-      .trim()
-      .isLength({ min: 10, max: 1000 })
-      .withMessage('Descripción requerida (10-1000 caracteres)'),
-    body('categoria')
-      .isIn(['peliculas', 'bar', 'especial', 'descuentos'])
-      .withMessage('Categoría inválida'),
-    body('puntos_requeridos')
-      .isInt({ min: 1 })
-      .withMessage('Puntos requeridos debe ser mayor a 0'),
-    body('tipo')
-      .isIn(['descuento', 'producto', 'paquete', 'experiencia', 'codigo', 'bonus'])
-      .withMessage('Tipo de recompensa inválido'),
-    body('imagen')
-      .optional()
-      .isURL()
-      .withMessage('URL de imagen inválida'),
-    body('stock')
-      .optional()
-      .isInt({ min: 0 })
-      .withMessage('Stock debe ser mayor o igual a 0'),
-    body('valor')
-      .optional()
-      .isFloat({ min: 0 })
-      .withMessage('Valor debe ser mayor o igual a 0'),
-    body('limite_por_usuario')
-      .optional()
-      .isInt({ min: 1 })
-      .withMessage('Límite por usuario debe ser mayor a 0'),
-    body('validez_dias')
-      .optional()
-      .isInt({ min: 1 })
-      .withMessage('Validez en días debe ser mayor a 0'),
-    body('terminos')
-      .optional()
-      .isArray()
-      .withMessage('Términos debe ser un array'),
-    body('disponible')
-      .optional()
-      .isBoolean()
-      .withMessage('Disponible debe ser verdadero o falso')
+    body('nombre').isLength({ min: 3, max: 255 }).withMessage('Nombre debe tener entre 3 y 255 caracteres'),
+    body('descripcion').isLength({ min: 10, max: 1000 }).withMessage('Descripción debe tener entre 10 y 1000 caracteres'),
+    body('categoria').isIn(['peliculas', 'bar', 'especial', 'descuentos']).withMessage('Categoría inválida'),
+    body('puntos_requeridos').isInt({ min: 1 }).withMessage('Puntos requeridos debe ser un número positivo'),
+    body('tipo').isIn(['descuento', 'producto', 'paquete', 'experiencia', 'codigo', 'bonus']).withMessage('Tipo inválido'),
+    body('stock').optional().isInt({ min: 0 }).withMessage('Stock debe ser un número no negativo'),
+    body('valor').optional().isFloat({ min: 0 }).withMessage('Valor debe ser un número positivo'),
+    body('limite_por_usuario').optional().isInt({ min: 1 }).withMessage('Límite por usuario debe ser positivo'),
+    body('validez_dias').optional().isInt({ min: 1 }).withMessage('Validez en días debe ser positiva')
   ],
   validation,
-  (req, res) => {
-    rewardsController.createReward(req, res);
-  }
+  rewardsController.createReward
 );
 
 /**
- * @route PUT /api/rewards/admin/:id
- * @desc Actualizar recompensa existente
- * @access Admin
+ * PUT /api/rewards/:id
+ * Actualizar recompensa (ADMIN)
  */
-router.put('/admin/:id',
+router.put('/:id',
+  authenticateToken,
+  requireAdmin,
   [
-    param('id')
-      .isInt({ min: 1 })
-      .withMessage('ID de recompensa inválido'),
-    body('nombre')
-      .optional()
-      .trim()
-      .isLength({ min: 3, max: 255 })
-      .withMessage('Nombre debe tener entre 3-255 caracteres'),
-    body('descripcion')
-      .optional()
-      .trim()
-      .isLength({ min: 10, max: 1000 })
-      .withMessage('Descripción debe tener entre 10-1000 caracteres'),
-    body('categoria')
-      .optional()
-      .isIn(['peliculas', 'bar', 'especial', 'descuentos'])
-      .withMessage('Categoría inválida'),
-    body('puntos_requeridos')
-      .optional()
-      .isInt({ min: 1 })
-      .withMessage('Puntos requeridos debe ser mayor a 0'),
-    body('tipo')
-      .optional()
-      .isIn(['descuento', 'producto', 'paquete', 'experiencia', 'codigo', 'bonus'])
-      .withMessage('Tipo de recompensa inválido'),
-    body('imagen')
-      .optional()
-      .isURL()
-      .withMessage('URL de imagen inválida'),
-    body('stock')
-      .optional()
-      .isInt({ min: 0 })
-      .withMessage('Stock debe ser mayor o igual a 0'),
-    body('valor')
-      .optional()
-      .isFloat({ min: 0 })
-      .withMessage('Valor debe ser mayor o igual a 0'),
-    body('limite_por_usuario')
-      .optional()
-      .isInt({ min: 1 })
-      .withMessage('Límite por usuario debe ser mayor a 0'),
-    body('validez_dias')
-      .optional()
-      .isInt({ min: 1 })
-      .withMessage('Validez en días debe ser mayor a 0'),
-    body('terminos')
-      .optional()
-      .isArray()
-      .withMessage('Términos debe ser un array'),
-    body('disponible')
-      .optional()
-      .isBoolean()
-      .withMessage('Disponible debe ser verdadero o falso')
+    param('id').isInt().withMessage('ID debe ser un número entero'),
+    body('nombre').optional().isLength({ min: 3, max: 255 }).withMessage('Nombre debe tener entre 3 y 255 caracteres'),
+    body('descripcion').optional().isLength({ min: 10, max: 1000 }).withMessage('Descripción debe tener entre 10 y 1000 caracteres'),
+    body('categoria').optional().isIn(['peliculas', 'bar', 'especial', 'descuentos']).withMessage('Categoría inválida'),
+    body('puntos_requeridos').optional().isInt({ min: 1 }).withMessage('Puntos requeridos debe ser un número positivo'),
+    body('tipo').optional().isIn(['descuento', 'producto', 'paquete', 'experiencia', 'codigo', 'bonus']).withMessage('Tipo inválido'),
+    body('stock').optional().isInt({ min: 0 }).withMessage('Stock debe ser un número no negativo'),
+    body('valor').optional().isFloat({ min: 0 }).withMessage('Valor debe ser un número positivo')
   ],
   validation,
-  (req, res) => {
-    rewardsController.updateReward(req, res);
-  }
+  rewardsController.updateReward
 );
 
 /**
- * @route DELETE /api/rewards/admin/:id
- * @desc Eliminar recompensa
- * @access Admin
+ * DELETE /api/rewards/:id
+ * Eliminar recompensa (ADMIN)
  */
-router.delete('/admin/:id',
+router.delete('/:id',
+  authenticateToken,
+  requireAdmin,
   [
-    param('id')
-      .isInt({ min: 1 })
-      .withMessage('ID de recompensa inválido')
+    param('id').isInt().withMessage('ID debe ser un número entero')
   ],
   validation,
-  (req, res) => {
-    rewardsController.deleteReward(req, res);
-  }
+  rewardsController.deleteReward
 );
 
 /**
- * @route GET /api/rewards/admin/stats
- * @desc Obtener estadísticas de recompensas y canjes
- * @access Admin
+ * GET /api/rewards/admin/stats
+ * Obtener estadísticas de recompensas (ADMIN)
  */
-router.get('/admin/stats', (req, res) => {
-  rewardsController.getRewardsStats(req, res);
-});
+router.get('/admin/stats',
+  authenticateToken,
+  requireAdmin,
+  rewardsController.getRewardsStats
+);
 
 /**
- * @route GET /api/rewards/admin/redemptions
- * @desc Obtener todos los canjes para administración
- * @access Admin
+ * GET /api/rewards/admin/redemptions
+ * Obtener todos los canjes para administración (ADMIN)
  */
 router.get('/admin/redemptions',
+  authenticateToken,
+  requireAdmin,
   [
-    query('page')
-      .optional()
-      .isInt({ min: 1 })
-      .withMessage('Página debe ser mayor a 0'),
-    query('limit')
-      .optional()
-      .isInt({ min: 1, max: 100 })
-      .withMessage('Límite debe estar entre 1 y 100'),
-    query('recompensa_id')
-      .optional()
-      .isInt({ min: 1 })
-      .withMessage('ID de recompensa inválido')
+    query('page').optional().isInt({ min: 1 }).withMessage('Página debe ser un número positivo'),
+    query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Límite debe estar entre 1 y 100'),
+    query('recompensa_id').optional().isInt().withMessage('ID de recompensa debe ser un número')
   ],
   validation,
-  (req, res) => {
-    rewardsController.getAllRedemptions(req, res);
-  }
+  rewardsController.getAllRedemptions
 );
+
+// ==================== RUTA DE HEALTH CHECK ====================
 
 /**
- * @route POST /api/rewards/admin/mark-used/:codigo
- * @desc Marcar código de canje como usado
- * @access Admin
+ * GET /api/rewards/health
+ * Health check del servicio de recompensas
  */
-router.post('/admin/mark-used/:codigo',
-  [
-    param('codigo')
-      .trim()
-      .isLength({ min: 4, max: 20 })
-      .withMessage('Código de canje inválido')
-      .matches(/^[A-Z0-9]+$/)
-      .withMessage('Código debe contener solo letras mayúsculas y números')
-  ],
-  validation,
-  (req, res) => {
-    rewardsController.markCodeAsUsed(req, res);
-  }
-);
-
-// ==================== MANEJO DE ERRORES ====================
-
-// Middleware para capturar errores no manejados en las rutas
-router.use((error, req, res, next) => {
-  console.error('❌ Error en rutas de recompensas:', error);
-  
-  res.status(500).json({
-    success: false,
-    message: 'Error interno del servidor',
-    error: process.env.NODE_ENV === 'development' ? error.message : 'Error en el sistema de recompensas'
+router.get('/health', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Servicio de recompensas funcionando correctamente',
+    timestamp: new Date().toISOString()
   });
 });
 

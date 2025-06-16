@@ -1,116 +1,120 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable, BehaviorSubject, of } from 'rxjs';
-import { map, catchError, tap } from 'rxjs/operators';
+import { Observable, of } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
 import { AuthService } from './auth.service';
-import { PointsService } from './points.service';
+
+// ==================== INTERFACES ====================
+export interface Reward {
+  id?: number;
+  nombre: string;
+  descripcion: string;
+  categoria: 'peliculas' | 'bar' | 'especial' | 'descuentos';
+  tipo: 'descuento' | 'producto' | 'paquete' | 'experiencia' | 'codigo' | 'bonus';
+  puntos_requeridos: number;
+  valor?: number;
+  stock?: number | null;
+  limite_por_usuario?: number;
+  validez_dias?: number;
+  imagen_url?: string;
+  disponible: boolean;
+  fecha_creacion?: string;
+  fecha_actualizacion?: string;
+}
+
+export interface RewardsStats {
+  totalRecompensas: number;
+  recompensasActivas: number;
+  totalCanjes: number;
+  puntosCanjeados: number;
+  categoriaPopular: string;
+  recompensaPopular: string;
+}
+
+export interface RedemptionCode {
+  id: number;
+  codigo: string;
+  recompensa: Reward;
+  usuario_id: number;
+  fecha_canje: string;
+  fecha_vencimiento: string;
+  usado: boolean;
+  fecha_uso?: string;
+}
+
+export interface ApiResponse<T> {
+  success: boolean;
+  message?: string;
+  data: T;
+  pagination?: any;
+}
 
 @Injectable({
   providedIn: 'root'
 })
 export class RewardsService {
 
-  private readonly API_URL = 'http://localhost:3000/api/rewards';
-  
-  // Cache local para mejor performance
-  private rewardsCache = new BehaviorSubject<Recompensa[]>([]);
-  public rewards$ = this.rewardsCache.asObservable();
-  
-  private userRedemptionsCache = new BehaviorSubject<CanjeRecompensa[]>([]);
-  public userRedemptions$ = this.userRedemptionsCache.asObservable();
+  private readonly API_URL = `http://localhost:3000/api/rewards`;
 
   constructor(
     private http: HttpClient,
-    private authService: AuthService,
-    private pointsService: PointsService
+    private authService: AuthService
   ) {
-    console.log('🏆 RewardsService conectado a API:', this.API_URL);
-    this.initializeService();
+    console.log('🆕 RewardsService inicializado');
   }
 
-  // ==================== INICIALIZACIÓN ====================
+  // ==================== MÉTODOS DE AUTENTICACIÓN ====================
 
-  private initializeService(): void {
-    // Cargar recompensas si el usuario está autenticado
-    if (this.authService.isLoggedIn()) {
-      this.loadAllRewards();
-      this.loadUserRedemptions();
+  private getAuthHeaders(): HttpHeaders {
+    const token = this.authService.getToken();
+    
+    if (!token) {
+      console.warn('⚠️ No hay token de autenticación para RewardsService');
+      return new HttpHeaders({
+        'Content-Type': 'application/json'
+      });
     }
 
-    // Suscribirse a cambios de autenticación
-    this.authService.authStatus$.subscribe(isLoggedIn => {
-      if (isLoggedIn) {
-        this.loadAllRewards();
-        this.loadUserRedemptions();
-      } else {
-        this.rewardsCache.next([]);
-        this.userRedemptionsCache.next([]);
-      }
+    return new HttpHeaders({
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
     });
   }
 
-  // ==================== OBTENER RECOMPENSAS (API) ====================
+  // ==================== MÉTODOS PÚBLICOS DE RECOMPENSAS ====================
 
   /**
-   * Cargar todas las recompensas desde la API
+   * Obtener todas las recompensas disponibles
    */
-  loadAllRewards(): void {
-    this.getAllRewardsFromAPI().subscribe({
-      next: (rewards) => {
-        this.rewardsCache.next(rewards);
-        console.log(`✅ ${rewards.length} recompensas cargadas desde API`);
-      },
-      error: (error) => {
-        console.error('❌ Error cargando recompensas:', error);
-        // Fallback a datos mock si la API falla
-        this.rewardsCache.next(this.getMockRewards());
-      }
-    });
-  }
-
-  /**
-   * Obtener todas las recompensas desde la API
-   */
-  private getAllRewardsFromAPI(): Observable<Recompensa[]> {
+  getAllRewards(): Observable<Reward[]> {
     const headers = this.getAuthHeaders();
     
-    return this.http.get<ApiResponse<Recompensa[]>>(`${this.API_URL}`, { headers }).pipe(
-      map(response => {
-        if (response.success && response.data) {
-          return response.data.map(reward => this.transformApiReward(reward));
-        }
-        return [];
-      }),
+    return this.http.get<ApiResponse<Reward[]>>(`${this.API_URL}`, { headers }).pipe(
+      map(response => response.success ? response.data : []),
       catchError(error => {
-        console.error('❌ Error en API de recompensas:', error);
+        console.error('❌ Error al obtener recompensas:', error);
         return of([]);
       })
     );
   }
 
   /**
-   * Obtener todas las recompensas (desde cache o API)
+   * Obtener recompensa por ID
    */
-  getAllRewards(): Recompensa[] {
-    return this.rewardsCache.value.filter(r => r.disponible && r.stock > 0);
+  getRewardById(id: number): Observable<Reward | null> {
+    const headers = this.getAuthHeaders();
+    
+    return this.http.get<ApiResponse<Reward>>(`${this.API_URL}/${id}`, { headers }).pipe(
+      map(response => response.success ? response.data : null),
+      catchError(error => {
+        console.error('❌ Error al obtener recompensa:', error);
+        return of(null);
+      })
+    );
   }
 
   /**
-   * Obtener recompensas por categoría
-   */
-  getRewardsByCategory(categoria: string): Recompensa[] {
-    return this.getAllRewards().filter(r => r.categoria === categoria);
-  }
-
-  /**
-   * Obtener una recompensa específica
-   */
-  getReward(rewardId: number): Recompensa | null {
-    return this.rewardsCache.value.find(r => r.id === rewardId) || null;
-  }
-
-  /**
-   * Obtener categorías disponibles desde la API
+   * Obtener categorías de recompensas
    */
   getCategories(): Observable<string[]> {
     const headers = this.getAuthHeaders();
@@ -118,362 +122,219 @@ export class RewardsService {
     return this.http.get<ApiResponse<string[]>>(`${this.API_URL}/categories`, { headers }).pipe(
       map(response => response.success ? response.data : ['peliculas', 'bar', 'especial', 'descuentos']),
       catchError(error => {
-        console.error('❌ Error obteniendo categorías:', error);
+        console.error('❌ Error al obtener categorías:', error);
         return of(['peliculas', 'bar', 'especial', 'descuentos']);
       })
     );
   }
 
   /**
-   * Buscar recompensas
+   * Obtener estadísticas de recompensas
    */
-  searchRewards(query: string): Recompensa[] {
-    const searchTerm = query.toLowerCase();
-    return this.getAllRewards().filter(r => 
-      r.nombre.toLowerCase().includes(searchTerm) ||
-      r.descripcion.toLowerCase().includes(searchTerm)
+  getRewardsStats(): Observable<RewardsStats> {
+    const headers = this.getAuthHeaders();
+    
+    return this.http.get<ApiResponse<RewardsStats>>(`${this.API_URL}/admin/stats`, { headers }).pipe(
+      map(response => response.success ? response.data : this.getDefaultStats()),
+      catchError(error => {
+        console.error('❌ Error al obtener estadísticas:', error);
+        return of(this.getDefaultStats());
+      })
     );
   }
 
-  // ==================== CANJE DE RECOMPENSAS (API) ====================
+  // ==================== MÉTODOS DE CANJE ====================
 
   /**
-   * Canjear una recompensa mediante la API
+   * Canjear una recompensa
    */
-  redeemReward(rewardId: number): Observable<RedeemResult> {
-    if (!this.authService.isLoggedIn()) {
-      return of({
-        success: false,
-        message: 'Debes iniciar sesión para canjear recompensas',
-        canjeId: ''
-      });
-    }
-
+  redeemReward(rewardId: number): Observable<{ success: boolean; codigo?: string; message: string }> {
     const headers = this.getAuthHeaders();
     
     return this.http.post<ApiResponse<any>>(`${this.API_URL}/redeem/${rewardId}`, {}, { headers }).pipe(
-      map(response => {
-        if (response.success && response.data) {
-          // Actualizar cache local
-          this.loadAllRewards();
-          this.loadUserRedemptions();
-          
-          // Refrescar puntos del usuario
-          this.pointsService.refreshPoints();
-          
-          return {
-            success: true,
-            message: response.message || 'Recompensa canjeada exitosamente',
-            canjeId: response.data.canje?.id || '',
-            canje: response.data.canje ? this.transformApiRedemption(response.data.canje) : undefined
-          };
-        }
-        
-        return {
-          success: false,
-          message: response.message || 'Error al canjear recompensa',
-          canjeId: ''
-        };
-      }),
+      map(response => ({
+        success: response.success,
+        codigo: response.data?.codigo,
+        message: response.message || (response.success ? 'Recompensa canjeada exitosamente' : 'Error al canjear recompensa')
+      })),
       catchError(error => {
-        console.error('❌ Error canjeando recompensa:', error);
+        console.error('❌ Error al canjear recompensa:', error);
         return of({
           success: false,
-          message: error.error?.message || 'Error al procesar el canje',
-          canjeId: ''
+          message: error.error?.message || 'Error al canjear recompensa'
         });
       })
     );
   }
 
   /**
-   * Validar si el usuario puede canjear una recompensa
+   * Obtener canjes del usuario
    */
-  validateRedemption(recompensa: Recompensa): Observable<ValidationResult> {
-    if (!this.authService.isLoggedIn()) {
-      return of({ valid: false, message: 'Debes iniciar sesión' });
-    }
-
-    // Verificaciones básicas
-    if (!recompensa.disponible) {
-      return of({ valid: false, message: 'Esta recompensa no está disponible' });
-    }
-
-    if (recompensa.stock <= 0) {
-      return of({ valid: false, message: 'Esta recompensa está agotada' });
-    }
-
-    // Verificar puntos con el servicio de puntos
-    return this.pointsService.getUserPoints().pipe(
-      map(response => {
-        const userPoints = response.puntosActuales;
-        
-        if (userPoints < recompensa.puntosRequeridos) {
-          const faltantes = recompensa.puntosRequeridos - userPoints;
-          return { 
-            valid: false, 
-            message: `Te faltan ${faltantes} puntos para canjear esta recompensa` 
-          };
-        }
-
-        // Verificar límite por usuario
-        const userRedemptions = this.userRedemptionsCache.value;
-        const sameRewardCount = userRedemptions.filter(r => r.recompensaId === recompensa.id).length;
-        
-        if (sameRewardCount >= recompensa.limitePorUsuario) {
-          return { 
-            valid: false, 
-            message: `Has alcanzado el límite de ${recompensa.limitePorUsuario} canjes para esta recompensa` 
-          };
-        }
-
-        return { valid: true, message: 'Validación exitosa' };
-      }),
-      catchError(error => {
-        console.error('❌ Error en validación:', error);
-        return of({ valid: false, message: 'Error al validar puntos' });
-      })
-    );
-  }
-
-  // ==================== HISTORIAL DE CANJES (API) ====================
-
-  /**
-   * Cargar canjes del usuario desde la API
-   */
-  loadUserRedemptions(): void {
-    this.getUserRedemptionsFromAPI().subscribe({
-      next: (redemptions) => {
-        this.userRedemptionsCache.next(redemptions);
-        console.log(`✅ ${redemptions.length} canjes del usuario cargados`);
-      },
-      error: (error) => {
-        console.error('❌ Error cargando canjes del usuario:', error);
-        this.userRedemptionsCache.next([]);
-      }
-    });
-  }
-
-  /**
-   * Obtener canjes del usuario desde la API
-   */
-  private getUserRedemptionsFromAPI(): Observable<CanjeRecompensa[]> {
-    if (!this.authService.isLoggedIn()) {
-      return of([]);
-    }
-
+  getUserRedemptions(incluirUsados: boolean = true): Observable<RedemptionCode[]> {
     const headers = this.getAuthHeaders();
+    const params = { incluir_usados: incluirUsados.toString() };
     
-    return this.http.get<ApiResponse<any[]>>(`${this.API_URL}/my/redemptions`, { headers }).pipe(
-      map(response => {
-        if (response.success && response.data) {
-          return response.data.map(redemption => this.transformApiRedemption(redemption));
-        }
-        return [];
-      }),
+    return this.http.get<ApiResponse<RedemptionCode[]>>(`${this.API_URL}/my/redemptions`, { headers, params }).pipe(
+      map(response => response.success ? response.data : []),
       catchError(error => {
-        console.error('❌ Error obteniendo canjes del usuario:', error);
+        console.error('❌ Error al obtener canjes:', error);
         return of([]);
       })
     );
   }
 
   /**
-   * Obtener canjes del usuario (desde cache)
+   * Validar código de canje
    */
-  getUserRedemptions(): CanjeRecompensa[] {
-    return this.userRedemptionsCache.value;
-  }
-
-  /**
-   * Obtener canjes activos (no expirados ni usados)
-   */
-  getActiveRedemptions(): CanjeRecompensa[] {
-    const redemptions = this.userRedemptionsCache.value;
-    const now = new Date();
+  validateRedemptionCode(codigo: string): Observable<{ valid: boolean; redemption?: RedemptionCode; message: string }> {
+    const headers = this.getAuthHeaders();
     
-    return redemptions.filter(canje => {
-      const expiry = new Date(canje.fechaExpiracion);
-      return !canje.usado && expiry > now;
-    });
+    return this.http.get<ApiResponse<any>>(`${this.API_URL}/validate/${codigo}`, { headers }).pipe(
+      map(response => ({
+        valid: response.success,
+        redemption: response.data?.redemption,
+        message: response.message || (response.success ? 'Código válido' : 'Código inválido')
+      })),
+      catchError(error => {
+        console.error('❌ Error al validar código:', error);
+        return of({
+          valid: false,
+          message: error.error?.message || 'Error al validar código'
+        });
+      })
+    );
   }
 
   /**
-   * Marcar canje como usado mediante la API
+   * Marcar código como usado
    */
-  markRedemptionAsUsed(canjeId: string): Observable<boolean> {
-    if (!this.authService.isLoggedIn()) {
+  markCodeAsUsed(codigo: string): Observable<{ success: boolean; message: string }> {
+    const headers = this.getAuthHeaders();
+    
+    return this.http.patch<ApiResponse<any>>(`${this.API_URL}/use/${codigo}`, {}, { headers }).pipe(
+      map(response => ({
+        success: response.success,
+        message: response.message || (response.success ? 'Código marcado como usado' : 'Error al usar código')
+      })),
+      catchError(error => {
+        console.error('❌ Error al marcar código como usado:', error);
+        return of({
+          success: false,
+          message: error.error?.message || 'Error al usar código'
+        });
+      })
+    );
+  }
+
+  /**
+   * Verificar disponibilidad de puntos para canje
+   */
+  checkRedeemAvailability(puntos: number): Observable<{ available: boolean; message: string }> {
+    const headers = this.getAuthHeaders();
+    
+    return this.http.get<ApiResponse<any>>(`${this.API_URL}/check/${puntos}`, { headers }).pipe(
+      map(response => ({
+        available: response.success && response.data?.available,
+        message: response.message || (response.success ? 'Puntos suficientes' : 'Puntos insuficientes')
+      })),
+      catchError(error => {
+        console.error('❌ Error al verificar disponibilidad:', error);
+        return of({
+          available: false,
+          message: error.error?.message || 'Error al verificar puntos'
+        });
+      })
+    );
+  }
+
+  // ==================== MÉTODOS DE ADMINISTRACIÓN ====================
+
+  /**
+   * Crear nueva recompensa (ADMIN)
+   */
+  createReward(rewardData: Partial<Reward>): Observable<boolean> {
+    if (!this.authService.isAdmin()) {
+      console.error('❌ Usuario no tiene permisos de administrador');
       return of(false);
     }
 
     const headers = this.getAuthHeaders();
     
-    return this.http.patch<ApiResponse<any>>(`${this.API_URL}/use/${canjeId}`, {}, { headers }).pipe(
-      map(response => {
-        if (response.success) {
-          // Actualizar cache local
-          this.loadUserRedemptions();
-          return true;
-        }
-        return false;
-      }),
+    return this.http.post<ApiResponse<any>>(`${this.API_URL}`, rewardData, { headers }).pipe(
+      map(response => response.success),
       catchError(error => {
-        console.error('❌ Error marcando canje como usado:', error);
+        console.error('❌ Error al crear recompensa:', error);
         return of(false);
       })
     );
   }
 
-  // ==================== MÉTODOS AUXILIARES ====================
-
   /**
-   * Obtener headers de autenticación
+   * Actualizar recompensa (ADMIN)
    */
-  private getAuthHeaders(): HttpHeaders {
-    const token = this.authService.getToken();
-    return new HttpHeaders({
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    });
-  }
+  updateReward(id: number, rewardData: Partial<Reward>): Observable<boolean> {
+    if (!this.authService.isAdmin()) {
+      console.error('❌ Usuario no tiene permisos de administrador');
+      return of(false);
+    }
 
-  /**
-   * Transformar recompensa de API a formato frontend
-   */
-  private transformApiReward(apiReward: any): Recompensa {
-    return {
-      id: apiReward.id,
-      nombre: apiReward.nombre,
-      descripcion: apiReward.descripcion,
-      categoria: apiReward.categoria,
-      puntosRequeridos: apiReward.puntos_requeridos,
-      imagen: apiReward.imagen || 'assets/recompensas/default.png',
-      disponible: apiReward.disponible,
-      stock: apiReward.stock,
-      tipo: apiReward.tipo,
-      valor: parseFloat(apiReward.valor) || 0,
-      limitePorUsuario: apiReward.limite_por_usuario || 1,
-      validezDias: apiReward.validez_dias || 30,
-      terminos: apiReward.terminos || []
-    };
-  }
-
-  /**
-   * Transformar canje de API a formato frontend
-   */
-  private transformApiRedemption(apiRedemption: any): CanjeRecompensa {
-    return {
-      id: apiRedemption.id,
-      recompensaId: apiRedemption.recompensa_id,
-      nombreRecompensa: apiRedemption.recompensa?.nombre || apiRedemption.nombre_recompensa || 'Recompensa desconocida',
-      descripcion: apiRedemption.recompensa?.descripcion || apiRedemption.descripcion || '',
-      tipo: apiRedemption.recompensa?.tipo || apiRedemption.tipo || 'producto',
-      valor: parseFloat(apiRedemption.recompensa?.valor || apiRedemption.valor) || 0,
-      codigo: apiRedemption.codigo_canje,
-      fechaCanje: apiRedemption.fecha_canje,
-      fechaExpiracion: apiRedemption.fecha_expiracion,
-      fechaUso: apiRedemption.fecha_uso,
-      usado: apiRedemption.usado,
-      puntosUsados: apiRedemption.puntos_usados
-    };
-  }
-
-  /**
-   * Datos mock como fallback si la API falla
-   */
-  private getMockRewards(): Recompensa[] {
-    return [
-      {
-        id: 1,
-        nombre: 'Entrada Gratis',
-        descripcion: 'Una entrada gratuita para cualquier función estándar',
-        categoria: 'peliculas',
-        puntosRequeridos: 850,
-        imagen: 'assets/recompensas/entrada-gratis.png',
-        disponible: true,
-        stock: 50,
-        tipo: 'descuento',
-        valor: 8.50,
-        limitePorUsuario: 5,
-        validezDias: 30,
-        terminos: [
-          'Válido para funciones en horarios estándar (lunes a jueves)',
-          'No aplicable para estrenos o funciones VIP',
-          'Sujeto a disponibilidad de asientos'
-        ]
-      },
-      {
-        id: 2,
-        nombre: 'Combo Popcorn + Bebida',
-        descripcion: 'Popcorn grande + bebida mediana gratis',
-        categoria: 'bar',
-        puntosRequeridos: 650,
-        imagen: 'assets/recompensas/combo-popcorn.png',
-        disponible: true,
-        stock: 75,
-        tipo: 'producto',
-        valor: 6.50,
-        limitePorUsuario: 8,
-        validezDias: 20,
-        terminos: [
-          'Combo incluye popcorn grande y bebida mediana',
-          'Válido en todas las funciones',
-          'Recoger en el mostrador del bar'
-        ]
-      }
-    ];
-  }
-
-  // ==================== MÉTODOS PARA HELPERS ====================
-
-  /**
-   * Formatear fecha para mostrar
-   */
-  formatDate(dateString: string): string {
-    return new Date(dateString).toLocaleDateString('es-ES', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  }
-
-  /**
-   * Verificar si un canje está expirado
-   */
-  isExpired(fechaExpiracion: string): boolean {
-    return new Date(fechaExpiracion) <= new Date();
-  }
-
-  /**
-   * Verificar si un canje está activo
-   */
-  isActive(canje: CanjeRecompensa): boolean {
-    return !canje.usado && !this.isExpired(canje.fechaExpiracion);
-  }
-
-  /**
-   * Obtener recompensas que el usuario puede canjear
-   */
-  getAffordableRewards(): Observable<Recompensa[]> {
-    return this.pointsService.getUserPoints().pipe(
-      map(response => {
-        const userPoints = response.puntosActuales;
-        return this.getAllRewards().filter(r => r.puntosRequeridos <= userPoints);
-      }),
+    const headers = this.getAuthHeaders();
+    
+    return this.http.put<ApiResponse<any>>(`${this.API_URL}/${id}`, rewardData, { headers }).pipe(
+      map(response => response.success),
       catchError(error => {
-        console.error('❌ Error obteniendo recompensas disponibles:', error);
-        return of([]);
+        console.error('❌ Error al actualizar recompensa:', error);
+        return of(false);
       })
     );
   }
 
   /**
-   * Refrescar cache de recompensas
+   * Eliminar recompensa (ADMIN)
    */
-  refreshRewards(): void {
-    this.loadAllRewards();
-    this.loadUserRedemptions();
+  deleteReward(id: number): Observable<boolean> {
+    if (!this.authService.isAdmin()) {
+      console.error('❌ Usuario no tiene permisos de administrador');
+      return of(false);
+    }
+
+    const headers = this.getAuthHeaders();
+    
+    return this.http.delete<ApiResponse<any>>(`${this.API_URL}/${id}`, { headers }).pipe(
+      map(response => response.success),
+      catchError(error => {
+        console.error('❌ Error al eliminar recompensa:', error);
+        return of(false);
+      })
+    );
   }
+
+  /**
+   * Obtener todos los canjes para administración (ADMIN)
+   */
+  getAllRedemptions(page: number = 1, limit: number = 50, recompensaId?: number): Observable<RedemptionCode[]> {
+    if (!this.authService.isAdmin()) {
+      console.error('❌ Usuario no tiene permisos de administrador');
+      return of([]);
+    }
+
+    const headers = this.getAuthHeaders();
+    const params: any = { page: page.toString(), limit: limit.toString() };
+    
+    if (recompensaId) {
+      params.recompensa_id = recompensaId.toString();
+    }
+    
+    return this.http.get<ApiResponse<RedemptionCode[]>>(`${this.API_URL}/admin/redemptions`, { headers, params }).pipe(
+      map(response => response.success ? response.data : []),
+      catchError(error => {
+        console.error('❌ Error al obtener canjes:', error);
+        return of([]);
+      })
+    );
+  }
+
+  // ==================== MÉTODOS AUXILIARES ====================
 
   /**
    * Verificar si el servicio está disponible
@@ -484,56 +345,274 @@ export class RewardsService {
       catchError(() => of(false))
     );
   }
-}
 
-// ==================== INTERFACES ====================
+  /**
+   * Formatear categoría para mostrar
+   */
+  formatCategory(categoria: string): string {
+    const categorias: { [key: string]: string } = {
+      'peliculas': 'Películas',
+      'bar': 'Bar & Comida',
+      'especial': 'Especiales',
+      'descuentos': 'Descuentos'
+    };
+    
+    return categorias[categoria] || categoria;
+  }
 
-export interface ApiResponse<T> {
-  success: boolean;
-  message?: string;
-  data: T;
-  pagination?: any;
-}
+  /**
+   * Formatear tipo para mostrar
+   */
+  formatType(tipo: string): string {
+    const tipos: { [key: string]: string } = {
+      'descuento': 'Descuento %',
+      'producto': 'Producto Gratis',
+      'paquete': 'Paquete Especial',
+      'experiencia': 'Experiencia VIP',
+      'codigo': 'Código Promocional',
+      'bonus': 'Bonus Extra'
+    };
+    
+    return tipos[tipo] || tipo;
+  }
 
-export interface Recompensa {
-  id: number;
-  nombre: string;
-  descripcion: string;
-  categoria: 'peliculas' | 'bar' | 'especial' | 'descuentos';
-  puntosRequeridos: number;
-  imagen: string;
-  disponible: boolean;
-  stock: number;
-  tipo: 'descuento' | 'producto' | 'paquete' | 'experiencia' | 'codigo' | 'bonus';
-  valor: number;
-  limitePorUsuario: number;
-  validezDias: number;
-  terminos: string[];
-}
+  /**
+   * Obtener ícono de categoría
+   */
+  getCategoryIcon(categoria: string): string {
+    const iconos: { [key: string]: string } = {
+      'peliculas': 'fas fa-film',
+      'bar': 'fas fa-utensils',
+      'especial': 'fas fa-star',
+      'descuentos': 'fas fa-percent'
+    };
+    
+    return iconos[categoria] || 'fas fa-tag';
+  }
 
-export interface CanjeRecompensa {
-  id: string;
-  recompensaId: number;
-  nombreRecompensa: string;
-  descripcion: string;
-  tipo: string;
-  valor: number;
-  codigo: string;
-  fechaCanje: string;
-  fechaExpiracion: string;
-  fechaUso?: string;
-  usado: boolean;
-  puntosUsados: number; 
-}
+  /**
+   * Obtener ícono de tipo
+   */
+  getTypeIcon(tipo: string): string {
+    const iconos: { [key: string]: string } = {
+      'descuento': 'fas fa-percent',
+      'producto': 'fas fa-gift',
+      'paquete': 'fas fa-box',
+      'experiencia': 'fas fa-crown',
+      'codigo': 'fas fa-ticket-alt',
+      'bonus': 'fas fa-plus-circle'
+    };
+    
+    return iconos[tipo] || 'fas fa-question';
+  }
 
-export interface RedeemResult {
-  success: boolean;
-  message: string;
-  canjeId: string;
-  canje?: CanjeRecompensa;
-}
+  /**
+   * Verificar si una recompensa está disponible
+   */
+  isRewardAvailable(reward: Reward): boolean {
+    if (!reward.disponible) {
+      return false;
+    }
+    
+    if (reward.stock !== null && reward.stock !== undefined && reward.stock <= 0) {
+      return false;
+    }
+    
+    return true;
+  }
 
-export interface ValidationResult {
-  valid: boolean;
-  message: string;
+  /**
+   * Calcular valor en dólares de puntos
+   */
+  getPointsValue(puntos: number): number {
+    // 100 puntos = $1
+    return puntos / 100;
+  }
+
+  /**
+   * Obtener estadísticas por defecto
+   */
+  private getDefaultStats(): RewardsStats {
+    return {
+      totalRecompensas: 0,
+      recompensasActivas: 0,
+      totalCanjes: 0,
+      puntosCanjeados: 0,
+      categoriaPopular: 'N/A',
+      recompensaPopular: 'N/A'
+    };
+  }
+
+  /**
+   * Filtrar recompensas por categoría
+   */
+  filterByCategory(rewards: Reward[], categoria: string): Reward[] {
+    if (!categoria) {
+      return rewards;
+    }
+    return rewards.filter(reward => reward.categoria === categoria);
+  }
+
+  /**
+   * Filtrar recompensas por disponibilidad
+   */
+  filterByAvailability(rewards: Reward[], onlyAvailable: boolean = true): Reward[] {
+    if (!onlyAvailable) {
+      return rewards;
+    }
+    return rewards.filter(reward => this.isRewardAvailable(reward));
+  }
+
+  /**
+   * Ordenar recompensas por puntos requeridos
+   */
+  sortByPoints(rewards: Reward[], ascending: boolean = true): Reward[] {
+    return [...rewards].sort((a, b) => {
+      return ascending ? 
+        a.puntos_requeridos - b.puntos_requeridos : 
+        b.puntos_requeridos - a.puntos_requeridos;
+    });
+  }
+
+  /**
+   * Buscar recompensas por término
+   */
+  searchRewards(rewards: Reward[], searchTerm: string): Reward[] {
+    if (!searchTerm || searchTerm.trim() === '') {
+      return rewards;
+    }
+
+    const term = searchTerm.toLowerCase().trim();
+    return rewards.filter(reward =>
+      reward.nombre.toLowerCase().includes(term) ||
+      reward.descripcion.toLowerCase().includes(term) ||
+      reward.categoria.toLowerCase().includes(term) ||
+      reward.tipo.toLowerCase().includes(term)
+    );
+  }
+
+  /**
+   * Validar datos de recompensa antes de enviar
+   */
+  validateRewardData(reward: Partial<Reward>): { valid: boolean; errors: string[] } {
+    const errors: string[] = [];
+
+    // Validaciones básicas
+    if (!reward.nombre || reward.nombre.trim().length < 3) {
+      errors.push('El nombre debe tener al menos 3 caracteres');
+    }
+
+    if (!reward.descripcion || reward.descripcion.trim().length < 10) {
+      errors.push('La descripción debe tener al menos 10 caracteres');
+    }
+
+    if (!reward.categoria) {
+      errors.push('Debe seleccionar una categoría');
+    }
+
+    if (!reward.tipo) {
+      errors.push('Debe seleccionar un tipo');
+    }
+
+    if (!reward.puntos_requeridos || reward.puntos_requeridos <= 0) {
+      errors.push('Los puntos requeridos deben ser mayor a 0');
+    }
+
+    // Validaciones específicas por tipo
+    if (['descuento', 'producto', 'paquete'].includes(reward.tipo || '')) {
+      if (!reward.valor || reward.valor <= 0) {
+        errors.push('El valor debe ser mayor a 0 para este tipo de recompensa');
+      }
+    }
+
+    if (['producto', 'paquete', 'experiencia'].includes(reward.tipo || '')) {
+      if (reward.stock !== null && reward.stock !== undefined && reward.stock < 0) {
+        errors.push('El stock no puede ser negativo');
+      }
+    }
+
+    if (reward.limite_por_usuario && reward.limite_por_usuario <= 0) {
+      errors.push('El límite por usuario debe ser mayor a 0');
+    }
+
+    if (reward.validez_dias && reward.validez_dias <= 0) {
+      errors.push('La validez en días debe ser mayor a 0');
+    }
+
+    return {
+      valid: errors.length === 0,
+      errors
+    };
+  }
+
+  /**
+   * Generar código de canje único
+   */
+  generateRedemptionCode(rewardId: number, userId: number): string {
+    const timestamp = Date.now().toString(36);
+    const random = Math.random().toString(36).substr(2, 5);
+    return `RW${rewardId}U${userId}${timestamp}${random}`.toUpperCase();
+  }
+
+  /**
+   * Formatear fecha de vencimiento
+   */
+  formatExpirationDate(fecha: string): string {
+    const date = new Date(fecha);
+    const now = new Date();
+    const diffDays = Math.ceil((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) {
+      return 'Vencido';
+    } else if (diffDays === 0) {
+      return 'Vence hoy';
+    } else if (diffDays === 1) {
+      return 'Vence mañana';
+    } else if (diffDays <= 7) {
+      return `Vence en ${diffDays} días`;
+    } else {
+      return date.toLocaleDateString('es-ES');
+    }
+  }
+
+  /**
+   * Verificar si un código está vencido
+   */
+  isCodeExpired(fechaVencimiento: string): boolean {
+    return new Date(fechaVencimiento) < new Date();
+  }
+
+  /**
+   * Obtener recompensas por categoría para métricas
+   */
+  getRewardsByCategory(rewards: Reward[]): { [key: string]: number } {
+    const categoryCounts: { [key: string]: number } = {};
+    
+    rewards.forEach(reward => {
+      categoryCounts[reward.categoria] = (categoryCounts[reward.categoria] || 0) + 1;
+    });
+    
+    return categoryCounts;
+  }
+
+  /**
+   * Calcular estadísticas locales de recompensas
+   */
+  calculateLocalStats(rewards: Reward[]): RewardsStats {
+    const activas = rewards.filter(r => r.disponible).length;
+    const totalPuntos = rewards.reduce((sum, r) => sum + r.puntos_requeridos, 0);
+    const categoryCounts = this.getRewardsByCategory(rewards);
+    const categoriaPopular = Object.keys(categoryCounts).reduce((a, b) => 
+      categoryCounts[a] > categoryCounts[b] ? a : b, 'N/A'
+    );
+
+    return {
+      totalRecompensas: rewards.length,
+      recompensasActivas: activas,
+      totalCanjes: 0, // Este dato viene del backend
+      puntosCanjeados: 0, // Este dato viene del backend
+      categoriaPopular,
+      recompensaPopular: rewards.length > 0 ? rewards[0].nombre : 'N/A'
+    };
+  }
 }

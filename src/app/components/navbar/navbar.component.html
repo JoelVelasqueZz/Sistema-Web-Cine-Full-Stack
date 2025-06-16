@@ -212,7 +212,11 @@
                   <i class="fas fa-history me-2"></i>Historial
                 </a>
               </li>
-              
+               <li>
+                <a class="dropdown-item" [routerLink]="['/order-history']">
+                  <i class="fas fa-receipt me-2"></i>Historial de Órdenes
+                </a>
+              </li>
               <!-- SEPARADOR Y OPCIONES DE ADMIN (SOLO ADMINS) -->
               <ng-container *ngIf="authService.isAdmin()">
                 <li><hr class="dropdown-divider"></li>
