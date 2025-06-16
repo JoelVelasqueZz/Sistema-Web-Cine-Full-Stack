@@ -645,13 +645,33 @@ export class RewardsComponent implements OnInit, OnDestroy {
    * @param valor - El valor opcional de la recompensa
    * @returns String formateado con el valor o mensaje alternativo
    */
-  getFormattedValue(valor?: number): string {
-    if (valor === null || valor === undefined || valor <= 0) {
-      return 'Sin valor específico';
-    }
-    return `$${valor.toFixed(2)}`;
+ getFormattedValue(valor?: number): string {
+  // Verificar que valor sea un número válido
+  if (valor === null || valor === undefined || typeof valor !== 'number' || isNaN(valor) || valor <= 0) {
+    return 'Sin valor específico';
   }
-
+  
+  // Convertir a número por si viene como string
+  const numericValue = Number(valor);
+  
+  // Verificar nuevamente después de la conversión
+  if (isNaN(numericValue) || numericValue <= 0) {
+    return 'Sin valor específico';
+  }
+  
+  return `$${numericValue.toFixed(2)}`;
+}
+debugRewardData(reward: Reward): void {
+  console.log('🔍 Debug reward data:', {
+    nombre: reward.nombre,
+    valor: reward.valor,
+    tipoValor: typeof reward.valor,
+    esNull: reward.valor === null,
+    esUndefined: reward.valor === undefined,
+    esNaN: isNaN(reward.valor as any),
+    rewardCompleto: reward
+  });
+}
   /**
    * Obtiene el valor formateado con validación de tipo
    * @param reward - La recompensa

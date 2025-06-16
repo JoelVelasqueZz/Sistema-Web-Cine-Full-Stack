@@ -1,4 +1,4 @@
-<!-- rewards.component.html - VERSIÓN CORREGIDA -->
+<!-- rewards.component.html - VERSIÓN CORREGIDA FINAL -->
 <div class="container mt-4">
   
   <!-- Header -->
@@ -44,7 +44,7 @@
                 </button>
                 <small class="text-dark">
                   <i class="fas fa-dollar-sign me-1"></i>
-                  Valor: ${{ (userPoints / 100).toFixed(2) }}
+                  Valor: ${{ getPointsValueInDollars(userPoints).toFixed(2) }}
                 </small>
               </div>
             </div>
@@ -178,13 +178,10 @@
       <p class="mt-3 text-muted">Cargando recompensas...</p>
     </div>
 
-    <!-- Grid de Recompensas -->
+    <!-- Grid de Recompensas - VERSIÓN CORREGIDA -->
     <div class="row g-4" *ngIf="!cargando && filteredRewards.length > 0">
       <div class="col-xl-3 col-lg-4 col-md-6" *ngFor="let reward of filteredRewards">
-        <div class="card h-100 shadow-lg border-0"
-             [class.border-success]="canAffordReward(reward)"
-             [class.border-warning]="!canAffordReward(reward) && (reward.stock === null || reward.stock === undefined || reward.stock > 0)"
-             [class.border-danger]="reward.stock !== null && reward.stock !== undefined && reward.stock <= 0">
+        <div [class]="getRewardCardClasses(reward)">
           
           <!-- Imagen de la recompensa -->
           <div class="position-relative">
@@ -192,8 +189,9 @@
                  class="card-img-top" 
                  style="height: 200px; object-fit: cover;"
                  [alt]="reward.nombre"
-                 [class.opacity-50]="reward.stock !== null && reward.stock !== undefined && reward.stock <= 0"
-                 (error)="onRewardImageError($event)">
+                 [class.opacity-50]="!validateRewardAccess(reward)"
+                 (error)="onRewardImageError($event)"
+                 loading="lazy">
             
             <!-- Badge de categoría -->
             <div class="position-absolute top-0 start-0 m-2">
@@ -209,26 +207,20 @@
 
             <!-- Badge de puntos -->
             <div class="position-absolute top-0 end-0 m-2">
-              <span class="badge bg-success text-white fs-6 px-3 py-2"
-                    *ngIf="canAffordReward(reward)">
-                <i class="fas fa-coins me-1"></i>{{ reward.puntos_requeridos }}
-              </span>
-              <span class="badge bg-warning text-dark fs-6 px-3 py-2"
-                    *ngIf="!canAffordReward(reward) && (reward.stock === null || reward.stock === undefined || reward.stock > 0)">
-                <i class="fas fa-coins me-1"></i>{{ reward.puntos_requeridos }}
-              </span>
-              <span class="badge bg-danger text-white fs-6 px-3 py-2"
-                    *ngIf="reward.stock !== null && reward.stock !== undefined && reward.stock <= 0">
-                <i class="fas fa-times me-1"></i>Agotado
+              <span [class]="getPointsBadgeClasses(reward)">
+                <i class="fas me-1"
+                   [class.fa-coins]="validateRewardAccess(reward)"
+                   [class.fa-times]="!validateRewardAccess(reward)"></i>
+                {{ getPointsBadgeText(reward) }}
               </span>
             </div>
 
             <!-- Badge de stock bajo -->
             <div class="position-absolute bottom-0 start-0 m-2" 
-                 *ngIf="reward.stock !== null && reward.stock !== undefined && reward.stock <= 10 && reward.stock > 0">
+                 *ngIf="isLowStock(reward)">
               <span class="badge bg-danger text-white">
                 <i class="fas fa-exclamation-triangle me-1"></i>
-                ¡Solo {{ reward.stock }} disponibles!
+                {{ getLowStockMessage(reward) }}
               </span>
             </div>
           </div>
@@ -247,12 +239,18 @@
               {{ reward.descripcion }}
             </p>
 
-            <!-- Valor de la recompensa -->
-            <div class="mb-3" *ngIf="reward.valor && reward.valor > 0">
+            <!-- Valor de la recompensa - VERSIÓN SEGURA -->
+            <div class="mb-3" *ngIf="shouldShowValue(reward)">
               <small class="text-muted">Valor:</small>
               <span class="fw-bold text-success">
-                ${{ (reward.valor || 0).toFixed(2) }}
+                {{ debugRewardData(reward) }}
+${{ getSafeNumber(reward.valor).toFixed(2) }}
               </span>
+              
+              <!-- Mostrar ahorro si aplica -->
+              <div *ngIf="hasSavings(reward)" class="small text-success mt-1">
+                <i class="fas fa-tag me-1"></i>{{ getSavingsText(reward) }}
+              </div>
             </div>
 
             <!-- Progreso hacia la recompensa -->
@@ -268,6 +266,9 @@
               </div>
               <small class="text-muted">
                 Te faltan {{ reward.puntos_requeridos - userPoints }} puntos
+                <span *ngIf="getPointsValueInDollars(reward.puntos_requeridos - userPoints) > 0">
+                  (${{ getPointsValueInDollars(reward.puntos_requeridos - userPoints).toFixed(2) }})
+                </span>
               </small>
             </div>
 
@@ -295,7 +296,7 @@
                 <br *ngIf="reward.validez_dias && (reward.stock !== null && reward.stock !== undefined)">
                 <small class="text-muted" *ngIf="reward.stock !== null && reward.stock !== undefined">
                   <i class="fas fa-boxes me-1"></i>
-                  Stock: {{ reward.stock }}
+                  Stock: {{ getFormattedStock(reward.stock) }}
                 </small>
               </div>
             </div>
@@ -526,23 +527,35 @@
                   <i class="fas fa-coins me-1"></i>{{ selectedReward.puntos_requeridos }}
                 </div>
               </div>
-              <div class="col-6" *ngIf="selectedReward.valor && selectedReward.valor > 0">
+              
+              <!-- Valor - VERSIÓN SEGURA -->
+              <div class="col-6" *ngIf="shouldShowValue(selectedReward)">
                 <small class="text-muted">Valor:</small>
                 <div class="fw-bold text-primary fs-5">
-                  ${{ selectedReward.valor.toFixed(2) }}
+                  {{ getRewardValue(selectedReward) }}
                 </div>
               </div>
+              
               <div class="col-6" *ngIf="selectedReward.validez_dias">
                 <small class="text-muted">Válido por:</small>
                 <div class="fw-bold">{{ selectedReward.validez_dias }} días</div>
               </div>
+              
               <div class="col-6" *ngIf="selectedReward.stock !== null && selectedReward.stock !== undefined">
                 <small class="text-muted">Stock disponible:</small>
                 <div class="fw-bold" 
                      [class.text-danger]="selectedReward.stock <= 10"
                      [class.text-success]="selectedReward.stock > 10">
-                  {{ selectedReward.stock }} unidades
+                  {{ getFormattedStock(selectedReward.stock) }} unidades
                 </div>
+              </div>
+            </div>
+
+            <!-- Mostrar ahorro si aplica -->
+            <div class="mt-3" *ngIf="hasSavings(selectedReward)">
+              <div class="alert alert-success py-2">
+                <i class="fas fa-tag me-2"></i>
+                <strong>{{ getSavingsText(selectedReward) }}</strong>
               </div>
             </div>
           </div>
@@ -555,8 +568,10 @@
           <div class="d-flex justify-content-between align-items-center">
             <div>
               <strong>Tus puntos:</strong> {{ userPoints }}
+              <span class="text-muted">(${{ getPointsValueInDollars(userPoints).toFixed(2) }})</span>
               <br>
               <strong>Puntos necesarios:</strong> {{ selectedReward.puntos_requeridos }}
+              <span class="text-muted">(${{ getPointsValueInDollars(selectedReward.puntos_requeridos).toFixed(2) }})</span>
             </div>
             <div class="text-end">
               <span *ngIf="canAffordReward(selectedReward)" class="text-success">
