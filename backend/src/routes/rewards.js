@@ -1,4 +1,4 @@
-// backend/src/routes/rewards.js
+// backend/src/routes/rewards.js - VERSIÓN CORREGIDA
 const express = require('express');
 const router = express.Router();
 const rewardsController = require('../controllers/rewards/rewardsController');

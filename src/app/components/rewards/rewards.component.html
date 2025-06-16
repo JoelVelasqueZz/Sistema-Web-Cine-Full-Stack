@@ -185,7 +185,7 @@
           
           <!-- Imagen de la recompensa -->
           <div class="position-relative">
-            <img [src]="reward.imagen_url || 'assets/images/default-reward.png'" 
+            <img [src]="getRewardImageUrl(reward)"
                  class="card-img-top" 
                  style="height: 200px; object-fit: cover;"
                  [alt]="reward.nombre"
@@ -239,12 +239,12 @@
               {{ reward.descripcion }}
             </p>
 
-            <!-- Valor de la recompensa - VERSIÓN SEGURA -->
+            <!-- Valor de la recompensa - VERSIÓN CORREGIDA -->
             <div class="mb-3" *ngIf="shouldShowValue(reward)">
               <small class="text-muted">Valor:</small>
               <span class="fw-bold text-success">
-                {{ debugRewardData(reward) }}
-${{ getSafeNumber(reward.valor).toFixed(2) }}
+                <!-- 🔧 CORRECCIÓN: Usar el método seguro sin debug y sin toFixed manual -->
+                {{ getRewardValue(reward) }}
               </span>
               
               <!-- Mostrar ahorro si aplica -->

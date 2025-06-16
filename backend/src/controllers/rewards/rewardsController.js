@@ -1,4 +1,4 @@
-// src/controllers/rewards/rewardsController.js
+// src/controllers/rewards/rewardsController.js - VERSIÓN CORREGIDA
 const Reward = require('../../models/Reward');
 const Redemption = require('../../models/Redemption');
 const Points = require('../../models/Points');
@@ -31,12 +31,9 @@ class RewardsController {
         rewards = rewards.slice(0, parseInt(limite));
       }
       
-      res.json({
-        success: true,
-        data: rewards,
-        total: rewards.length,
-        message: rewards.length > 0 ? 'Recompensas encontradas' : 'No hay recompensas disponibles'
-      });
+      // 🔧 CORRECCIÓN: Enviar los datos directamente como array
+      res.json(rewards);
+      
     } catch (error) {
       console.error('❌ Error al obtener recompensas:', error);
       res.status(500).json({
@@ -103,10 +100,9 @@ class RewardsController {
       
       const categories = await Reward.getCategories();
       
-      res.json({
-        success: true,
-        data: categories
-      });
+      // 🔧 CORRECCIÓN: Enviar categorías directamente como array
+      res.json(categories);
+      
     } catch (error) {
       console.error('❌ Error al obtener categorías:', error);
       res.status(500).json({
@@ -158,6 +154,8 @@ class RewardsController {
       res.json({
         success: true,
         message: '¡Recompensa canjeada exitosamente!',
+        // 🔧 CORRECCIÓN: Cambiar 'codigo_canje' a 'codigo' para el frontend
+        codigo: redemption.codigo_canje,
         data: {
           codigo_canje: redemption.codigo_canje,
           puntos_usados: redemption.puntos_usados,
@@ -205,11 +203,28 @@ class RewardsController {
       const includeUsed = incluir_usados.toLowerCase() === 'true';
       const redemptions = await Redemption.getUserRedemptions(userId, includeUsed);
       
-      res.json({
-        success: true,
-        data: redemptions,
-        total: redemptions.length
-      });
+      // 🔧 CORRECCIÓN: Mapear datos al formato que espera el frontend
+      const formattedRedemptions = redemptions.map(redemption => ({
+        id: redemption.id,
+        codigo: redemption.codigo,
+        recompensa: {
+          id: redemption.recompensaId,
+          nombre: redemption.nombreRecompensa,
+          descripcion: redemption.descripcion,
+          categoria: redemption.categoria,
+          tipo: redemption.tipo,
+          valor: redemption.valor,
+          imagen_url: redemption.imagen
+        },
+        usuario_id: userId,
+        fecha_canje: redemption.fechaCanje,
+        fecha_vencimiento: redemption.fechaExpiracion,
+        usado: redemption.usado,
+        fecha_uso: redemption.fechaUso
+      }));
+      
+      res.json(formattedRedemptions);
+      
     } catch (error) {
       console.error('❌ Error al obtener canjes del usuario:', error);
       res.status(500).json({
@@ -433,12 +448,19 @@ class RewardsController {
         Redemption.getStats()
       ]);
       
+      // 🔧 CORRECCIÓN: Formatear para que coincida con la interfaz del frontend
+      const formattedStats = {
+        totalRecompensas: rewardsStats.total_recompensas || 0,
+        recompensasActivas: rewardsStats.recompensas_disponibles || 0,
+        totalCanjes: redemptionsStats.total_canjes || 0,
+        puntosCanjeados: redemptionsStats.total_puntos_canjeados || 0,
+        categoriaPopular: 'Películas', // Placeholder
+        recompensaPopular: 'Entrada gratis' // Placeholder
+      };
+      
       res.json({
         success: true,
-        data: {
-          recompensas: rewardsStats,
-          canjes: redemptionsStats
-        }
+        data: formattedStats
       });
     } catch (error) {
       console.error('❌ Error al obtener estadísticas:', error);

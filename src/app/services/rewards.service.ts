@@ -89,8 +89,17 @@ export class RewardsService {
   getAllRewards(): Observable<Reward[]> {
     const headers = this.getAuthHeaders();
     
-    return this.http.get<ApiResponse<Reward[]>>(`${this.API_URL}`, { headers }).pipe(
-      map(response => response.success ? response.data : []),
+    // 🔧 CORRECCIÓN: El backend ahora retorna directamente el array
+    return this.http.get<Reward[]>(`${this.API_URL}`, { headers }).pipe(
+      map(response => {
+        console.log('✅ Recompensas recibidas del backend:', response);
+        // Si el backend retorna un objeto con data, extraer el array
+        if (response && typeof response === 'object' && 'data' in response) {
+          return (response as any).data;
+        }
+        // Si es directamente un array, retornarlo
+        return Array.isArray(response) ? response : [];
+      }),
       catchError(error => {
         console.error('❌ Error al obtener recompensas:', error);
         return of([]);
@@ -119,8 +128,17 @@ export class RewardsService {
   getCategories(): Observable<string[]> {
     const headers = this.getAuthHeaders();
     
-    return this.http.get<ApiResponse<string[]>>(`${this.API_URL}/categories`, { headers }).pipe(
-      map(response => response.success ? response.data : ['peliculas', 'bar', 'especial', 'descuentos']),
+    // 🔧 CORRECCIÓN: El backend ahora retorna directamente el array
+    return this.http.get<string[]>(`${this.API_URL}/categories`, { headers }).pipe(
+      map(response => {
+        console.log('✅ Categorías recibidas del backend:', response);
+        // Si el backend retorna un objeto con data, extraer el array
+        if (response && typeof response === 'object' && 'data' in response) {
+          return (response as any).data;
+        }
+        // Si es directamente un array, retornarlo
+        return Array.isArray(response) ? response : ['peliculas', 'bar', 'especial', 'descuentos'];
+      }),
       catchError(error => {
         console.error('❌ Error al obtener categorías:', error);
         return of(['peliculas', 'bar', 'especial', 'descuentos']);
@@ -151,12 +169,15 @@ export class RewardsService {
   redeemReward(rewardId: number): Observable<{ success: boolean; codigo?: string; message: string }> {
     const headers = this.getAuthHeaders();
     
-    return this.http.post<ApiResponse<any>>(`${this.API_URL}/redeem/${rewardId}`, {}, { headers }).pipe(
-      map(response => ({
-        success: response.success,
-        codigo: response.data?.codigo,
-        message: response.message || (response.success ? 'Recompensa canjeada exitosamente' : 'Error al canjear recompensa')
-      })),
+    return this.http.post<any>(`${this.API_URL}/redeem/${rewardId}`, {}, { headers }).pipe(
+      map(response => {
+        console.log('✅ Respuesta de canje:', response);
+        return {
+          success: response.success || false,
+          codigo: response.codigo || response.data?.codigo_canje,
+          message: response.message || (response.success ? 'Recompensa canjeada exitosamente' : 'Error al canjear recompensa')
+        };
+      }),
       catchError(error => {
         console.error('❌ Error al canjear recompensa:', error);
         return of({
@@ -174,8 +195,17 @@ export class RewardsService {
     const headers = this.getAuthHeaders();
     const params = { incluir_usados: incluirUsados.toString() };
     
-    return this.http.get<ApiResponse<RedemptionCode[]>>(`${this.API_URL}/my/redemptions`, { headers, params }).pipe(
-      map(response => response.success ? response.data : []),
+    // 🔧 CORRECCIÓN: El backend ahora retorna directamente el array
+    return this.http.get<RedemptionCode[]>(`${this.API_URL}/my/redemptions`, { headers, params }).pipe(
+      map(response => {
+        console.log('✅ Canjes del usuario recibidos:', response);
+        // Si el backend retorna un objeto con data, extraer el array
+        if (response && typeof response === 'object' && 'data' in response) {
+          return (response as any).data;
+        }
+        // Si es directamente un array, retornarlo
+        return Array.isArray(response) ? response : [];
+      }),
       catchError(error => {
         console.error('❌ Error al obtener canjes:', error);
         return of([]);

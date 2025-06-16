@@ -114,21 +114,78 @@ export class RewardsComponent implements OnInit, OnDestroy {
   }
 
   private loadRewards(): void {
+    console.log('🔍 Iniciando carga de recompensas...');
+    
     this.subscriptions.add(
       this.rewardsService.getAllRewards().subscribe({
         next: (rewards) => {
-          this.allRewards = rewards;
+          console.log('🔍 Respuesta cruda del servicio:', rewards);
+          console.log('🔍 Tipo de datos recibidos:', typeof rewards, Array.isArray(rewards));
+          console.log('🔍 Primera recompensa (si existe):', rewards[0]);
+          
+          // 🔧 CORRECCIÓN: Procesar recompensas para normalizar tipos de datos
+          this.allRewards = this.processRewards(rewards);
           this.applyFilters();
           this.cargando = false;
-          console.log('✅ Recompensas cargadas:', rewards.length);
+          console.log('✅ Recompensas procesadas y cargadas:', this.allRewards.length);
+          console.log('✅ Recompensas filtradas:', this.filteredRewards.length);
         },
         error: (error) => {
           console.error('❌ Error cargando recompensas:', error);
+          console.error('❌ Error completo:', JSON.stringify(error, null, 2));
           this.cargando = false;
           this.toastService.showError('Error al cargar las recompensas');
         }
       })
     );
+  }
+
+  // 🔧 NUEVO MÉTODO: Procesar recompensas para normalizar tipos de datos
+  private processRewards(rawRewards: any[]): Reward[] {
+    if (!Array.isArray(rawRewards)) {
+      console.warn('⚠️ Las recompensas no son un array:', rawRewards);
+      return [];
+    }
+
+    return rawRewards.map(reward => {
+      const processed: Reward = {
+        ...reward,
+        // 🔧 CORRECCIÓN: Convertir valores string a number donde sea necesario
+        puntos_requeridos: this.ensureNumber(reward.puntos_requeridos),
+        valor: this.ensureNumber(reward.valor),
+        stock: reward.stock !== null ? this.ensureNumber(reward.stock) : null,
+        limite_por_usuario: this.ensureNumber(reward.limite_por_usuario, 1),
+        validez_dias: this.ensureNumber(reward.validez_dias, 30),
+        disponible: Boolean(reward.disponible)
+      };
+
+      console.log('🔧 Recompensa procesada:', {
+        nombre: processed.nombre,
+        valor_original: reward.valor,
+        valor_procesado: processed.valor,
+        tipo_valor: typeof processed.valor
+      });
+
+      return processed;
+    });
+  }
+
+  // 🔧 NUEVO MÉTODO: Asegurar que un valor sea número
+  private ensureNumber(value: any, defaultValue: number = 0): number {
+    if (value === null || value === undefined) {
+      return defaultValue;
+    }
+
+    if (typeof value === 'number') {
+      return isNaN(value) ? defaultValue : value;
+    }
+
+    if (typeof value === 'string') {
+      const parsed = parseFloat(value);
+      return isNaN(parsed) ? defaultValue : parsed;
+    }
+
+    return defaultValue;
   }
 
   private loadCategories(): void {
@@ -164,11 +221,15 @@ export class RewardsComponent implements OnInit, OnDestroy {
   // ==================== FILTRADO Y BÚSQUEDA ====================
   
   applyFilters(): void {
+    console.log('🔍 Aplicando filtros...');
+    console.log('🔍 Recompensas antes de filtrar:', this.allRewards.length);
+    
     let filtered = [...this.allRewards];
 
     // Filtro por categoría
     if (this.selectedCategory !== 'todas') {
       filtered = filtered.filter(reward => reward.categoria === this.selectedCategory);
+      console.log(`🔍 Después de filtro categoría "${this.selectedCategory}":`, filtered.length);
     }
 
     // Filtro por término de búsqueda
@@ -178,15 +239,20 @@ export class RewardsComponent implements OnInit, OnDestroy {
         reward.nombre.toLowerCase().includes(searchTerm) ||
         reward.descripcion.toLowerCase().includes(searchTerm)
       );
+      console.log(`🔍 Después de filtro búsqueda "${this.searchTerm}":`, filtered.length);
     }
 
     // Filtro por asequibles
     if (this.showOnlyAffordable) {
+      const before = filtered.length;
       filtered = filtered.filter(reward => reward.puntos_requeridos <= this.userPoints);
+      console.log(`🔍 Después de filtro asequibles (${this.userPoints} puntos):`, before, '->', filtered.length);
     }
 
     // Solo mostrar recompensas disponibles
+    const beforeAvailable = filtered.length;
     filtered = filtered.filter(reward => reward.disponible);
+    console.log(`🔍 Después de filtro disponibles:`, beforeAvailable, '->', filtered.length);
 
     // Ordenamiento
     switch (this.sortBy) {
@@ -205,6 +271,7 @@ export class RewardsComponent implements OnInit, OnDestroy {
     }
 
     this.filteredRewards = filtered;
+    console.log('✅ Filtros aplicados. Resultado final:', this.filteredRewards.length);
   }
 
   onSearchChange(): void {
@@ -576,8 +643,6 @@ export class RewardsComponent implements OnInit, OnDestroy {
   }
 
   getTotalPointsUsed(): number {
-    // Como no tenemos el campo puntosUsados en RedemptionCode, 
-    // calculamos basándome en la recompensa asociada
     return this.userRedemptions.reduce((total, canje) => {
       const reward = this.allRewards.find(r => r.id === canje.recompensa.id);
       return total + (reward ? reward.puntos_requeridos : 0);
@@ -638,42 +703,41 @@ export class RewardsComponent implements OnInit, OnDestroy {
     }, 1000);
   }
 
-  // ==================== MÉTODOS AUXILIARES PARA RECOMPENSAS - NUEVOS ====================
+  // ==================== MÉTODOS AUXILIARES PARA RECOMPENSAS - CORREGIDOS ====================
 
   /**
-   * Formatea el valor de una recompensa de manera segura
-   * @param valor - El valor opcional de la recompensa
+   * 🔧 CORREGIDO: Formatea el valor de una recompensa de manera segura
+   * @param valor - El valor opcional de la recompensa (number, string, null, undefined)
    * @returns String formateado con el valor o mensaje alternativo
    */
- getFormattedValue(valor?: number): string {
-  // Verificar que valor sea un número válido
-  if (valor === null || valor === undefined || typeof valor !== 'number' || isNaN(valor) || valor <= 0) {
-    return 'Sin valor específico';
+  getFormattedValue(valor?: number | string | null): string {
+    const numericValue = this.ensureNumber(valor);
+    
+    if (numericValue <= 0) {
+      return 'Sin valor específico';
+    }
+    
+    return `$${numericValue.toFixed(2)}`;
   }
-  
-  // Convertir a número por si viene como string
-  const numericValue = Number(valor);
-  
-  // Verificar nuevamente después de la conversión
-  if (isNaN(numericValue) || numericValue <= 0) {
-    return 'Sin valor específico';
-  }
-  
-  return `$${numericValue.toFixed(2)}`;
-}
-debugRewardData(reward: Reward): void {
-  console.log('🔍 Debug reward data:', {
-    nombre: reward.nombre,
-    valor: reward.valor,
-    tipoValor: typeof reward.valor,
-    esNull: reward.valor === null,
-    esUndefined: reward.valor === undefined,
-    esNaN: isNaN(reward.valor as any),
-    rewardCompleto: reward
-  });
-}
+
   /**
-   * Obtiene el valor formateado con validación de tipo
+   * 🔧 CORREGIDO: Debug de datos de recompensa
+   */
+  debugRewardData(reward: Reward): void {
+    console.log('🔍 Debug reward data:', {
+      nombre: reward.nombre,
+      valor: reward.valor,
+      tipoValor: typeof reward.valor,
+      esNull: reward.valor === null,
+      esUndefined: reward.valor === undefined,
+      esNaN: isNaN(reward.valor as any),
+      valorProcesado: this.ensureNumber(reward.valor),
+      rewardCompleto: reward
+    });
+  }
+
+  /**
+   * 🔧 CORREGIDO: Obtiene el valor formateado con validación de tipo
    * @param reward - La recompensa
    * @returns String con el valor formateado
    */
@@ -682,30 +746,30 @@ debugRewardData(reward: Reward): void {
   }
 
   /**
-   * Verifica si una recompensa tiene valor monetario válido
+   * 🔧 CORREGIDO: Verifica si una recompensa tiene valor monetario válido
    * @param reward - La recompensa a verificar
    * @returns true si tiene valor válido
    */
   hasValidValue(reward: Reward): boolean {
-    return reward.valor !== null && 
-           reward.valor !== undefined && 
-           reward.valor > 0;
+    const numericValue = this.ensureNumber(reward.valor);
+    return numericValue > 0;
   }
 
   /**
-   * Obtiene el valor en texto para mostrar en el template
+   * 🔧 CORREGIDO: Obtiene el valor en texto para mostrar en el template
    * @param valor - Valor opcional de la recompensa
    * @returns String para mostrar
    */
-  getValueDisplay(valor?: number): string {
-    if (!this.hasValidValue({ valor } as Reward)) {
-      return ''; // Retorna vacío para ocultar la sección
+  getValueDisplay(valor?: number | string | null): string {
+    const numericValue = this.ensureNumber(valor);
+    if (numericValue <= 0) {
+      return '';
     }
     return this.getFormattedValue(valor);
   }
 
   /**
-   * Verifica si debe mostrar la sección de valor
+   * 🔧 CORREGIDO: Verifica si debe mostrar la sección de valor
    * @param reward - La recompensa
    * @returns true si debe mostrar la sección
    */
@@ -714,22 +778,38 @@ debugRewardData(reward: Reward): void {
   }
 
   /**
-   * Obtiene un valor numérico seguro
-   * @param valor - Valor que puede ser undefined/null
+   * 🔧 CORREGIDO: Obtiene un valor numérico seguro con soporte para strings
+   * @param valor - Valor que puede ser undefined/null/string/number
    * @returns Número válido o 0
    */
-  getSafeNumber(valor?: number): number {
-    return valor || 0;
+  getSafeNumber(valor?: number | string | null): number {
+    return this.ensureNumber(valor);
   }
 
   /**
    * Maneja errores de imagen de recompensa
    * @param event - Evento de error de imagen
    */
-  onRewardImageError(event: any): void {
-    // Usar una imagen placeholder SVG inline
-    event.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjhmOWZhIiBzdHJva2U9IiNkZWUyZTYiIHN0cm9rZS13aWR0aD0iMSIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDEwMCwgMTAwKSI+PHJlY3QgeD0iLTQwIiB5PSItMjAiIHdpZHRoPSI4MCIgaGVpZ2h0PSI0MCIgZmlsbD0iI2U5ZWNlZiIgc3Ryb2tlPSIjNmM3NTdkIiBzdHJva2Utd2lkdGg9IjEiLz48cmVjdCB4PSItNDAiIHk9Ii01IiB3aWR0aD0iODAiIGhlaWdodD0iMTAiIGZpbGw9IiMyOGE3NDUiLz48cmVjdCB4PSItNSIgeT0iLTQwIiB3aWR0aD0iMTAiIGhlaWdodD0iODAiIGZpbGw9IiMyOGE3NDUiLz48Y2lyY2xlIGN4PSItMTUiIGN5PSItMzAiIHI9IjgiIGZpbGw9IiMyMGM5OTciLz48Y2lyY2xlIGN4PSIxNSIgY3k9Ii0zMCIgcj0iOCIgZmlsbD0iIzIwYzk5NyIvPjxjaXJjbGUgY3g9IjAiIGN5PSItMzAiIHI9IjUiIGZpbGw9IiMxOTg3NTQiLz48L2c+PHRleHQgeD0iNTAlIiB5PSIxNjAiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzZjNzU3ZCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+SW1hZ2VuIG5vIGRpc3BvbmlibGU8L3RleHQ+PC9zdmc+';
+  onRewardImageError(event: any, reward?: Reward): void {
+  const img = event.target;
+  
+  // Evitar bucle infinito
+  if (img.getAttribute('data-fallback-attempted') === 'true') {
+    // Último recurso: imagen SVG inline
+    img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjhmOWZhIi8+PGcgZmlsbD0iIzZjNzU3ZCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE4Ij48dGV4dCB4PSI1MCUiIHk9IjQ1JSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+🎁</dGV4dD48dGV4dCB4PSI1MCUiIHk9IjYwJSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+UmVjb21wZW5zYTwvdGV4dD48L2c+PC9zdmc+';
+    return;
   }
+  
+  // Marcar que ya intentamos fallback
+  img.setAttribute('data-fallback-attempted', 'true');
+  
+  // Intentar con imagen por defecto según categoría
+  if (reward) {
+    img.src = this.getDefaultImageByCategory(reward.categoria);
+  } else {
+    img.src = 'assets/recompensas/default.png';
+  }
+}
 
   /**
    * Obtiene las clases CSS para el estado de la recompensa
@@ -812,6 +892,35 @@ debugRewardData(reward: Reward): void {
     if (!this.isLowStock(reward)) return '';
     return `¡Solo ${reward.stock} disponibles!`;
   }
+getRewardImageUrl(reward: Reward): string {
+  // Si tiene imagen específica, intentar usarla
+  if (reward.imagen_url && reward.imagen_url.trim()) {
+    return reward.imagen_url;
+  }
+  
+  // Si tiene imagen pero sin _url, usar esa
+  if ((reward as any).imagen && (reward as any).imagen.trim()) {
+    return (reward as any).imagen;
+  }
+  
+  // Generar ruta local basada en ID
+  if (reward.id) {
+    return `assets/recompensas/${reward.id}.png`;
+  }
+  
+  // Fallback a imagen por categoría
+  return this.getDefaultImageByCategory(reward.categoria);
+}
+private getDefaultImageByCategory(categoria: string): string {
+  const defaultImages: { [key: string]: string } = {
+    'peliculas': 'assets/recompensas/default-movies.png',
+    'bar': 'assets/recompensas/default-bar.png',
+    'especial': 'assets/recompensas/default-special.png',
+    'descuentos': 'assets/recompensas/default-discount.png'
+  };
+  
+  return defaultImages[categoria] || 'assets/recompensas/default.png';
+}
 
   /**
    * Calcula el ahorro en dólares de los puntos
@@ -824,7 +933,7 @@ debugRewardData(reward: Reward): void {
   }
 
   /**
-   * Obtiene el texto de ahorro para mostrar
+   * 🔧 CORREGIDO: Obtiene el texto de ahorro para mostrar
    * @param reward - La recompensa
    * @returns String con el ahorro
    */
@@ -832,7 +941,7 @@ debugRewardData(reward: Reward): void {
     if (!this.hasValidValue(reward)) return '';
     
     const pointsValue = this.getPointsValueInDollars(reward.puntos_requeridos);
-    const actualValue = reward.valor!;
+    const actualValue = this.ensureNumber(reward.valor);
     
     if (actualValue > pointsValue) {
       const savings = actualValue - pointsValue;
@@ -843,7 +952,7 @@ debugRewardData(reward: Reward): void {
   }
 
   /**
-   * Verifica si hay ahorro en la recompensa
+   * 🔧 CORREGIDO: Verifica si hay ahorro en la recompensa
    * @param reward - La recompensa
    * @returns true si hay ahorro
    */
@@ -851,6 +960,8 @@ debugRewardData(reward: Reward): void {
     if (!this.hasValidValue(reward)) return false;
     
     const pointsValue = this.getPointsValueInDollars(reward.puntos_requeridos);
-    return reward.valor! > pointsValue;
+    const actualValue = this.ensureNumber(reward.valor);
+    
+    return actualValue > pointsValue;
   }
 }
