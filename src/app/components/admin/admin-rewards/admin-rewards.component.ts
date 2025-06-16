@@ -32,6 +32,10 @@ export class AdminRewardsComponent implements OnInit {
   showForm = false;
   editMode = false;
   
+  // 🆕 Propiedades para vista previa de imagen
+  rewardImageLoaded = false;
+  rewardImageError = false;
+  
   // Filtros y búsqueda
   searchTerm = '';
   selectedCategory = '';
@@ -99,7 +103,6 @@ export class AdminRewardsComponent implements OnInit {
   
   private checkAdminAccess(): void {
     if (!this.authService.isAdmin()) {
-      // 🔧 CORREGIDO: Solo mensaje sin título
       this.toastService.showError('Acceso denegado: No tienes permisos de administrador');
       return;
     }
@@ -118,7 +121,6 @@ export class AdminRewardsComponent implements OnInit {
       ]);
     } catch (error) {
       console.error('❌ Error cargando datos:', error);
-      // 🔧 CORREGIDO: Solo mensaje
       this.toastService.showError('No se pudieron cargar los datos');
     } finally {
       this.loading = false;
@@ -134,7 +136,6 @@ export class AdminRewardsComponent implements OnInit {
         },
         error: (error: any) => {
           console.error('❌ Error cargando recompensas:', error);
-          // 🔧 CORREGIDO: Solo mensaje
           this.toastService.showError('No se pudieron cargar las recompensas');
         }
       });
@@ -250,6 +251,42 @@ export class AdminRewardsComponent implements OnInit {
     return pages;
   }
 
+  // ==================== MÉTODOS PARA VISTA PREVIA DE IMAGEN ====================
+  
+  /**
+   * Maneja el evento cuando se carga correctamente la imagen de recompensa
+   */
+  onRewardImageLoad(event: any): void {
+    this.rewardImageLoaded = true;
+    this.rewardImageError = false;
+    console.log('✅ Imagen de recompensa cargada correctamente');
+  }
+  
+  /**
+   * Maneja el evento cuando hay error al cargar la imagen de recompensa
+   */
+  onRewardImageError(event: any): void {
+    this.rewardImageLoaded = false;
+    this.rewardImageError = true;
+    console.log('❌ Error al cargar imagen de recompensa');
+  }
+  
+  /**
+   * Resetea el estado de la imagen cuando cambia la URL
+   */
+  onImageUrlChange(): void {
+    this.rewardImageLoaded = false;
+    this.rewardImageError = false;
+  }
+  
+  /**
+   * Establece una imagen de ejemplo para la recompensa
+   */
+  setRewardExampleImage(url: string): void {
+    this.rewardForm.imagen_url = url;
+    this.onImageUrlChange();
+  }
+
   // ==================== GESTIÓN DEL FORMULARIO ====================
   
   openCreateForm(): void {
@@ -263,6 +300,11 @@ export class AdminRewardsComponent implements OnInit {
     this.rewardForm = { ...reward };
     this.editMode = true;
     this.showForm = true;
+    
+    // 🆕 Resetear estado de imagen al editar
+    this.rewardImageLoaded = false;
+    this.rewardImageError = false;
+    
     this.openModal('rewardFormModal');
   }
   
@@ -281,6 +323,10 @@ export class AdminRewardsComponent implements OnInit {
       disponible: true
     };
     this.formErrors = {};
+    
+    // 🆕 Resetear estado de imagen
+    this.rewardImageLoaded = false;
+    this.rewardImageError = false;
   }
   
   closeForm(): void {
@@ -331,6 +377,19 @@ export class AdminRewardsComponent implements OnInit {
       isValid = false;
     }
     
+    // 🆕 Validación de imagen URL
+    if (!this.rewardForm.imagen_url?.trim()) {
+      this.formErrors['imagen_url'] = 'La URL de la imagen es obligatoria';
+      isValid = false;
+    } else {
+      // Validar formato básico de URL
+      const urlPattern = /^(https?:\/\/|assets\/)/;
+      if (!urlPattern.test(this.rewardForm.imagen_url)) {
+        this.formErrors['imagen_url'] = 'Debe ser una URL válida (http/https) o ruta local (assets/)';
+        isValid = false;
+      }
+    }
+    
     return isValid;
   }
   
@@ -346,7 +405,6 @@ export class AdminRewardsComponent implements OnInit {
   
   async saveReward(): Promise<void> {
     if (!this.validateForm()) {
-      // 🔧 CORREGIDO: Solo mensaje
       this.toastService.showError('Por favor corrige los errores en el formulario');
       return;
     }
@@ -359,7 +417,6 @@ export class AdminRewardsComponent implements OnInit {
         this.rewardsService.updateReward(this.rewardForm.id, this.rewardForm).subscribe({
           next: (success: boolean) => {
             if (success) {
-              // 🔧 CORREGIDO: Solo mensaje
               this.toastService.showSuccess('Recompensa actualizada correctamente');
               this.closeForm();
               this.loadRewards();
