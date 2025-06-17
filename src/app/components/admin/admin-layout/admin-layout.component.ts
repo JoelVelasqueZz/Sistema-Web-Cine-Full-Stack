@@ -63,7 +63,18 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
 
     console.log('Panel de administración inicializado');
   }
-
+  getTotalRewards(): number {
+  // 🔧 Por ahora regresa 0, luego puedes conectar con el servicio real
+  return 0; // placeholder - puedes implementar la lógica real después
+}
+quickAddReward(): void {
+  // 🔧 Navegar a crear nueva recompensa
+  console.log('📝 Navegando a agregar nueva recompensa...');
+  this.router.navigate(['/admin/rewards']).then(() => {
+    // Si tienes un modal o formulario específico, puedes agregarlo aquí
+    console.log('✅ Navegación completada a /admin/rewards');
+  });
+}
   // ✅ MÉTODO ACTUALIZADO PARA CARGAR DATOS INICIALES
   private loadInitialData(): void {
     // Cargar total de películas

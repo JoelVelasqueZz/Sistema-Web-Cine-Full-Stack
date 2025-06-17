@@ -319,59 +319,74 @@ export class CheckoutComponent implements OnInit {
     }, 2000);
   }
 
- procesarPayPal(): void {
-  console.log('🚀 Iniciando proceso PayPal...');
-  
-  // Verificar si PayPal está disponible
-  if (!this.paypalService.isPayPalAvailable()) {
-    this.procesandoPago = false;
-    this.toastService.showError('❌ PayPal no está disponible. ' + this.paypalService.getPopupInstructions());
-    return;
-  }
-  
-  this.toastService.showInfo('🔄 Abriendo PayPal...');
-  
-  const paypalOrderData = {
-    orderId: this.generateTempOrderId(),
-    total: this.total.toFixed(2),
-    email: this.datosCheckout.email,
-    items: this.cartItems,
-    timestamp: new Date().toISOString()
-  };
-  
-  // Llamar directamente al servicio de PayPal
-  this.paypalService.simulatePayPalRedirect(paypalOrderData)
-    .then((result: PayPalResult) => {
-      console.log('✅ PayPal completado:', result);
-      this.toastService.showSuccess('✅ Pago con PayPal exitoso!');
-      
-      // Finalizar pago con los datos de PayPal
-      this.finalizarPago({
-        transactionId: result.transactionId,
-        payerId: result.payerId,
-        paymentStatus: result.paymentStatus,
-        timestamp: result.timestamp
-      });
-    })
-    .catch((error) => {
-      console.error('❌ Error en PayPal:', error);
+  procesarPayPal(): void {
+    console.log('🚀 Iniciando proceso PayPal...');
+    
+    // Verificar si PayPal está disponible
+    if (!this.paypalService.isPayPalAvailable()) {
       this.procesandoPago = false;
-      
-      if (error.error?.includes('popup')) {
-        this.toastService.showError('❌ ' + error.error + ' Verifica la configuración de tu navegador.');
-      } else {
-        this.toastService.showError('❌ ' + (error.error || 'Error en el proceso de PayPal'));
-      }
-    });
-}
+      this.toastService.showError('❌ PayPal no está disponible. ' + this.paypalService.getPopupInstructions());
+      return;
+    }
+    
+    this.toastService.showInfo('🔄 Abriendo PayPal...');
+    
+    const paypalOrderData = {
+      orderId: this.generateTempOrderId(),
+      total: this.total.toFixed(2),
+      email: this.datosCheckout.email,
+      items: this.cartItems,
+      timestamp: new Date().toISOString()
+    };
+    
+    // Llamar directamente al servicio de PayPal
+    this.paypalService.simulatePayPalRedirect(paypalOrderData)
+      .then((result: PayPalResult) => {
+        console.log('✅ PayPal completado:', result);
+        this.toastService.showSuccess('✅ Pago con PayPal exitoso!');
+        
+        // Finalizar pago con los datos de PayPal
+        this.finalizarPago({
+          transactionId: result.transactionId,
+          payerId: result.payerId,
+          paymentStatus: result.paymentStatus,
+          timestamp: result.timestamp
+        });
+      })
+      .catch((error) => {
+        console.error('❌ Error en PayPal:', error);
+        this.procesandoPago = false;
+        
+        if (error.error?.includes('popup')) {
+          this.toastService.showError('❌ ' + error.error + ' Verifica la configuración de tu navegador.');
+        } else {
+          this.toastService.showError('❌ ' + (error.error || 'Error en el proceso de PayPal'));
+        }
+      });
+  }
 
+  // 🔧 MÉTODO CORREGIDO: finalizarPago con formateo de asientos
   finalizarPago(paypalData?: any): void {
+    // 🔧 FIX: Procesar cartItems antes de enviar
+    const processedCartItems = this.cartItems.map(item => {
+      if (item.tipo === 'pelicula') {
+        return {
+          ...item,
+          // 🔧 CRÍTICO: Formatear asientos correctamente
+          asientos_seleccionados: this.formatSeatsForAPI(item.asientos_seleccionados),
+          funcion_id: item.funcion?.id,
+          tipo_asiento: (item as any).tipo_asiento || 'estandar'
+        };
+      }
+      return item;
+    });
+
     const paymentData: PaymentData = {
       nombre_cliente: this.datosCheckout.nombre,
       email_cliente: this.datosCheckout.email,
       telefono_cliente: this.datosCheckout.telefono,
       metodo_pago: this.datosCheckout.metodoPago as 'tarjeta' | 'paypal',
-      cartItems: this.cartItems
+      cartItems: processedCartItems // 🔧 FIX: Usar cartItems procesados
     };
 
     if (this.datosCheckout.metodoPago === 'tarjeta') {
@@ -391,6 +406,9 @@ export class CheckoutComponent implements OnInit {
       };
     }
 
+    // 🔧 DEBUG: Log para verificar datos que se envían
+    console.log('📦 Datos finales enviados al backend:', JSON.stringify(paymentData, null, 2));
+
     this.orderService.processPayment(paymentData).subscribe({
       next: (response) => {
         if (response.success) {
@@ -409,70 +427,70 @@ export class CheckoutComponent implements OnInit {
   }
 
   pagoExitoso(paymentResponse: any, paypalData?: any): void {
-  this.procesandoPago = false;
+    this.procesandoPago = false;
 
-  this.cartService.clearCart();
+    this.cartService.clearCart();
 
-  const currentUser = this.authService.getCurrentUser();
-  if (currentUser) {
-    // 🔧 CORRECCIÓN: Usar HTTP calls para guardar en historial por "comprada"
-    this.cartItems
-      .filter(item => item.tipo === 'pelicula' && item.pelicula)
-      .forEach((item) => {
-        // 🆕 USAR HTTP POST al backend para guardar historial
-        this.http.post(`http://localhost:3000/api/history`, {
-          peliculaId: item.pelicula!.id,
-          tipoAccion: 'comprada'
-        }, {
-          headers: {
-            'Authorization': `Bearer ${this.authService.getToken()}`,
-            'Content-Type': 'application/json'
-          }
-        }).subscribe({
-          next: (response: any) => {
-            if (response.success) {
-              console.log(`✅ Historial guardado: ${item.pelicula!.titulo} - comprada`);
-            } else {
-              console.warn(`⚠️ No se pudo guardar historial para: ${item.pelicula!.titulo}`);
+    const currentUser = this.authService.getCurrentUser();
+    if (currentUser) {
+      // 🔧 CORRECCIÓN: Usar HTTP calls para guardar en historial por "comprada"
+      this.cartItems
+        .filter(item => item.tipo === 'pelicula' && item.pelicula)
+        .forEach((item) => {
+          // 🆕 USAR HTTP POST al backend para guardar historial
+          this.http.post(`http://localhost:3000/api/history`, {
+            peliculaId: item.pelicula!.id,
+            tipoAccion: 'comprada'
+          }, {
+            headers: {
+              'Authorization': `Bearer ${this.authService.getToken()}`,
+              'Content-Type': 'application/json'
             }
-          },
-          error: (error) => {
-            console.error(`❌ Error guardando historial para ${item.pelicula!.titulo}:`, error);
-          }
+          }).subscribe({
+            next: (response: any) => {
+              if (response.success) {
+                console.log(`✅ Historial guardado: ${item.pelicula!.titulo} - comprada`);
+              } else {
+                console.warn(`⚠️ No se pudo guardar historial para: ${item.pelicula!.titulo}`);
+              }
+            },
+            error: (error) => {
+              console.error(`❌ Error guardando historial para ${item.pelicula!.titulo}:`, error);
+            }
+          });
         });
-      });
-  }
+    }
 
-  const metodoPago = paypalData ? 'PayPal' : 'Tarjeta de Crédito';
-  this.toastService.showSuccess(
-    `¡Pago exitoso con ${metodoPago}! 🎉 Orden: ${paymentResponse.orderId}`,
-    6000
-  );
+    const metodoPago = paypalData ? 'PayPal' : 'Tarjeta de Crédito';
+    this.toastService.showSuccess(
+      `¡Pago exitoso con ${metodoPago}! 🎉 Orden: ${paymentResponse.orderId}`,
+      6000
+    );
 
-  if (paymentResponse.puntos && paymentResponse.puntos.ganados > 0) {
+    if (paymentResponse.puntos && paymentResponse.puntos.ganados > 0) {
+      setTimeout(() => {
+        this.toastService.showInfo(
+          `💰 ¡Has ganado ${paymentResponse.puntos.ganados} puntos!`,
+          5000
+        );
+      }, 2000);
+    }
+
+    if (paypalData?.transactionId) {
+      setTimeout(() => {
+        this.toastService.showInfo(
+          `💳 PayPal ID: ${paypalData.transactionId}`,
+          4000
+        );
+      }, 4000);
+    }
+
+    this.enviarEmail(paymentResponse, paypalData);
+
     setTimeout(() => {
-      this.toastService.showInfo(
-        `💰 ¡Has ganado ${paymentResponse.puntos.ganados} puntos!`,
-        5000
-      );
-    }, 2000);
+      this.router.navigate(['/home']);
+    }, 7000);
   }
-
-  if (paypalData?.transactionId) {
-    setTimeout(() => {
-      this.toastService.showInfo(
-        `💳 PayPal ID: ${paypalData.transactionId}`,
-        4000
-      );
-    }, 4000);
-  }
-
-  this.enviarEmail(paymentResponse, paypalData);
-
-  setTimeout(() => {
-    this.router.navigate(['/home']);
-  }, 7000);
-}
 
   private enviarEmail(paymentResponse: any, paypalData?: any): void {
     this.toastService.showInfo('📧 Enviando confirmación por email...');
@@ -512,6 +530,51 @@ export class CheckoutComponent implements OnInit {
           `⚠️ Error enviando email. Tu compra fue exitosa. Orden: ${paymentResponse.orderId}`
         );
       });
+  }
+
+  // ==================== 🔧 NUEVO MÉTODO: FORMATEAR ASIENTOS ====================
+  
+  private formatSeatsForAPI(asientos: any): string[] {
+    console.log('🔍 Formateando asientos para API:', asientos);
+    
+    if (!asientos) {
+      console.log('✅ No hay asientos, retornando array vacío');
+      return [];
+    }
+    
+    if (Array.isArray(asientos)) {
+      const validSeats = asientos
+        .filter(asiento => {
+          const isValid = typeof asiento === 'string' && /^[A-Z]\d+$/.test(asiento);
+          if (!isValid) {
+            console.warn(`⚠️ Asiento inválido ignorado: ${asiento}`);
+          }
+          return isValid;
+        })
+        .map(asiento => asiento.toString());
+      
+      console.log('✅ Asientos válidos formateados:', validSeats);
+      return validSeats;
+    }
+    
+    if (typeof asientos === 'string') {
+      // Si es string separado por comas: "A1,A2,A3"
+      const seats = asientos.split(',')
+        .map(s => s.trim())
+        .filter(asiento => {
+          const isValid = /^[A-Z]\d+$/.test(asiento);
+          if (!isValid) {
+            console.warn(`⚠️ Asiento inválido ignorado: ${asiento}`);
+          }
+          return isValid;
+        });
+      
+      console.log('✅ Asientos desde string formateados:', seats);
+      return seats;
+    }
+    
+    console.warn('⚠️ Formato de asientos no reconocido:', typeof asientos);
+    return [];
   }
 
   // ==================== VALIDACIONES DE TARJETA ====================

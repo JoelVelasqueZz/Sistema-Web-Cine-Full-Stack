@@ -1,4 +1,4 @@
-<!-- admin-layout.component.html -->
+<!-- admin-layout.component.html - CON GESTIONAR RECOMPENSAS AGREGADO -->
 <div class="admin-layout">
   
   <!-- Header del Panel de Administración -->
@@ -153,6 +153,16 @@
                   <span class="badge bg-warning text-dark ms-auto">{{ getTotalBarProducts() }}</span>
                 </a>
                 
+                <!-- 🆕 NUEVO: Gestión de Recompensas -->
+                <a [routerLink]="['/admin/rewards']" 
+                   routerLinkActive="active"
+                   class="list-group-item list-group-item-action border-0 py-3 rounded mb-1"
+                   (click)="setCurrentSection('Gestión de Recompensas')">
+                  <i class="fas fa-gift me-3 text-warning"></i>
+                  Gestionar Recompensas
+                  <span class="badge bg-warning text-dark ms-auto">{{ getTotalRewards() }}</span>
+                </a>
+                
                 <!-- Gestión de Usuarios -->
                 <a [routerLink]="['/admin/users']" 
                    routerLinkActive="active"
@@ -173,6 +183,18 @@
               </h6>
               
               <div class="list-group list-group-flush">
+                
+                <!-- 🆕 NUEVO: Sistema de Puntos -->
+                <a [routerLink]="['/admin/points']" 
+                   routerLinkActive="active"
+                   class="list-group-item list-group-item-action border-0 py-3 rounded mb-1"
+                   (click)="setCurrentSection('Sistema de Puntos')">
+                  <i class="fas fa-coins me-3 text-warning"></i>
+                  Sistema de Puntos
+                  <span class="badge bg-warning text-dark ms-auto">
+                    <i class="fas fa-coins"></i>
+                  </span>
+                </a>
                 
                 <!-- Reportes -->
                 <a [routerLink]="['/admin/reports']" 
@@ -233,14 +255,20 @@
                 
                 <!-- Agregar Funcion -->
                 <button class="btn btn-outline-danger btn-sm" 
-                      (click)="quickAddFuncion()">
-                <i class="fas fa-clock me-2"></i>Agregar Función
-              </button>
-
+                        (click)="quickAddFuncion()">
+                  <i class="fas fa-clock me-2"></i>Agregar Función
+                </button>
+                
                 <!-- Agregar Producto del Bar -->
                 <button class="btn btn-outline-warning btn-sm" 
                         (click)="quickAddBarProduct()">
                   <i class="fas fa-utensils me-2"></i>Agregar Producto
+                </button>
+                
+                <!-- 🆕 NUEVO: Agregar Recompensa -->
+                <button class="btn btn-outline-warning btn-sm" 
+                        (click)="quickAddReward()">
+                  <i class="fas fa-gift me-2"></i>Agregar Recompensa
                 </button>
                 
                 <button class="btn btn-outline-success btn-sm" 
@@ -254,7 +282,6 @@
                 </button>
               </div>
             </div>
-
           </div>
         </div>
       </div>
@@ -278,14 +305,13 @@
           
         </div>
       </div>
-
     </div>
   </div>
 
-  <!-- Mobile bottom navigation -->
+  <!-- Mobile bottom navigation - ACTUALIZADO CON RECOMPENSAS -->
   <div class="mobile-nav d-md-none fixed-bottom bg-white border-top shadow">
     <div class="row g-0">
-      <div class="col-3">
+      <div class="col-2">
         <a [routerLink]="['/admin/dashboard']" 
            routerLinkActive="active"
            class="d-block text-center py-2 text-decoration-none">
@@ -293,7 +319,7 @@
           <small>Dashboard</small>
         </a>
       </div>
-      <div class="col-3">
+      <div class="col-2">
         <a [routerLink]="['/admin/movies']" 
            routerLinkActive="active"
            class="d-block text-center py-2 text-decoration-none">
@@ -301,7 +327,7 @@
           <small>Películas</small>
         </a>
       </div>
-      <div class="col-3">
+      <div class="col-2">
         <a [routerLink]="['/admin/coming-soon']" 
            routerLinkActive="active"
            class="d-block text-center py-2 text-decoration-none">
@@ -309,7 +335,23 @@
           <small>Estrenos</small>
         </a>
       </div>
-      <div class="col-3">
+      <div class="col-2">
+        <a [routerLink]="['/admin/rewards']" 
+           routerLinkActive="active"
+           class="d-block text-center py-2 text-decoration-none">
+          <i class="fas fa-gift d-block"></i>
+          <small>Recompensas</small>
+        </a>
+      </div>
+      <div class="col-2">
+        <a [routerLink]="['/admin/points']" 
+           routerLinkActive="active"
+           class="d-block text-center py-2 text-decoration-none">
+          <i class="fas fa-coins d-block"></i>
+          <small>Puntos</small>
+        </a>
+      </div>
+      <div class="col-2">
         <a [routerLink]="['/admin/users']" 
            routerLinkActive="active"
            class="d-block text-center py-2 text-decoration-none">
@@ -319,5 +361,4 @@
       </div>
     </div>
   </div>
-
 </div>

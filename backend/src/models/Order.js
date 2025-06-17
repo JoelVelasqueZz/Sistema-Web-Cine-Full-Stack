@@ -77,13 +77,17 @@ class Order {
           
           // 4. Marcar asientos como ocupados si se especificaron
           if (item.asientos_seleccionados && item.asientos_seleccionados.length > 0) {
-            for (const asientoId of item.asientos_seleccionados) {
+            for (const asientoRef of item.asientos_seleccionados) {
+              // Parsear el asiento "E4" -> fila="E", numero=4
+              const fila = asientoRef.charAt(0);
+              const numero = parseInt(asientoRef.slice(1));
+              
               const updateSeatQuery = `
                 UPDATE asientos 
                 SET esta_ocupado = true
-                WHERE id = $1 AND funcion_id = $2
+                WHERE fila = $1 AND numero = $2 AND funcion_id = $3
               `;
-              await client.query(updateSeatQuery, [asientoId, item.funcion_id]);
+              await client.query(updateSeatQuery, [fila, numero, item.funcion_id]);
             }
           }
         }

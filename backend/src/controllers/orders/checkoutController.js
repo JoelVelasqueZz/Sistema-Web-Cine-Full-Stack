@@ -388,7 +388,7 @@ class CheckoutController {
       cantidad: item.cantidad,
       precio_unitario: item.precio,
       subtotal: item.precio * item.cantidad,
-      asientos_seleccionados: item.asientos_seleccionados || [],
+      asientos_seleccionados: this.validateSeatsFormat(item.asientos_seleccionados || []),
       tipo_asiento: item.precio > item.funcion.precio ? 'vip' : 'estandar',
       detalles: {
         titulo: item.pelicula.titulo,
@@ -399,7 +399,25 @@ class CheckoutController {
       }
     };
   }
-
+  validateSeatsFormat(asientosSeleccionados) {
+  if (!Array.isArray(asientosSeleccionados)) {
+    return [];
+  }
+  
+  const validSeats = [];
+  
+  for (const asiento of asientosSeleccionados) {
+    // Validar formato: Letra + Número (ej: "A1", "E4", "J10")
+    if (typeof asiento === 'string' && /^[A-Z]\d+$/.test(asiento)) {
+      validSeats.push(asiento);
+    } else {
+      console.warn(`⚠️ Asiento inválido ignorado: ${asiento}`);
+    }
+  }
+  
+  console.log(`✅ Asientos validados: ${validSeats.join(', ')}`);
+  return validSeats;
+}
   processBarItem(item) {
   if (!item.barProduct) {
     return { error: 'Datos de producto del bar faltantes' };
