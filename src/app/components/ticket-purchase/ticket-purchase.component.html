@@ -1,4 +1,4 @@
-<!-- ticket-purchase.component.html - ACTUALIZADO -->
+<!-- ticket-purchase.component.html - LIMPIO Y ORGANIZADO -->
 <div class="container mt-4">
   
   <!-- Header -->
@@ -174,7 +174,7 @@
     </div>
   </div>
 
-  <!-- Panel de compra ACTUALIZADO -->
+  <!-- Panel de compra ORGANIZADO -->
   <div class="row mt-4" *ngIf="funcionSeleccionada && !cargando">
     <div class="col-12">
       <div class="card border-success shadow-lg">
@@ -185,7 +185,9 @@
           </h5>
         </div>
         <div class="card-body">
-          <div class="row align-items-center">
+          
+          <!-- Información de la función seleccionada -->
+          <div class="row align-items-center mb-4">
             <div class="col-md-8">
               <h6 class="mb-1">{{ pelicula?.titulo }}</h6>
               <p class="text-muted mb-1">
@@ -195,106 +197,144 @@
               </p>
               <span class="badge bg-info me-2">{{ funcionSeleccionada.formato }}</span>
               <span class="badge bg-secondary">{{ funcionSeleccionada.asientosDisponibles }} asientos disponibles</span>
-              
-              <!-- 🆕 NUEVO: Mostrar si ya está en carrito -->
-              <div *ngIf="yaEstaEnCarrito()" class="mt-2">
-                <div class="alert alert-info py-2 mb-0">
-                  <i class="fas fa-shopping-cart me-2"></i>
-                  Ya tienes {{ getCantidadEnCarrito() }} entrada(s) de esta función en tu carrito
-                </div>
-              </div>
             </div>
-            <div class="col-md-4">
-              <div class="row align-items-center">
-                <div class="col-6">
-                  <label class="form-label small fw-bold">Cantidad:</label>
-                  <div class="input-group">
-                    <button class="btn btn-outline-secondary" 
-                            type="button" 
-                            (click)="decrementarCantidad()"
-                            [disabled]="cantidadEntradas <= 1">
-                      <i class="fas fa-minus"></i>
-                    </button>
-                    
-                    <input type="number" 
-                           class="form-control text-center fw-bold" 
-                           [(ngModel)]="cantidadEntradas"
-                           name="cantidad"
-                           min="1"
-                           [max]="getMin(20, funcionSeleccionada.asientosDisponibles)"
-                           readonly
-                           style="max-width: 80px;">
-                    
-                    <button class="btn btn-outline-secondary" 
-                            type="button" 
-                            (click)="incrementarCantidad()"
-                            [disabled]="cantidadEntradas >= getMin(20, funcionSeleccionada.asientosDisponibles)">
-                      <i class="fas fa-plus"></i>
-                    </button>
-                  </div>
-                  <small class="text-muted">Máximo {{ getMin(20, funcionSeleccionada.asientosDisponibles) }}</small>
-                </div>
-                <div class="col-6">
-                  <label class="form-label small fw-bold">Total:</label>
-                  <h4 class="text-success mb-0">
-                    {{ formatearPrecio(getTotal()) }}
-                  </h4>
-                  <small class="text-muted">{{ cantidadEntradas }} entrada{{ cantidadEntradas !== 1 ? 's' : '' }}</small>
-                </div>
-              </div>
+            <div class="col-md-4 text-md-end">
+              <small class="text-muted">Precio por entrada</small>
+              <h4 class="text-success mb-0">{{ formatearPrecio(funcionSeleccionada.precio) }}</h4>
             </div>
           </div>
-          
+
+          <!-- Mostrar si ya está en carrito -->
+          <div *ngIf="yaEstaEnCarrito()" class="mb-3">
+            <div class="alert alert-info py-2 mb-0">
+              <i class="fas fa-shopping-cart me-2"></i>
+              Ya tienes {{ getCantidadEnCarrito() }} entrada(s) de esta función en tu carrito
+            </div>
+          </div>
+
+          <!-- Selector de cantidad y total -->
+          <div class="row align-items-end mb-4">
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Cantidad de entradas:</label>
+              <div class="input-group" style="max-width: 200px;">
+                <button class="btn btn-outline-secondary" 
+                        type="button" 
+                        (click)="decrementarCantidad()"
+                        [disabled]="cantidadEntradas <= 1">
+                  <i class="fas fa-minus"></i>
+                </button>
+                
+                <input type="number" 
+                       class="form-control text-center fw-bold" 
+                       [(ngModel)]="cantidadEntradas"
+                       name="cantidad"
+                       min="1"
+                       [max]="getMin(20, funcionSeleccionada.asientosDisponibles)"
+                       readonly>
+                
+                <button class="btn btn-outline-secondary" 
+                        type="button" 
+                        (click)="incrementarCantidad()"
+                        [disabled]="cantidadEntradas >= getMin(20, funcionSeleccionada.asientosDisponibles)">
+                  <i class="fas fa-plus"></i>
+                </button>
+              </div>
+              <small class="text-muted">Máximo {{ getMin(20, funcionSeleccionada.asientosDisponibles) }} entradas</small>
+            </div>
+            <div class="col-md-6 text-md-end mt-3 mt-md-0">
+              <label class="form-label fw-bold">Total a pagar:</label>
+              <h3 class="text-success mb-0">{{ formatearPrecio(getTotal()) }}</h3>
+              <small class="text-muted">{{ cantidadEntradas }} entrada{{ cantidadEntradas !== 1 ? 's' : '' }}</small>
+            </div>
+          </div>
+
           <hr>
-          
-          <!-- 🆕 BOTONES ACTUALIZADOS -->
-          <div class="d-flex justify-content-between flex-wrap gap-2">
-            <button class="btn btn-outline-secondary" (click)="cancelar()">
-              <i class="fas fa-times me-2"></i>
-              Cancelar
-            </button>
-            
-            <div class="d-flex gap-2 flex-wrap">
-              <!-- Ver carrito (si ya hay items) -->
-              <button class="btn btn-outline-info" 
-                      *ngIf="yaEstaEnCarrito()"
-                      (click)="irAlCarrito()">
-                <i class="fas fa-shopping-cart me-2"></i>
-                Ver Carrito
-              </button>
+
+          <!-- Botones de acción ORGANIZADOS -->
+          <div class="row">
+            <div class="col-12">
               
-              <!-- Agregar al carrito -->
-              <button class="btn btn-warning btn-lg" 
-                      (click)="agregarAlCarrito()"
-                      [disabled]="agregandoCarrito || cantidadEntradas > funcionSeleccionada.asientosDisponibles">
-                <span *ngIf="!agregandoCarrito">
-                  <i class="fas fa-cart-plus me-2"></i>
-                  Agregar al Carrito
-                </span>
-                <span *ngIf="agregandoCarrito">
-                  <span class="spinner-border spinner-border-sm me-2"></span>
-                  Agregando...
-                </span>
-              </button>
-              
-              <!-- Comprar ahora -->
-              <button class="btn btn-success btn-lg" 
-                      (click)="comprarAhora()"
-                      [disabled]="agregandoCarrito || cantidadEntradas > funcionSeleccionada.asientosDisponibles">
-                <span *ngIf="!agregandoCarrito">
-                  <i class="fas fa-bolt me-2"></i>
-                  Comprar Ahora
-                </span>
-                <span *ngIf="agregandoCarrito">
-                  <span class="spinner-border spinner-border-sm me-2"></span>
-                  Procesando...
-                </span>
-              </button>
+              <!-- Botón cancelar -->
+              <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <button class="btn btn-outline-secondary" (click)="cancelar()">
+                  <i class="fas fa-times me-2"></i>
+                  Cancelar
+                </button>
+                
+                <!-- Grupo de botones principales -->
+                <div class="d-flex gap-2 flex-wrap">
+                  
+                  <!-- Ver carrito (solo si ya hay items) -->
+                  <button class="btn btn-outline-info" 
+                          *ngIf="yaEstaEnCarrito()"
+                          (click)="irAlCarrito()">
+                    <i class="fas fa-shopping-cart me-2"></i>
+                    Ver Carrito ({{ getCantidadEnCarrito() }})
+                  </button>
+                  
+                  <!-- Seleccionar asientos (opción principal) -->
+                  <button class="btn btn-primary btn-lg" 
+                          (click)="seleccionarAsientos()"
+                          [disabled]="agregandoCarrito || cantidadEntradas > funcionSeleccionada.asientosDisponibles">
+                    <i class="fas fa-couch me-2"></i>
+                    Seleccionar Asientos
+                  </button>
+                  
+                  <!-- Agregar al carrito (asientos automáticos) -->
+                  <button class="btn btn-warning" 
+                          (click)="agregarAlCarritoDirecto()"
+                          [disabled]="agregandoCarrito || cantidadEntradas > funcionSeleccionada.asientosDisponibles">
+                    <span *ngIf="!agregandoCarrito">
+                      <i class="fas fa-cart-plus me-2"></i>
+                      Agregar al Carrito
+                    </span>
+                    <span *ngIf="agregandoCarrito">
+                      <span class="spinner-border spinner-border-sm me-2"></span>
+                      Agregando...
+                    </span>
+                  </button>
+                  
+                  <!-- Comprar ahora (directo) -->
+                  <button class="btn btn-success" 
+                          (click)="comprarAhora()"
+                          [disabled]="agregandoCarrito || cantidadEntradas > funcionSeleccionada.asientosDisponibles">
+                    <span *ngIf="!agregandoCarrito">
+                      <i class="fas fa-bolt me-2"></i>
+                      Comprar Ahora
+                    </span>
+                    <span *ngIf="agregandoCarrito">
+                      <span class="spinner-border spinner-border-sm me-2"></span>
+                      Procesando...
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Notas explicativas -->
+              <div class="mt-4 p-3 bg-light rounded">
+                <h6 class="fw-bold mb-2">
+                  <i class="fas fa-info-circle me-2"></i>
+                  Opciones de compra:
+                </h6>
+                <div class="row">
+                  <div class="col-md-4 mb-2">
+                    <strong class="text-primary">Seleccionar Asientos:</strong>
+                    <small class="d-block text-muted">Elige tus asientos preferidos en el mapa interactivo</small>
+                  </div>
+                  <div class="col-md-4 mb-2">
+                    <strong class="text-warning">Agregar al Carrito:</strong>
+                    <small class="d-block text-muted">Asientos asignados automáticamente, revisa antes de pagar</small>
+                  </div>
+                  <div class="col-md-4 mb-2">
+                    <strong class="text-success">Comprar Ahora:</strong>
+                    <small class="d-block text-muted">Compra directa con asientos automáticos</small>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
   </div>
-
 </div>

@@ -246,27 +246,45 @@ class OrderController {
   // ==================== ESTADÍSTICAS ====================
 
   async getOrderStats(req, res) {
-    try {
-      const userId = req.user?.role === 'admin' ? null : req.user?.id;
-      
-      console.log(`📊 Obteniendo estadísticas de órdenes ${userId ? `para usuario ${userId}` : '(global)'}`);
-      
-      const stats = await this.orderModel.getOrderStats(userId);
-      
-      res.json({
-        success: true,
-        data: stats
-      });
+  try {
+    const userId = req.user?.role === 'admin' ? null : req.user?.id;
+    
+    console.log(`📊 Obteniendo estadísticas de órdenes ${userId ? `para usuario ${userId}` : '(global)'}`);
+    
+    const stats = await this.orderModel.getOrderStats(userId);
+    
+    // 🔧 DEBUGGING: Log las estadísticas obtenidas
+    console.log('📈 Estadísticas calculadas:', {
+      userId: userId,
+      stats: stats,
+      totalOrdenes: stats.totalOrdenes,
+      completadas: stats.ordenesCompletadas,
+      pendientes: stats.ordenesPendientes,
+      totalIngresos: stats.totalIngresos
+    });
+    
+    res.json({
+      success: true,
+      data: stats
+    });
 
-    } catch (error) {
-      console.error('❌ Error al obtener estadísticas:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Error al obtener estadísticas',
-        error: process.env.NODE_ENV === 'development' ? error.message : 'Error interno'
-      });
-    }
+  } catch (error) {
+    console.error('❌ Error al obtener estadísticas:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener estadísticas',
+      data: {
+        totalOrdenes: 0,
+        ordenesCompletadas: 0,
+        ordenesPendientes: 0,
+        ordenesCanceladas: 0,
+        totalIngresos: 0,
+        ticketPromedio: 0
+      },
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Error interno'
+    });
   }
+}
 
   // ==================== PROCESAR COMPRA COMPLETA ====================
 

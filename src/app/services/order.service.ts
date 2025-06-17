@@ -348,8 +348,18 @@ export class OrderService {
    * Calcular total de items en una orden
    */
   getTotalItems(order: Order): number {
-    return order.total_entradas + order.total_productos_bar;
-  }
+  // 🔧 CORRECCIÓN: Sumar las cantidades reales, no contar registros
+  const totalEntradas = order.total_entradas || 0;
+  const totalProductosBar = order.total_productos_bar || 0;
+  
+  console.log(`📊 Calculando items para orden ${order.id}:`, {
+    entradas: totalEntradas,
+    productosBar: totalProductosBar,
+    total: totalEntradas + totalProductosBar
+  });
+  
+  return totalEntradas + totalProductosBar;
+}
 
   /**
    * Formatear fecha para mostrar
@@ -726,12 +736,12 @@ export interface CreateOrderResponse {
 
 export interface OrderItemPelicula {
   id: number;
-  ordenId: string;
   funcionId: string;
   peliculaTitulo: string;
   funcionSala: string;
   funcionFecha: string;
   funcionHora: string;
+  funcionPrecio: number;
   cantidad: number;
   precioUnitario: number;
   subtotal: number;
@@ -741,10 +751,11 @@ export interface OrderItemPelicula {
 
 export interface OrderItemBar {
   id: number;
-  ordenId: string;
   productoId: number;
   productoNombre: string;
   productoCategoria: string;
+  productoImagen?: string;
+  productoPrecio: number;
   cantidad: number;
   precioUnitario: number;
   subtotal: number;

@@ -254,56 +254,61 @@ export class SeatSelectionComponent implements OnInit {
     this.router.navigate(['/ticket-purchase', this.peliculaId]);
   }
 
-  confirmarSeleccion(): void {
-    if (this.selectedSeats.length === 0) {
-      this.toastService.showWarning('Debes seleccionar al menos un asiento');
-      return;
-    }
-
-    if (this.selectedSeats.length !== this.cantidad) {
-      this.toastService.showWarning(`Debes seleccionar exactamente ${this.cantidad} asiento(s)`);
-      return;
-    }
-
-    if (!this.pelicula || !this.funcion) {
-      this.toastService.showError('Error: Información de película o función no disponible');
-      return;
-    }
-
-    // 🆕 AGREGAR AL HISTORIAL
-    this.agregarAlHistorial();
-
-    // Crear item para el carrito con datos reales
-    const itemCarrito = {
-      tipo: 'pelicula',
-      pelicula: this.pelicula,
-      funcion: {
-        ...this.funcion,
-        asientosSeleccionados: this.selectedSeats.map(s => s.seat_id), // Usar seat_id en lugar de id
-        precioTotal: this.getTotalPrice(),
-        desglosePrecio: {
-          normal: this.getNormalPrice(),
-          vip: this.getVipTotalPrice(),
-          asientosNormales: this.getNormalSeats().length,
-          asientosVip: this.getVipSeats().length
-        }
-      },
-      cantidad: this.selectedSeats.length,
-      precioUnitario: this.getTotalPrice() / this.selectedSeats.length,
-      precioTotal: this.getTotalPrice()
-    };
-
-    console.log('🛒 Agregando al carrito:', itemCarrito);
-
-    const agregado = this.cartService.addToCart(itemCarrito);
-    if (agregado) {
-      this.toastService.showSuccess(`¡${this.selectedSeats.length} asiento(s) agregado(s) al carrito!`);
-      this.router.navigate(['/cart']);
-    } else {
-      this.toastService.showError('Error al agregar al carrito');
-    }
+ confirmarSeleccion(): void {
+  if (this.selectedSeats.length === 0) {
+    this.toastService.showWarning('Debes seleccionar al menos un asiento');
+    return;
   }
 
+  if (this.selectedSeats.length !== this.cantidad) {
+    this.toastService.showWarning(`Debes seleccionar exactamente ${this.cantidad} asiento(s)`);
+    return;
+  }
+
+  if (!this.pelicula || !this.funcion) {
+    this.toastService.showError('Error: Información de película o función no disponible');
+    return;
+  }
+
+  // 🆕 AGREGAR AL HISTORIAL
+  this.agregarAlHistorial();
+
+  // 🔧 CREAR ITEM CON ESTRUCTURA CORRECTA (igual que ticket-purchase)
+  const itemParaCarrito = {
+    tipo: 'pelicula',
+    pelicula: this.pelicula,
+    funcion: {
+      ...this.funcion,
+      // 🔧 NO agregar campos extra que confunden al CartService
+    },
+    cantidad: this.selectedSeats.length,
+    // 🆕 AGREGAR asientos_seleccionados al nivel correcto
+    asientos_seleccionados: this.selectedSeats.map(s => s.seat_id)
+  };
+
+  console.log('🛒 Agregando al carrito desde seat-selection:', itemParaCarrito);
+
+  // 🔧 USAR EL MISMO MÉTODO QUE ticket-purchase
+  this.cartService.addToCart(itemParaCarrito).subscribe({
+    next: (exito) => {
+      if (exito) {
+        this.toastService.showSuccess(`¡${this.selectedSeats.length} asiento(s) agregado(s) al carrito!`);
+        
+        // Log para debugging
+        console.log('✅ Item agregado correctamente al carrito');
+        console.log('🛒 Carrito actual:', this.cartService.getCartItems());
+        
+        this.router.navigate(['/cart']);
+      } else {
+        this.toastService.showError('No se pudo agregar al carrito');
+      }
+    },
+    error: (error) => {
+      console.error('❌ Error agregando al carrito:', error);
+      this.toastService.showError('Error al agregar al carrito');
+    }
+  });
+}
   private agregarAlHistorial(): void {
     const currentUser = this.authService.getCurrentUser();
     if (currentUser && this.pelicula) {

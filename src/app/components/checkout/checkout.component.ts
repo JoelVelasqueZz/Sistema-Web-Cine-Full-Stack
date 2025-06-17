@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
 import { CartService, CartItem } from '../../services/cart.service';
 import { OrderService, CheckoutData, PaymentData } from '../../services/order.service';
 import { PointsService } from '../../services/points.service';
@@ -64,7 +65,8 @@ export class CheckoutComponent implements OnInit {
     private emailService: EmailService,
     private paypalService: PaypalSimulationService,
     public authService: AuthService,
-    private userService: UserService
+    private userService: UserService,
+    private http: HttpClient
   ) {}
 
   ngOnInit(): void {
@@ -407,57 +409,70 @@ export class CheckoutComponent implements OnInit {
   }
 
   pagoExitoso(paymentResponse: any, paypalData?: any): void {
-    this.procesandoPago = false;
+  this.procesandoPago = false;
 
-    this.cartService.clearCart();
+  this.cartService.clearCart();
 
-    const currentUser = this.authService.getCurrentUser();
-    if (currentUser) {
-      this.cartItems
-        .filter(item => item.tipo === 'pelicula' && item.pelicula)
-        .forEach((item) => {
-          this.userService.addToHistory(currentUser.id, {
-            peliculaId: item.pelicula!.id || 0,
-            titulo: item.pelicula!.titulo,
-            poster: item.pelicula!.poster,
-            genero: item.pelicula!.genero,
-            anio: item.pelicula!.anio,
-            fechaVista: new Date().toISOString(),
-            tipoAccion: 'comprada'
-          });
+  const currentUser = this.authService.getCurrentUser();
+  if (currentUser) {
+    // 🔧 CORRECCIÓN: Usar HTTP calls para guardar en historial por "comprada"
+    this.cartItems
+      .filter(item => item.tipo === 'pelicula' && item.pelicula)
+      .forEach((item) => {
+        // 🆕 USAR HTTP POST al backend para guardar historial
+        this.http.post(`http://localhost:3000/api/history`, {
+          peliculaId: item.pelicula!.id,
+          tipoAccion: 'comprada'
+        }, {
+          headers: {
+            'Authorization': `Bearer ${this.authService.getToken()}`,
+            'Content-Type': 'application/json'
+          }
+        }).subscribe({
+          next: (response: any) => {
+            if (response.success) {
+              console.log(`✅ Historial guardado: ${item.pelicula!.titulo} - comprada`);
+            } else {
+              console.warn(`⚠️ No se pudo guardar historial para: ${item.pelicula!.titulo}`);
+            }
+          },
+          error: (error) => {
+            console.error(`❌ Error guardando historial para ${item.pelicula!.titulo}:`, error);
+          }
         });
-    }
-
-    const metodoPago = paypalData ? 'PayPal' : 'Tarjeta de Crédito';
-    this.toastService.showSuccess(
-      `¡Pago exitoso con ${metodoPago}! 🎉 Orden: ${paymentResponse.orderId}`,
-      6000
-    );
-
-    if (paymentResponse.puntos && paymentResponse.puntos.ganados > 0) {
-      setTimeout(() => {
-        this.toastService.showInfo(
-          `💰 ¡Has ganado ${paymentResponse.puntos.ganados} puntos!`,
-          5000
-        );
-      }, 2000);
-    }
-
-    if (paypalData?.transactionId) {
-      setTimeout(() => {
-        this.toastService.showInfo(
-          `💳 PayPal ID: ${paypalData.transactionId}`,
-          4000
-        );
-      }, 4000);
-    }
-
-    this.enviarEmail(paymentResponse, paypalData);
-
-    setTimeout(() => {
-      this.router.navigate(['/home']);
-    }, 7000);
+      });
   }
+
+  const metodoPago = paypalData ? 'PayPal' : 'Tarjeta de Crédito';
+  this.toastService.showSuccess(
+    `¡Pago exitoso con ${metodoPago}! 🎉 Orden: ${paymentResponse.orderId}`,
+    6000
+  );
+
+  if (paymentResponse.puntos && paymentResponse.puntos.ganados > 0) {
+    setTimeout(() => {
+      this.toastService.showInfo(
+        `💰 ¡Has ganado ${paymentResponse.puntos.ganados} puntos!`,
+        5000
+      );
+    }, 2000);
+  }
+
+  if (paypalData?.transactionId) {
+    setTimeout(() => {
+      this.toastService.showInfo(
+        `💳 PayPal ID: ${paypalData.transactionId}`,
+        4000
+      );
+    }, 4000);
+  }
+
+  this.enviarEmail(paymentResponse, paypalData);
+
+  setTimeout(() => {
+    this.router.navigate(['/home']);
+  }, 7000);
+}
 
   private enviarEmail(paymentResponse: any, paypalData?: any): void {
     this.toastService.showInfo('📧 Enviando confirmación por email...');

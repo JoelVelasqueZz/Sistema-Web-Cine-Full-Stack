@@ -31,68 +31,94 @@ export class CartService {
 
   // 🆕 MÉTODO MEJORADO: Agregar al carrito con validación
   addToCart(item: any): Observable<boolean> {
-    try {
-      if (item.tipo === 'pelicula' || (item.pelicula && item.funcion)) {
-        return this.addMovieToCartValidated(item.pelicula, item.funcion, item.cantidad || 1);
-      } else if (item.tipo === 'bar' || item.producto) {
-        return this.addBarProductToCartValidated(item);
-      } else {
-        console.error('Tipo de item no reconocido:', item);
-        return of(false);
-      }
-    } catch (error) {
-      console.error('Error al agregar al carrito:', error);
+  try {
+    console.log('🛒 CartService.addToCart recibió:', item);
+    
+    if (item.tipo === 'pelicula' || (item.pelicula && item.funcion)) {
+      // 🆕 EXTRAER asientos_seleccionados del item
+      const asientosSeleccionados = item.asientos_seleccionados || [];
+      return this.addMovieToCartValidated(
+        item.pelicula, 
+        item.funcion, 
+        item.cantidad || 1, 
+        asientosSeleccionados
+      );
+    } else if (item.tipo === 'bar' || item.producto) {
+      return this.addBarProductToCartValidated(item);
+    } else {
+      console.error('Tipo de item no reconocido:', item);
       return of(false);
     }
+  } catch (error) {
+    console.error('Error al agregar al carrito:', error);
+    return of(false);
   }
+}
 
   // 🆕 AGREGAR PELÍCULA CON VALIDACIÓN API
-  private addMovieToCartValidated(pelicula: Pelicula, funcion: FuncionCine, cantidad: number = 1): Observable<boolean> {
-    return new Observable(observer => {
-      // Validar disponibilidad (simulado por ahora, se puede conectar a API real)
-      if (funcion.asientosDisponibles < cantidad) {
+  private addMovieToCartValidated(pelicula: Pelicula, funcion: FuncionCine, cantidad: number = 1, asientosSeleccionados?: string[]): Observable<boolean> {
+  return new Observable(observer => {
+    // Validar disponibilidad (simulado por ahora, se puede conectar a API real)
+    if (funcion.asientosDisponibles < cantidad) {
+      observer.next(false);
+      observer.complete();
+      return;
+    }
+
+    // Verificar si ya existe el item
+    const existingItem = this.cartItems.find(item => 
+      item.tipo === 'pelicula' &&
+      item.pelicula?.id === pelicula.id && 
+      item.funcion?.id === funcion.id
+    );
+
+    if (existingItem) {
+      // Si existe, aumentar cantidad
+      const nuevaCantidad = existingItem.cantidad + cantidad;
+      if (nuevaCantidad <= funcion.asientosDisponibles) {
+        existingItem.cantidad = nuevaCantidad;
+        existingItem.subtotal = existingItem.precio * existingItem.cantidad;
+        
+        // 🆕 ACTUALIZAR asientos si se proporcionan
+        if (asientosSeleccionados && asientosSeleccionados.length > 0) {
+          existingItem.asientos_seleccionados = [
+            ...(existingItem.asientos_seleccionados || []),
+            ...asientosSeleccionados
+          ];
+        }
+      } else {
         observer.next(false);
         observer.complete();
         return;
       }
+    } else {
+      // Si no existe, crear nuevo item
+      const cartItem: CartItem = {
+        id: this.generateId(),
+        tipo: 'pelicula',
+        pelicula: pelicula,
+        funcion: funcion,
+        cantidad: cantidad,
+        precio: funcion.precio,
+        subtotal: funcion.precio * cantidad,
+        // 🆕 AGREGAR asientos seleccionados
+        asientos_seleccionados: asientosSeleccionados || []
+      };
+      this.cartItems.push(cartItem);
+    }
 
-      // Verificar si ya existe el item
-      const existingItem = this.cartItems.find(item => 
-        item.tipo === 'pelicula' &&
-        item.pelicula?.id === pelicula.id && 
-        item.funcion?.id === funcion.id
-      );
-
-      if (existingItem) {
-        // Si existe, aumentar cantidad
-        const nuevaCantidad = existingItem.cantidad + cantidad;
-        if (nuevaCantidad <= funcion.asientosDisponibles) {
-          existingItem.cantidad = nuevaCantidad;
-          existingItem.subtotal = existingItem.precio * existingItem.cantidad;
-        } else {
-          observer.next(false);
-          observer.complete();
-          return;
-        }
-      } else {
-        // Si no existe, crear nuevo item
-        const cartItem: CartItem = {
-          id: this.generateId(),
-          tipo: 'pelicula',
-          pelicula: pelicula,
-          funcion: funcion,
-          cantidad: cantidad,
-          precio: funcion.precio,
-          subtotal: funcion.precio * cantidad
-        };
-        this.cartItems.push(cartItem);
-      }
-
-      this.updateCart();
-      observer.next(true);
-      observer.complete();
+    console.log('✅ Item de película agregado al carrito:', {
+      pelicula: pelicula.titulo,
+      funcion: funcion.id,
+      cantidad: cantidad,
+      asientos: asientosSeleccionados || []
     });
-  }
+
+    this.updateCart();
+    observer.next(true);
+    observer.complete();
+  });
+}
 
   // 🆕 AGREGAR PRODUCTO DEL BAR CON VALIDACIÓN
   private addBarProductToCartValidated(item: any): Observable<boolean> {

@@ -140,11 +140,14 @@ private validarAdmin(): boolean {
   }
 
   comprarEntradas() {
-    if (this.pelicula) {
-      console.log('Navegando a ticket-purchase con ID:', this.peliculaId);
-      this.router.navigate(['/ticket-purchase', this.peliculaId]);
-    }
+  if (this.pelicula) {
+    console.log('🎬 Navegando a compra de entradas para:', this.pelicula.titulo);
+    
+    // 🔧 CORRECCIÓN: Ir a ticket-purchase donde se eligen funciones
+    // No ir directo al carrito, sino a la selección de funciones
+    this.router.navigate(['/ticket-purchase', this.peliculaId]);
   }
+}
 
 
   // 🆕 MÉTODOS ACTUALIZADOS PARA GESTIÓN DE FUNCIONES

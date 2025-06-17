@@ -136,101 +136,149 @@ class Order {
   // ==================== OBTENER ÓRDENES ====================
   
   async getOrderById(orderId) {
-    try {
-      const orderQuery = `
-        SELECT 
-          o.*,
-          COALESCE(
-            json_agg(
-              DISTINCT jsonb_build_object(
-                'id', oip.id,
-                'tipo', 'pelicula',
-                'funcion_id', oip.funcion_id,
-                'cantidad', oip.cantidad,
-                'precio_unitario', oip.precio_unitario,
-                'subtotal', oip.subtotal,
-                'asientos_seleccionados', oip.asientos_seleccionados,
-                'tipo_asiento', oip.tipo_asiento,
-                'pelicula_titulo', p.titulo,
-                'pelicula_poster', p.poster,
-                'funcion_fecha', fc.fecha,
-                'funcion_hora', fc.hora,
-                'funcion_sala', fc.sala
-              )
-            ) FILTER (WHERE oip.id IS NOT NULL), 
-            '[]'::json
-          ) as items_peliculas,
-          COALESCE(
-            json_agg(
-              DISTINCT jsonb_build_object(
-                'id', oib.id,
-                'tipo', 'bar',
-                'producto_id', oib.producto_id,
-                'cantidad', oib.cantidad,
-                'precio_unitario', oib.precio_unitario,
-                'subtotal', oib.subtotal,
-                'tamano_seleccionado', oib.tamano_seleccionado,
-                'extras_seleccionados', oib.extras_seleccionados,
-                'notas', oib.notas,
-                'producto_nombre', pb.nombre,
-                'producto_categoria', pb.categoria,
-                'producto_imagen', pb.imagen
-              )
-            ) FILTER (WHERE oib.id IS NOT NULL), 
-            '[]'::json
-          ) as items_bar
-        FROM ordenes o
-        LEFT JOIN orden_items_peliculas oip ON o.id = oip.orden_id
-        LEFT JOIN funciones_cine fc ON oip.funcion_id = fc.id
-        LEFT JOIN peliculas p ON fc.pelicula_id = p.id
-        LEFT JOIN orden_items_bar oib ON o.id = oib.orden_id
-        LEFT JOIN productos_bar pb ON oib.producto_id = pb.id
-        WHERE o.id = $1
-        GROUP BY o.id
-      `;
-      
-      const result = await this.pool.query(orderQuery, [orderId]);
-      
-      if (result.rows.length === 0) {
-        return null;
-      }
-      
-      return result.rows[0];
-    } catch (error) {
-      console.error('Error al obtener orden:', error);
-      throw error;
+  try {
+    // 🔧 CORRECCIÓN: Query mejorada con mejor estructura de JOINs
+    const orderQuery = `
+      SELECT 
+        o.*,
+        COALESCE(
+          json_agg(
+            DISTINCT jsonb_build_object(
+              'id', oip.id,
+              'funcionId', oip.funcion_id,
+              'cantidad', oip.cantidad,
+              'precioUnitario', oip.precio_unitario,
+              'subtotal', oip.subtotal,
+              'asientosSeleccionados', oip.asientos_seleccionados,
+              'tipoAsiento', oip.tipo_asiento,
+              'peliculaTitulo', COALESCE(p.titulo, 'Película no disponible'),
+              'peliculaPoster', p.poster,
+              'funcionFecha', TO_CHAR(fc.fecha, 'DD/MM/YYYY'),
+              'funcionHora', TO_CHAR(fc.hora, 'HH24:MI'),
+              'funcionSala', COALESCE(fc.sala, 'Sala no especificada'),
+              'funcionPrecio', fc.precio
+            )
+          ) FILTER (WHERE oip.id IS NOT NULL), 
+          '[]'::json
+        ) as items_peliculas,
+        COALESCE(
+          json_agg(
+            DISTINCT jsonb_build_object(
+              'id', oib.id,
+              'productoId', oib.producto_id,
+              'cantidad', oib.cantidad,
+              'precioUnitario', oib.precio_unitario,
+              'subtotal', oib.subtotal,
+              'tamanoSeleccionado', oib.tamano_seleccionado,
+              'extrasSeleccionados', oib.extras_seleccionados,
+              'notas', oib.notas,
+              'productoNombre', COALESCE(pb.nombre, 'Producto no disponible'),
+              'productoCategoria', COALESCE(pb.categoria, 'Sin categoría'),
+              'productoImagen', pb.imagen,
+              'productoPrecio', pb.precio
+            )
+          ) FILTER (WHERE oib.id IS NOT NULL), 
+          '[]'::json
+        ) as items_bar
+      FROM ordenes o
+      LEFT JOIN orden_items_peliculas oip ON o.id = oip.orden_id
+      LEFT JOIN funciones_cine fc ON oip.funcion_id = fc.id
+      LEFT JOIN peliculas p ON fc.pelicula_id = p.id
+      LEFT JOIN orden_items_bar oib ON o.id = oib.orden_id
+      LEFT JOIN productos_bar pb ON oib.producto_id = pb.id
+      WHERE o.id = $1
+      GROUP BY o.id
+    `;
+    
+    const result = await this.pool.query(orderQuery, [orderId]);
+    
+    if (result.rows.length === 0) {
+      return null;
     }
+    
+    const order = result.rows[0];
+    
+    // 🔧 CORRECCIÓN: Validar y limpiar los datos
+    if (order.items_peliculas && order.items_peliculas.length > 0) {
+      order.items_peliculas = order.items_peliculas.filter(item => item.id !== null).map(item => ({
+        ...item,
+        precioUnitario: parseFloat(item.precioUnitario) || 0,
+        subtotal: parseFloat(item.subtotal) || 0,
+        funcionPrecio: parseFloat(item.funcionPrecio) || 0,
+        peliculaTitulo: item.peliculaTitulo || 'Película no disponible',
+        funcionSala: item.funcionSala || 'Sala no especificada',
+        funcionFecha: item.funcionFecha || 'Fecha no disponible',
+        funcionHora: item.funcionHora || 'Hora no disponible'
+      }));
+    }
+    
+    if (order.items_bar && order.items_bar.length > 0) {
+      order.items_bar = order.items_bar.filter(item => item.id !== null).map(item => ({
+        ...item,
+        precioUnitario: parseFloat(item.precioUnitario) || 0,
+        subtotal: parseFloat(item.subtotal) || 0,
+        productoPrecio: parseFloat(item.productoPrecio) || 0,
+        productoNombre: item.productoNombre || 'Producto no disponible',
+        productoCategoria: item.productoCategoria || 'Sin categoría'
+      }));
+    }
+    
+    // 🔧 CORRECCIÓN: Asegurar que los totales sean números
+    order.total = parseFloat(order.total) || 0;
+    order.subtotal = parseFloat(order.subtotal) || 0;
+    order.impuestos = parseFloat(order.impuestos) || 0;
+    order.cargo_servicio = parseFloat(order.cargo_servicio) || 0;
+    
+    console.log('✅ Orden detallada obtenida:', {
+      orderId: order.id,
+      peliculas: order.items_peliculas?.length || 0,
+      productos: order.items_bar?.length || 0,
+      total: order.total
+    });
+    
+    return order;
+  } catch (error) {
+    console.error('❌ Error al obtener orden detallada:', error);
+    throw error;
   }
+}
 
   async getOrdersByUser(userId, limit = 20, offset = 0) {
-    try {
-      const query = `
-        SELECT 
-          o.id,
-          o.total,
-          o.subtotal,
-          o.estado,
-          o.metodo_pago,
-          o.fecha_creacion,
-          COUNT(DISTINCT oip.id) as total_entradas,
-          COUNT(DISTINCT oib.id) as total_productos_bar
-        FROM ordenes o
-        LEFT JOIN orden_items_peliculas oip ON o.id = oip.orden_id
-        LEFT JOIN orden_items_bar oib ON o.id = oib.orden_id
-        WHERE o.usuario_id = $1
-        GROUP BY o.id, o.total, o.subtotal, o.estado, o.metodo_pago, o.fecha_creacion
-        ORDER BY o.fecha_creacion DESC
-        LIMIT $2 OFFSET $3
-      `;
-      
-      const result = await this.pool.query(query, [userId, limit, offset]);
-      return result.rows;
-    } catch (error) {
-      console.error('Error al obtener órdenes del usuario:', error);
-      throw error;
-    }
+  try {
+    const query = `
+      SELECT 
+        o.id,
+        o.total,
+        o.subtotal,
+        o.estado,
+        o.metodo_pago,
+        o.fecha_creacion,
+        COALESCE(SUM(oip.cantidad), 0) as total_entradas,
+        COALESCE(SUM(oib.cantidad), 0) as total_productos_bar
+      FROM ordenes o
+      LEFT JOIN orden_items_peliculas oip ON o.id = oip.orden_id
+      LEFT JOIN orden_items_bar oib ON o.id = oib.orden_id
+      WHERE o.usuario_id = $1
+      GROUP BY o.id, o.total, o.subtotal, o.estado, o.metodo_pago, o.fecha_creacion
+      ORDER BY o.fecha_creacion DESC
+      LIMIT $2 OFFSET $3
+    `;
+    
+    const result = await this.pool.query(query, [userId, limit, offset]);
+    
+    // 🔧 CORRECCIÓN: Convertir a números enteros y asegurar que no sean null
+    const orders = result.rows.map(order => ({
+      ...order,
+      total_entradas: parseInt(order.total_entradas) || 0,
+      total_productos_bar: parseInt(order.total_productos_bar) || 0
+    }));
+    
+    return orders;
+  } catch (error) {
+    console.error('Error al obtener órdenes del usuario:', error);
+    throw error;
   }
-
+}
   // ==================== ACTUALIZAR ORDEN ====================
   
   async updateOrderStatus(orderId, estado, paypal_data = null) {
@@ -306,32 +354,50 @@ class Order {
   // ==================== ESTADÍSTICAS ====================
   
   async getOrderStats(userId = null) {
-    try {
-      let query = `
-        SELECT 
-          COUNT(*) as total_ordenes,
-          COUNT(CASE WHEN estado = 'completada' THEN 1 END) as ordenes_completadas,
-          COUNT(CASE WHEN estado = 'pendiente' THEN 1 END) as ordenes_pendientes,
-          COUNT(CASE WHEN estado = 'cancelada' THEN 1 END) as ordenes_canceladas,
-          COALESCE(SUM(CASE WHEN estado = 'completada' THEN total ELSE 0 END), 0) as total_ingresos,
-          COALESCE(AVG(CASE WHEN estado = 'completada' THEN total ELSE NULL END), 0) as ticket_promedio
-        FROM ordenes
-      `;
-      
-      const values = [];
-      
-      if (userId) {
-        query += ` WHERE usuario_id = $1`;
-        values.push(userId);
-      }
-      
-      const result = await this.pool.query(query, values);
-      return result.rows[0];
-    } catch (error) {
-      console.error('Error al obtener estadísticas de órdenes:', error);
-      throw error;
+  try {
+    let query = `
+      SELECT 
+        COUNT(*) as total_ordenes,
+        COUNT(CASE WHEN estado = 'completada' THEN 1 END) as ordenes_completadas,
+        COUNT(CASE WHEN estado = 'pendiente' THEN 1 END) as ordenes_pendientes,
+        COUNT(CASE WHEN estado = 'cancelada' THEN 1 END) as ordenes_canceladas,
+        COALESCE(SUM(CASE WHEN estado = 'completada' THEN total ELSE 0 END), 0) as total_ingresos,
+        COALESCE(AVG(CASE WHEN estado = 'completada' THEN total ELSE NULL END), 0) as ticket_promedio
+      FROM ordenes
+    `;
+    
+    const values = [];
+    
+    if (userId) {
+      query += ` WHERE usuario_id = $1`;
+      values.push(userId);
     }
+    
+    const result = await this.pool.query(query, values);
+    const stats = result.rows[0];
+    
+    // 🔧 CORRECCIÓN: Mapear a los nombres que espera el frontend
+    return {
+      totalOrdenes: parseInt(stats.total_ordenes) || 0,
+      ordenesCompletadas: parseInt(stats.ordenes_completadas) || 0,
+      ordenesPendientes: parseInt(stats.ordenes_pendientes) || 0,
+      ordenesCanceladas: parseInt(stats.ordenes_canceladas) || 0,
+      totalIngresos: parseFloat(stats.total_ingresos) || 0,
+      ticketPromedio: parseFloat(stats.ticket_promedio) || 0
+    };
+  } catch (error) {
+    console.error('Error al obtener estadísticas de órdenes:', error);
+    // 🔧 CORRECCIÓN: Devolver estructura correcta en caso de error
+    return {
+      totalOrdenes: 0,
+      ordenesCompletadas: 0,
+      ordenesPendientes: 0,
+      ordenesCanceladas: 0,
+      totalIngresos: 0,
+      ticketPromedio: 0
+    };
   }
+}
 
   // ==================== VALIDACIONES ====================
   
@@ -349,7 +415,7 @@ class Order {
     const hasMovieItems = orderData.items_peliculas && orderData.items_peliculas.length > 0;
     const hasBarItems = orderData.items_bar && orderData.items_bar.length > 0;
     
-    if (!hasMovieItems && !hasBarItems) {
+    if (!hasMovieItems && !hasBarItems) { 
       errors.push('La orden debe contener al menos un item');
     }
     
