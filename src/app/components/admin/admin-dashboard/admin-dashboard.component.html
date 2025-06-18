@@ -1,21 +1,76 @@
-<!-- admin-dashboard.component.html -->
+<!-- admin-dashboard.component.html - CORREGIDO -->
 <div class="admin-dashboard">
   
-  <!-- Header de bienvenida -->
+  <!-- Header de bienvenida CON INDICADOR DE DATOS -->
   <div class="row mb-4">
     <div class="col-12">
       <div class="welcome-card bg-gradient-primary text-white p-4 rounded-3 shadow">
         <div class="d-flex justify-content-between align-items-center">
           <div>
-            <h4 class="mb-1">¡Bienvenido al Panel de Control!</h4>
+            <h4 class="mb-1">
+              ¡Panel de Control Administrativo!
+              <span class="badge bg-success ms-2" *ngIf="datosRealesDisponibles">
+                <i class="fas fa-database me-1"></i>Datos Activos
+              </span>
+              <span class="badge bg-warning text-dark ms-2" *ngIf="usoFallback && !errorCargaDatos">
+                <i class="fas fa-exclamation-triangle me-1"></i>Modo Local
+              </span>
+            </h4>
             <p class="mb-0 opacity-75">
               <i class="fas fa-calendar me-2"></i>
               {{ getCurrentDate() }} • Última actualización: {{ getLastUpdateTime() }}
             </p>
+            <!-- INDICADOR DE ESTADO DE DATOS -->
+            <div class="mt-2">
+              <span class="badge bg-success me-2" *ngIf="datosRealesDisponibles && !errorCargaDatos">
+                <i class="fas fa-check-circle me-1"></i>Sistema OK
+              </span>
+              <span class="badge bg-warning text-dark me-2" *ngIf="usoFallback && !errorCargaDatos">
+                <i class="fas fa-info-circle me-1"></i>Datos Locales
+              </span>
+              <span class="badge bg-danger me-2" *ngIf="errorCargaDatos">
+                <i class="fas fa-exclamation-triangle me-1"></i>{{ tipoError }}
+              </span>
+              <button class="btn btn-sm btn-light opacity-75" (click)="verificarEstadoDatos()" title="Verificar estado">
+                <i class="fas fa-info-circle me-1"></i>Info
+              </button>
+            </div>
           </div>
           <div class="d-none d-md-block">
             <i class="fas fa-chart-line fa-3x opacity-50"></i>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ALERTA SI HAY ERROR -->
+  <div class="row mb-4" *ngIf="errorCargaDatos">
+    <div class="col-12">
+      <div class="alert alert-danger d-flex align-items-center" role="alert">
+        <i class="fas fa-exclamation-triangle fa-2x me-3"></i>
+        <div>
+          <h6 class="mb-1">⚠️ {{ mensajeEstado }}</h6>
+          <p class="mb-2">{{ tipoError === 'CONEXION' ? 'El backend no está disponible en localhost:3000' : 'Error al cargar datos del sistema' }}</p>
+          <button class="btn btn-sm btn-outline-danger me-2" (click)="reintentarCarga()">
+            <i class="fas fa-sync-alt me-1"></i>Reintentar
+          </button>
+          <button class="btn btn-sm btn-outline-secondary" (click)="verificarEstadoConexion()">
+            <i class="fas fa-network-wired me-1"></i>Verificar Conexión
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MENSAJE INFORMATIVO PARA DATOS LOCALES -->
+  <div class="row mb-4" *ngIf="usoFallback && !errorCargaDatos">
+    <div class="col-12">
+      <div class="alert alert-info d-flex align-items-center" role="alert">
+        <i class="fas fa-info-circle fa-2x me-3"></i>
+        <div>
+          <h6 class="mb-1">ℹ️ Usando datos locales</h6>
+          <p class="mb-0">El dashboard está funcionando con datos de los servicios locales. Para datos reales, asegúrate de que el backend esté ejecutándose.</p>
         </div>
       </div>
     </div>
@@ -26,7 +81,9 @@
     <div class="col-12">
       <h5 class="mb-3">
         <i class="fas fa-chart-pie me-2 text-primary"></i>
-        Estadísticas Generales
+        Estadísticas Generales 
+        <span class="badge bg-success" *ngIf="datosRealesDisponibles">DATOS ACTIVOS</span>
+        <span class="badge bg-warning text-dark" *ngIf="usoFallback">DATOS LOCALES</span>
       </h5>
     </div>
   </div>
@@ -42,7 +99,7 @@
               <div class="stat-number">{{ stats.totalPeliculas }}</div>
               <div class="stat-label">Películas Totales</div>
               <small class="stat-change">
-                <i class="fas fa-arrow-up me-1"></i>+2 este mes
+                <i class="fas fa-database me-1"></i>{{ datosRealesDisponibles ? 'BD Real' : 'Datos Locales' }}
               </small>
             </div>
             <div class="stat-icon">
@@ -62,7 +119,7 @@
               <div class="stat-number">{{ stats.totalUsuarios }}</div>
               <div class="stat-label">Usuarios Registrados</div>
               <small class="stat-change">
-                <i class="fas fa-arrow-up me-1"></i>{{ stats.usuariosActivos }} activos
+                <i class="fas fa-check-circle me-1"></i>{{ stats.usuariosActivos }} activos
               </small>
             </div>
             <div class="stat-icon">
@@ -82,7 +139,7 @@
               <div class="stat-number">{{ stats.totalVentas }}</div>
               <div class="stat-label">Ventas Totales</div>
               <small class="stat-change">
-                <i class="fas fa-arrow-up me-1"></i>+5 esta semana
+                <i class="fas fa-shopping-cart me-1"></i>{{ stats.ordenesCompletadas || 0 }} completadas
               </small>
             </div>
             <div class="stat-icon">
@@ -102,7 +159,7 @@
               <div class="stat-number">${{ stats.ingresosMes.toFixed(2) }}</div>
               <div class="stat-label">Ingresos del Mes</div>
               <small class="stat-change">
-                <i class="fas fa-arrow-up me-1"></i>+15% vs mes anterior
+                <i class="fas fa-dollar-sign me-1"></i>Ticket: ${{ (stats.ticketPromedio || 0).toFixed(2) }}
               </small>
             </div>
             <div class="stat-icon">
@@ -115,12 +172,13 @@
 
   </div>
 
-  <!-- ========== NUEVA SECCIÓN: ESTADÍSTICAS DEL BAR ========== -->
+  <!-- ========== SECCIÓN DEL BAR ========== -->
   <div class="row mb-4">
     <div class="col-12">
       <h5 class="mb-3">
         <i class="fas fa-utensils me-2 text-warning"></i>
-        Estadísticas del Bar
+        Estadísticas del Bar 
+        <span class="badge bg-warning text-dark">{{ getBarStats().datosReales ? 'DATOS REALES' : 'DATOS LOCALES' }}</span>
         <button class="btn btn-sm btn-outline-warning ms-2" (click)="irAGestionBar()">
           <i class="fas fa-cog me-1"></i>Gestionar Bar
         </button>
@@ -190,7 +248,7 @@
       </div>
     </div>
 
-    <!-- Ventas Simuladas del Bar -->
+    <!-- Ventas del Bar -->
     <div class="col-lg-3 col-md-6">
       <div class="card stat-card bg-info text-white h-100 border-0 shadow">
         <div class="card-body">
@@ -198,8 +256,9 @@
             <div>
               <div class="stat-number">{{ getBarStats().ventasSimuladas }}</div>
               <div class="stat-label">Ventas del Bar</div>
-              <small class="stat-change">
-                <i class="fas fa-chart-bar me-1"></i>${{ getBarStats().ingresoSimulado.toFixed(0) }} ingresos
+              <small class="stat-change" [class.text-white]="getBarStats().datosReales" [class.text-warning]="!getBarStats().datosReales">
+                <i class="fas fa-chart-bar me-1"></i>
+                ${{ getBarStats().ingresoSimulado.toFixed(0) }}
               </small>
             </div>
             <div class="stat-icon">
@@ -212,7 +271,7 @@
 
   </div>
 
-  <!-- ========== SECCIÓN COMBINADA: DATOS DEL BAR Y CINE ========== -->
+  <!-- ========== SECCIÓN COMBINADA ========== -->
   <div class="row mb-4">
     
     <!-- Top Productos del Bar -->
@@ -222,10 +281,19 @@
           <h6 class="mb-0">
             <i class="fas fa-trophy me-2"></i>
             Top Productos del Bar
+            <span class="badge bg-success ms-2" *ngIf="getBarStats().datosReales">DATOS REALES</span>
+            <span class="badge bg-secondary ms-2" *ngIf="!getBarStats().datosReales">SIN DATOS</span>
           </h6>
         </div>
         <div class="card-body">
-          <div class="table-responsive">
+          <!-- MENSAJE SI NO HAY DATOS -->
+          <div class="alert alert-info" *ngIf="!getBarStats().datosReales || getTopBarProducts()[0]?.datosReales === false">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>{{ getBarStats().mensaje || 'Sin productos del bar' }}</strong><br>
+            {{ getBarStats().totalProductos === 0 ? 'No hay productos registrados en el sistema.' : 'No hay ventas registradas.' }}
+          </div>
+          
+          <div class="table-responsive" *ngIf="getBarStats().datosReales && getTopBarProducts()[0]?.datosReales !== false">
             <table class="table table-sm table-hover">
               <thead>
                 <tr>
@@ -248,6 +316,7 @@
                         {{ i + 1 }}
                       </span>
                       <span class="fw-semibold">{{ producto.nombre }}</span>
+                      <i class="fas fa-check text-success ms-1" *ngIf="producto.datosReales" title="Datos disponibles"></i>
                     </div>
                   </td>
                   <td>
@@ -274,22 +343,32 @@
       </div>
     </div>
 
-    <!-- Películas por Género (Gráfico) -->
+    <!-- Películas por Género -->
     <div class="col-lg-6 mb-4">
       <div class="card h-100 shadow-sm">
         <div class="card-header bg-light">
           <h6 class="mb-0">
             <i class="fas fa-chart-donut me-2 text-primary"></i>
             Distribución por Género
+            <span class="badge bg-primary ms-2" *ngIf="stats.generosMasPopulares.length > 0">{{ stats.generosMasPopulares.length }} GÉNEROS</span>
           </h6>
         </div>
         <div class="card-body">
-          <div class="genre-chart">
+          <!-- MENSAJE SI NO HAY GÉNEROS -->
+          <div class="alert alert-info" *ngIf="stats.generosMasPopulares.length === 0">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>Sin géneros registrados</strong><br>
+            No hay películas con géneros en el sistema.
+          </div>
+          
+          <div class="genre-chart" *ngIf="stats.generosMasPopulares.length > 0">
             <div class="row g-2">
               <div class="col-6" *ngFor="let genero of stats.generosMasPopulares">
                 <div class="progress-item">
                   <div class="d-flex justify-content-between align-items-center mb-1">
-                    <small class="fw-semibold">{{ genero.genero }}</small>
+                    <small class="fw-semibold">
+                      {{ genero.genero }}
+                    </small>
                     <small class="text-muted">{{ genero.cantidad }}</small>
                   </div>
                   <div class="progress" style="height: 8px;">
@@ -309,7 +388,7 @@
 
   </div>
 
-  <!-- Sección de Películas Populares y Actividad Combinada -->
+  <!-- Sección de Películas Populares y Actividad -->
   <div class="row mb-4">
     
     <!-- Películas Más Populares -->
@@ -319,10 +398,18 @@
           <h6 class="mb-0">
             <i class="fas fa-star me-2 text-warning"></i>
             Películas Más Populares
+            <span class="badge bg-warning text-dark" *ngIf="stats.peliculasPopulares.length > 0">{{ stats.peliculasPopulares.length }} PELÍCULAS</span>
           </h6>
         </div>
         <div class="card-body">
-          <div class="table-responsive">
+          <!-- MENSAJE SI NO HAY PELÍCULAS POPULARES -->
+          <div class="alert alert-info" *ngIf="stats.peliculasPopulares.length === 0">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>Sin películas populares</strong><br>
+            No hay películas registradas o con suficiente popularidad.
+          </div>
+          
+          <div class="table-responsive" *ngIf="stats.peliculasPopulares.length > 0">
             <table class="table table-sm table-hover">
               <thead>
                 <tr>
@@ -351,7 +438,7 @@
                   </td>
                   <td>
                     <span class="badge bg-warning text-dark">
-                      <i class="fas fa-star"></i> {{ pelicula.rating }}
+                      <i class="fas fa-star"></i> {{ pelicula.rating.toFixed(1) }}
                     </span>
                   </td>
                   <td>
@@ -365,21 +452,28 @@
       </div>
     </div>
 
-    <!-- Actividad Reciente Combinada (Cine + Bar) -->
+    <!-- Actividad Reciente -->
     <div class="col-lg-6 mb-4">
       <div class="card h-100 shadow-sm">
         <div class="card-header bg-light d-flex justify-content-between align-items-center">
           <h6 class="mb-0">
             <i class="fas fa-clock me-2 text-info"></i>
             Actividad Reciente
-            <small class="text-muted">(Cine + Bar)</small>
+            <span class="badge bg-info text-white" *ngIf="getActividadRecienteCombinada().length > 0">{{ getActividadRecienteCombinada().length }} EVENTOS</span>
           </h6>
           <button class="btn btn-sm btn-outline-primary" (click)="refreshActivity()">
             <i class="fas fa-sync-alt" [class.fa-spin]="refreshingActivity"></i>
           </button>
         </div>
         <div class="card-body p-0">
-          <div class="activity-timeline">
+          <!-- MENSAJE SI NO HAY ACTIVIDAD -->
+          <div class="alert alert-info m-3" *ngIf="getActividadRecienteCombinada().length === 0 || getActividadRecienteCombinada()[0]?.tipo === 'sin_actividad'">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>Sin actividad reciente</strong><br>
+            No hay actividad registrada en el sistema.
+          </div>
+          
+          <div class="activity-timeline" *ngIf="getActividadRecienteCombinada().length > 0 && getActividadRecienteCombinada()[0]?.tipo !== 'sin_actividad'">
             <div class="activity-item" *ngFor="let actividad of getActividadRecienteCombinada()">
               <div class="d-flex align-items-start p-3 border-bottom">
                 <div class="activity-icon me-3">
@@ -391,7 +485,9 @@
                      [class.text-danger]="actividad.color === 'danger'"></i>
                 </div>
                 <div class="activity-content flex-grow-1">
-                  <p class="mb-1 fw-semibold">{{ actividad.descripcion }}</p>
+                  <p class="mb-1 fw-semibold">
+                    {{ actividad.descripcion }}
+                  </p>
                   <div class="d-flex justify-content-between align-items-center">
                     <small class="text-muted">
                       <i class="fas fa-clock me-1"></i>
@@ -411,24 +507,35 @@
 
   </div>
 
-  <!-- Ventas Recientes (Solo Cine) -->
+  <!-- Ventas Recientes -->
   <div class="row mb-4">
     <div class="col-12">
       <div class="card shadow-sm">
         <div class="card-header bg-light">
           <h6 class="mb-0">
             <i class="fas fa-receipt me-2 text-success"></i>
-            Ventas Recientes del Cine
+            Ventas Recientes del Sistema
+            <span class="badge bg-success" *ngIf="stats.ventasRecientes.length > 0">{{ stats.ventasRecientes.length }} VENTAS</span>
           </h6>
         </div>
         <div class="card-body">
-          <div class="table-responsive">
+          <!-- MENSAJE SI NO HAY VENTAS -->
+          <div class="alert alert-info" *ngIf="stats.ventasRecientes.length === 0">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>Sin ventas recientes</strong><br>
+            No hay órdenes registradas en el sistema.
+            <button class="btn btn-sm btn-outline-primary ms-2" [routerLink]="['/admin/movies']">
+              <i class="fas fa-plus me-1"></i>Agregar contenido
+            </button>
+          </div>
+          
+          <div class="table-responsive" *ngIf="stats.ventasRecientes.length > 0">
             <table class="table table-sm">
               <thead>
                 <tr>
                   <th>Usuario</th>
-                  <th>Película</th>
-                  <th>Entradas</th>
+                  <th>Descripción</th>
+                  <th>Items</th>
                   <th>Total</th>
                   <th>Estado</th>
                   <th>Fecha</th>
@@ -445,13 +552,13 @@
                     </div>
                   </td>
                   <td>
-                    <small class="fw-semibold">{{ venta.pelicula | slice:0:25 }}...</small>
+                    <small class="fw-semibold">{{ venta.pelicula | slice:0:35 }}{{ venta.pelicula.length > 35 ? '...' : '' }}</small>
                   </td>
                   <td>
                     <span class="badge bg-info">{{ venta.entradas }}</span>
                   </td>
                   <td>
-                    <span class="fw-bold text-success">${{ venta.total }}</span>
+                    <span class="fw-bold text-success">${{ venta.total.toFixed(2) }}</span>
                   </td>
                   <td>
                     <span class="badge badge-sm" 
@@ -462,7 +569,7 @@
                     </span>
                   </td>
                   <td>
-                    <small class="text-muted">{{ venta.fecha }}</small>
+                    <small class="text-muted">{{ formatActivityDate(venta.fecha) }}</small>
                   </td>
                 </tr>
               </tbody>
@@ -473,12 +580,13 @@
     </div>
   </div>
 
-  <!-- Reportes Rápidos - ACTUALIZADO CON BAR -->
+  <!-- Reportes Rápidos -->
   <div class="row mb-4">
     <div class="col-12">
       <h5 class="mb-3">
         <i class="fas fa-file-alt me-2 text-warning"></i>
         Reportes Rápidos
+        <span class="badge bg-warning text-dark">DISPONIBLES</span>
       </h5>
     </div>
   </div>
@@ -493,7 +601,7 @@
             <i class="fas fa-chart-line fa-3x text-success"></i>
           </div>
           <h6 class="card-title">Reporte de Ventas</h6>
-          <p class="card-text small text-muted">Ventas del cine por período</p>
+          <p class="card-text small text-muted">Análisis de ventas</p>
           <button class="btn btn-outline-success btn-sm" 
                   (click)="generateSalesReport()"
                   [disabled]="generatingReport">
@@ -508,7 +616,7 @@
       </div>
     </div>
 
-    <!-- Reporte del Bar - NUEVO -->
+    <!-- Reporte del Bar -->
     <div class="col-lg-2 col-md-4 col-6">
       <div class="card report-card h-100 border-0 shadow-sm">
         <div class="card-body text-center">
@@ -516,7 +624,7 @@
             <i class="fas fa-utensils fa-3x text-warning"></i>
           </div>
           <h6 class="card-title">Reporte del Bar</h6>
-          <p class="card-text small text-muted">Productos y ventas del bar</p>
+          <p class="card-text small text-muted">Productos y ventas</p>
           <button class="btn btn-outline-warning btn-sm" 
                   (click)="generateBarReport()"
                   [disabled]="generatingReport">
@@ -539,7 +647,7 @@
             <i class="fas fa-users fa-3x text-info"></i>
           </div>
           <h6 class="card-title">Reporte de Usuarios</h6>
-          <p class="card-text small text-muted">Análisis de usuarios registrados</p>
+          <p class="card-text small text-muted">Análisis de usuarios</p>
           <button class="btn btn-outline-info btn-sm" 
                   (click)="generateUsersReport()"
                   [disabled]="generatingReport">
@@ -562,7 +670,7 @@
             <i class="fas fa-film fa-3x text-primary"></i>
           </div>
           <h6 class="card-title">Reporte de Películas</h6>
-          <p class="card-text small text-muted">Análisis de catálogo</p>
+          <p class="card-text small text-muted">Catálogo de películas</p>
           <button class="btn btn-outline-primary btn-sm" 
                   (click)="generateMoviesReport()"
                   [disabled]="generatingReport">
@@ -577,38 +685,39 @@
       </div>
     </div>
 
-<!-- Reporte Combinado - CORREGIDO -->
-<div class="col-lg-2 col-md-4 col-6">
-  <div class="card report-card h-100 border-0 shadow-sm">
-    <div class="card-body text-center">
-      <div class="report-icon mb-3">
-        <i class="fas fa-chart-pie fa-3x text-info"></i>
-      </div>
-      <h6 class="card-title">Combinado</h6>
-      <p class="card-text small text-muted">Cine + Bar integrado</p>
-      <button class="btn btn-outline-info btn-sm" 
-              (click)="generateCombinedReport()"
-              [disabled]="generatingReport">
-        <span *ngIf="!generatingReport">
-          <i class="fas fa-download me-1"></i>Generar
-        </span>
-        <span *ngIf="generatingReport">
-          <span class="spinner-border spinner-border-sm me-1"></span>Generando...
-        </span>
-      </button>
-    </div>
-  </div>
-</div>
-    <!-- Reporte Completo -->
+    <!-- Reporte Combinado -->
     <div class="col-lg-2 col-md-4 col-6">
-      <div class="card report-card h-100 border-0 shadow-sm bg-gradient-warning">
-        <div class="card-body text-center text-dark">
+      <div class="card report-card h-100 border-0 shadow-sm">
+        <div class="card-body text-center">
           <div class="report-icon mb-3">
-            <i class="fas fa-file-pdf fa-3x text-dark"></i>
+            <i class="fas fa-chart-pie fa-3x text-info"></i>
+          </div>
+          <h6 class="card-title">Reporte Combinado</h6>
+          <p class="card-text small text-muted">Cine + Bar</p>
+          <button class="btn btn-outline-info btn-sm" 
+                  (click)="generateCombinedReport()"
+                  [disabled]="generatingReport">
+            <span *ngIf="!generatingReport">
+              <i class="fas fa-download me-1"></i>Generar
+            </span>
+            <span *ngIf="generatingReport">
+              <span class="spinner-border spinner-border-sm me-1"></span>Generando...
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reporte Ejecutivo -->
+    <div class="col-lg-2 col-md-4 col-6">
+      <div class="card report-card h-100 border-0 shadow-sm bg-gradient-success">
+        <div class="card-body text-center text-white">
+          <div class="report-icon mb-3">
+            <i class="fas fa-file-pdf fa-3x text-white"></i>
           </div>
           <h6 class="card-title fw-bold">Ejecutivo</h6>
           <p class="card-text small">Reporte completo</p>
-          <button class="btn btn-dark btn-sm" 
+          <button class="btn btn-light btn-sm text-success" 
                   (click)="generateCompleteReport()"
                   [disabled]="generatingReport">
             <span *ngIf="!generatingReport">
@@ -624,7 +733,7 @@
 
   </div>
 
-  <!-- Acciones Rápidas - ACTUALIZADO CON BAR -->
+  <!-- Acciones Rápidas -->
   <div class="row">
     <div class="col-12">
       <div class="card shadow-sm">
@@ -632,6 +741,8 @@
           <h6 class="mb-0">
             <i class="fas fa-bolt me-2 text-warning"></i>
             Acciones Rápidas
+            <span class="badge bg-success" *ngIf="datosRealesDisponibles">SISTEMA ACTIVO</span>
+            <span class="badge bg-warning text-dark" *ngIf="!datosRealesDisponibles">MODO LOCAL</span>
           </h6>
         </div>
         <div class="card-body">
@@ -646,7 +757,6 @@
               </button>
             </div>
             
-            <!-- NUEVO: Gestionar Bar -->
             <div class="col-lg-2 col-md-4 col-6">
               <button class="btn btn-outline-warning w-100 py-3" 
                       (click)="irAGestionBar()">
@@ -675,18 +785,81 @@
               <button class="btn btn-outline-secondary w-100 py-3" 
                       (click)="systemBackup()">
                 <i class="fas fa-save fa-2x d-block mb-2"></i>
-                <small>Backup</small>
+                <small>Backup Sistema</small>
               </button>
             </div>
             
             <div class="col-lg-2 col-md-4 col-6">
-              <button class="btn btn-outline-danger w-100 py-3" 
-                      (click)="systemMaintenance()">
-                <i class="fas fa-tools fa-2x d-block mb-2"></i>
-                <small>Mantenimiento</small>
+              <button class="btn btn-outline-dark w-100 py-3" 
+                      (click)="refreshAllStats()">
+                <i class="fas fa-sync-alt fa-2x d-block mb-2"></i>
+                <small>Actualizar Todo</small>
               </button>
             </div>
             
+          </div>
+          
+          <!-- Controles de Diagnóstico -->
+          <div class="row g-3 mt-3 pt-3 border-top">
+            <div class="col-12">
+              <h6 class="text-muted mb-3">
+                <i class="fas fa-tools me-2"></i>
+                Herramientas de Diagnóstico
+              </h6>
+            </div>
+            
+            <div class="col-lg-3 col-md-6">
+              <button class="btn btn-outline-info w-100" (click)="verificarEstadoDatos()">
+                <i class="fas fa-info-circle me-2"></i>Estado del Sistema
+              </button>
+            </div>
+            
+            <div class="col-lg-3 col-md-6">
+              <button class="btn btn-outline-success w-100" (click)="verificarEstadoConexion()">
+                <i class="fas fa-network-wired me-2"></i>Verificar Conexión
+              </button>
+            </div>
+            
+            <div class="col-lg-3 col-md-6">
+              <button class="btn btn-outline-primary w-100" (click)="mostrarInfoCompleta()">
+                <i class="fas fa-chart-bar me-2"></i>Info Completa
+              </button>
+            </div>
+            
+            <div class="col-lg-3 col-md-6">
+              <button class="btn btn-outline-warning w-100" (click)="reintentarCarga()">
+                <i class="fas fa-redo me-2"></i>Recargar Datos
+              </button>
+            </div>
+            
+          </div>
+
+          <!-- Estado del Sistema -->
+          <div class="row mt-4" *ngIf="mensajeEstado">
+            <div class="col-12">
+              <div class="alert" [class.alert-success]="datosRealesDisponibles && !errorCargaDatos"
+                                [class.alert-warning]="usoFallback && !errorCargaDatos"
+                                [class.alert-danger]="errorCargaDatos">
+                <div class="d-flex align-items-center">
+                  <div class="me-3">
+                    <i class="fas fa-info-circle fa-2x" *ngIf="!errorCargaDatos"></i>
+                    <i class="fas fa-exclamation-triangle fa-2x" *ngIf="errorCargaDatos"></i>
+                  </div>
+                  <div>
+                    <h6 class="mb-1">Estado del Sistema: {{ mensajeEstado }}</h6>
+                    <p class="mb-0" *ngIf="datosRealesDisponibles && !errorCargaDatos">
+                      ✅ El sistema está funcionando correctamente con datos disponibles.
+                    </p>
+                    <p class="mb-0" *ngIf="usoFallback && !errorCargaDatos">
+                      ⚠️ Usando datos de servicios locales. Para datos reales, ejecuta el backend.
+                    </p>
+                    <p class="mb-0" *ngIf="errorCargaDatos">
+                      ❌ Error de conexión. Verifica que el backend esté ejecutándose en localhost:3000.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

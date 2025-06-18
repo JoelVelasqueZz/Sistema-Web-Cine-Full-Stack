@@ -21,7 +21,8 @@ router.get('/', (req, res) => {
       bar: '/api/bar',
       orders: '/api/orders',
       points: '/api/points',
-      rewards: '/api/rewards' // 🆕 ACTIVADO
+      rewards: '/api/rewards',
+      admin: '/api/admin' // 🆕 AGREGADO
     }
   });
 });
@@ -64,7 +65,8 @@ router.get('/health', (req, res) => {
       bar: 'OK',
       orders: 'OK',
       points: 'OK',
-      rewards: 'OK' // 🆕 NUEVO
+      rewards: 'OK',
+      admin: 'OK' // 🆕 AGREGADO
     }
   });
 });
@@ -105,10 +107,14 @@ router.use('/points', require('./points'));
 // 🆕 NUEVA - Rutas de recompensas y canjes
 router.use('/rewards', require('./rewards'));
 
+// ==================== 🆕 RUTAS DE ADMINISTRACIÓN ====================
+// 🆕 NUEVA - Rutas de administración
+router.use('/admin', require('./admin'));
+
 // ==================== RUTAS FUTURAS (COMENTADAS) ====================
 // Estas se pueden activar cuando las implementes
 // Rutas de administración general
-// router.use('/admin', require('./admin'));
+// router.use('/admin', require('./admin')); // ✅ YA ACTIVADA ARRIBA
 
 // ==================== MANEJO DE RUTAS NO ENCONTRADAS ====================
 // Middleware para rutas no encontradas
@@ -132,7 +138,8 @@ router.use('*', (req, res) => {
       '/api/bar',
       '/api/orders',
       '/api/points',
-      '/api/rewards' // 🆕 NUEVO
+      '/api/rewards',
+      '/api/admin' // 🆕 AGREGADO
     ],
     suggestion: 'Verifica la URL y el método HTTP'
   });
