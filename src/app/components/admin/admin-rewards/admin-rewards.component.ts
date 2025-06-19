@@ -46,7 +46,7 @@ export class AdminRewardsComponent implements OnInit {
   itemsPerPage = 10;
   totalPages = 0;
   
-  // Formulario
+  // 🔧 CORRECCIÓN: Formulario con stock incluido
   rewardForm: Partial<Reward> = {
     nombre: '',
     descripcion: '',
@@ -54,7 +54,7 @@ export class AdminRewardsComponent implements OnInit {
     tipo: 'descuento',
     puntos_requeridos: 0,
     valor: 0,
-    stock: 0,
+    stock: 0, // 🔧 Campo stock agregado
     limite_por_usuario: 1,
     validez_dias: 30,
     imagen_url: '',
@@ -133,6 +133,7 @@ export class AdminRewardsComponent implements OnInit {
         next: (rewards: Reward[]) => {
           this.rewards = rewards;
           this.applyFilters();
+          console.log('✅ Recompensas cargadas:', this.rewards);
         },
         error: (error: any) => {
           console.error('❌ Error cargando recompensas:', error);
@@ -193,13 +194,20 @@ export class AdminRewardsComponent implements OnInit {
       filtered = filtered.filter(reward => reward.categoria === this.selectedCategory);
     }
     
-    // Filtro por estado
+    // 🔧 CORRECCIÓN: Filtro por estado mejorado
     if (this.selectedStatus === 'disponible') {
       filtered = filtered.filter(reward => reward.disponible);
     } else if (this.selectedStatus === 'no_disponible') {
       filtered = filtered.filter(reward => !reward.disponible);
     } else if (this.selectedStatus === 'sin_stock') {
-      filtered = filtered.filter(reward => reward.stock !== null && reward.stock !== undefined && reward.stock <= 0);
+      filtered = filtered.filter(reward => {
+        // Solo aplicar filtro de stock a tipos que lo necesitan
+        const tiposConStock = ['producto', 'paquete', 'experiencia'];
+        return tiposConStock.includes(reward.tipo) && 
+               reward.stock !== null && 
+               reward.stock !== undefined && 
+               reward.stock <= 0;
+      });
     }
     
     this.filteredRewards = filtered;
@@ -305,6 +313,8 @@ export class AdminRewardsComponent implements OnInit {
     this.rewardImageLoaded = false;
     this.rewardImageError = false;
     
+    console.log('📝 Editando recompensa:', this.rewardForm);
+    
     this.openModal('rewardFormModal');
   }
   
@@ -316,7 +326,7 @@ export class AdminRewardsComponent implements OnInit {
       tipo: 'descuento',
       puntos_requeridos: 0,
       valor: 0,
-      stock: 0,
+      stock: 0, // 🔧 CORRECCIÓN: Incluir stock en reset
       limite_por_usuario: 1,
       validez_dias: 30,
       imagen_url: '',
@@ -371,10 +381,12 @@ export class AdminRewardsComponent implements OnInit {
       isValid = false;
     }
     
-    // Stock (si es aplicable)
-    if (this.needsStock() && (this.rewardForm.stock === null || this.rewardForm.stock === undefined || this.rewardForm.stock < 0)) {
-      this.formErrors['stock'] = 'El stock debe ser 0 o mayor';
-      isValid = false;
+    // 🔧 CORRECCIÓN: Validación de stock mejorada
+    if (this.needsStock()) {
+      if (this.rewardForm.stock === null || this.rewardForm.stock === undefined || this.rewardForm.stock < 0) {
+        this.formErrors['stock'] = 'El stock debe ser 0 o mayor';
+        isValid = false;
+      }
     }
     
     // 🆕 Validación de imagen URL
@@ -401,69 +413,154 @@ export class AdminRewardsComponent implements OnInit {
     return ['producto', 'paquete', 'experiencia'].includes(this.rewardForm.tipo || '');
   }
 
+  // 🔧 CORRECCIÓN: Método para manejar cambios de tipo
+  onTipoChange(): void {
+  const tiposConStock = ['producto', 'paquete', 'experiencia'];
+  const tiposConValor = ['descuento', 'producto', 'paquete'];
+  
+  console.log('🔄 Tipo cambiado a:', this.rewardForm.tipo);
+  
+  if (!tiposConStock.includes(this.rewardForm.tipo || '')) {
+    // Para tipos que no necesitan stock, establecer como null
+    this.rewardForm.stock = null;
+    console.log('📦 Stock establecido como NULL para tipo:', this.rewardForm.tipo);
+  } else if (this.rewardForm.stock === null || this.rewardForm.stock === undefined) {
+    // Para tipos que sí necesitan stock, establecer 0 por defecto
+    this.rewardForm.stock = 0;
+    console.log('📦 Stock establecido como 0 para tipo:', this.rewardForm.tipo);
+  }
+
+  if (!tiposConValor.includes(this.rewardForm.tipo || '')) {
+    // Para tipos que no necesitan valor, establecer como 0
+    this.rewardForm.valor = 0;
+    console.log('💰 Valor establecido como 0 para tipo:', this.rewardForm.tipo);
+  }
+  
+  // Limpiar errores
+  if (!this.needsStock() && this.formErrors['stock']) {
+    delete this.formErrors['stock'];
+  }
+  if (!this.needsValue() && this.formErrors['valor']) {
+    delete this.formErrors['valor'];
+  }
+}
+
   // ==================== OPERACIONES CRUD ====================
   
   async saveReward(): Promise<void> {
-    if (!this.validateForm()) {
-      this.toastService.showError('Por favor corrige los errores en el formulario');
-      return;
-    }
-    
-    this.loading = true;
-    
-    try {
-      if (this.editMode && this.rewardForm.id) {
-        // Actualizar recompensa existente
-        this.rewardsService.updateReward(this.rewardForm.id, this.rewardForm).subscribe({
-          next: (success: boolean) => {
-            if (success) {
-              this.toastService.showSuccess('Recompensa actualizada correctamente');
-              this.closeForm();
-              this.loadRewards();
-            } else {
-              this.toastService.showError('No se pudo actualizar la recompensa');
-            }
-          },
-          error: (error: any) => {
-            console.error('❌ Error actualizando recompensa:', error);
-            this.toastService.showError('Error al actualizar la recompensa');
-          },
-          complete: () => {
-            this.loading = false;
-          }
-        });
-      } else {
-        // Crear nueva recompensa
-        this.rewardsService.createReward(this.rewardForm).subscribe({
-          next: (success: boolean) => {
-            if (success) {
-              this.toastService.showSuccess('Recompensa creada correctamente');
-              this.closeForm();
-              this.loadRewards();
-            } else {
-              this.toastService.showError('No se pudo crear la recompensa');
-            }
-          },
-          error: (error: any) => {
-            console.error('❌ Error creando recompensa:', error);
-            this.toastService.showError('Error al crear la recompensa');
-          },
-          complete: () => {
-            this.loading = false;
-          }
-        });
-      }
-    } catch (error) {
-      console.error('❌ Error en saveReward:', error);
-      this.toastService.showError('Error inesperado al guardar');
-      this.loading = false;
-    }
+  if (!this.validateForm()) {
+    this.toastService.showError('Por favor corrige los errores en el formulario');
+    return;
   }
+  
+  this.loading = true;
+  
+  try {
+    // 🔧 CORRECCIÓN: Preparar datos más cuidadosamente
+    const dataToSend: any = {
+      nombre: this.rewardForm.nombre?.trim(),
+      descripcion: this.rewardForm.descripcion?.trim(),
+      categoria: this.rewardForm.categoria,
+      tipo: this.rewardForm.tipo,
+      puntos_requeridos: Number(this.rewardForm.puntos_requeridos),
+      imagen_url: this.rewardForm.imagen_url?.trim(),
+      disponible: this.rewardForm.disponible !== false, // Asegurar boolean
+      limite_por_usuario: Number(this.rewardForm.limite_por_usuario) || 1,
+      validez_dias: Number(this.rewardForm.validez_dias) || 30
+    };
+
+    // 🔧 CORRECCIÓN: Manejo inteligente de valor
+    const tiposConValor = ['descuento', 'producto', 'paquete'];
+    if (tiposConValor.includes(this.rewardForm.tipo || '')) {
+      dataToSend.valor = Number(this.rewardForm.valor) || 0;
+    } else {
+      // Para tipos sin valor, no enviar el campo o enviar 0
+      dataToSend.valor = 0;
+    }
+
+    // 🔧 CORRECCIÓN: Manejo inteligente de stock
+    const tiposConStock = ['producto', 'paquete', 'experiencia'];
+    if (tiposConStock.includes(this.rewardForm.tipo || '')) {
+      dataToSend.stock = Number(this.rewardForm.stock) || 0;
+    } else {
+      // Para tipos sin stock, NO enviar el campo
+      // delete dataToSend.stock; // O puedes enviarlo como null
+      dataToSend.stock = null;
+    }
+
+    // 🔧 DEBUG: Logs detallados para diagnosticar
+    console.log('🔍 DATOS ANTES DE ENVIAR:');
+    console.log('- Tipo:', this.rewardForm.tipo);
+    console.log('- Necesita stock?', this.needsStock());
+    console.log('- Necesita valor?', this.needsValue());
+    console.log('- Form stock:', this.rewardForm.stock);
+    console.log('- Form valor:', this.rewardForm.valor);
+    console.log('- Data stock final:', dataToSend.stock);
+    console.log('- Data valor final:', dataToSend.valor);
+    console.log('- Datos completos:', JSON.stringify(dataToSend, null, 2));
+    
+    if (this.editMode && this.rewardForm.id) {
+      // Actualizar recompensa existente
+      this.rewardsService.updateReward(this.rewardForm.id, dataToSend).subscribe({
+        next: (success: boolean) => {
+          if (success) {
+            this.toastService.showSuccess('Recompensa actualizada correctamente');
+            this.closeForm();
+            this.loadRewards();
+          } else {
+            this.toastService.showError('No se pudo actualizar la recompensa');
+          }
+        },
+        error: (error: any) => {
+          console.error('❌ Error actualizando recompensa:', error);
+          console.error('❌ Error details:', error.error);
+          this.toastService.showError('Error al actualizar la recompensa: ' + (error.error?.message || error.message));
+        },
+        complete: () => {
+          this.loading = false;
+        }
+      });
+    } else {
+      // Crear nueva recompensa
+      this.rewardsService.createReward(dataToSend).subscribe({
+        next: (success: boolean) => {
+          if (success) {
+            this.toastService.showSuccess('Recompensa creada correctamente');
+            this.closeForm();
+            this.loadRewards();
+          } else {
+            this.toastService.showError('No se pudo crear la recompensa');
+          }
+        },
+        error: (error: any) => {
+          console.error('❌ Error creando recompensa:', error);
+          console.error('❌ Error details:', error.error);
+          
+          // 🔧 Mostrar errores de validación específicos
+          if (error.error?.errors && Array.isArray(error.error.errors)) {
+            const errorMessages = error.error.errors.map((err: any) => `${err.field}: ${err.message}`).join(', ');
+            this.toastService.showError('Errores de validación: ' + errorMessages);
+          } else {
+            this.toastService.showError('Error al crear la recompensa: ' + (error.error?.message || error.message));
+          }
+        },
+        complete: () => {
+          this.loading = false;
+        }
+      });
+    }
+  } catch (error) {
+    console.error('❌ Error en saveReward:', error);
+    this.toastService.showError('Error inesperado al guardar');
+    this.loading = false;
+  }
+}
   
   confirmDelete(reward: Reward): void {
     if (confirm(`¿Estás seguro de que quieres eliminar la recompensa "${reward.nombre}"?`)) {
       this.deleteReward(reward.id!);
     }
+    
   }
   
   private deleteReward(rewardId: number): void {
@@ -532,21 +629,38 @@ export class AdminRewardsComponent implements OnInit {
     return t ? t.label : tipo;
   }
   
+  // 🔧 CORRECCIÓN: Mejorar lógica de estado de la recompensa
   getStatusBadgeClass(reward: Reward): string {
     if (!reward.disponible) {
       return 'bg-danger';
-    } else if (reward.stock !== null && reward.stock !== undefined && reward.stock <= 0) {
+    }
+    
+    // Solo verificar stock para tipos que lo necesitan
+    const tiposConStock = ['producto', 'paquete', 'experiencia'];
+    if (tiposConStock.includes(reward.tipo) && 
+        reward.stock !== null && 
+        reward.stock !== undefined && 
+        reward.stock <= 0) {
       return 'bg-warning text-dark';
     }
+    
     return 'bg-success';
   }
   
   getStatusText(reward: Reward): string {
     if (!reward.disponible) {
       return 'Inactiva';
-    } else if (reward.stock !== null && reward.stock !== undefined && reward.stock <= 0) {
+    }
+    
+    // Solo verificar stock para tipos que lo necesitan
+    const tiposConStock = ['producto', 'paquete', 'experiencia'];
+    if (tiposConStock.includes(reward.tipo) && 
+        reward.stock !== null && 
+        reward.stock !== undefined && 
+        reward.stock <= 0) {
       return 'Sin Stock';
     }
+    
     return 'Activa';
   }
   
@@ -575,5 +689,10 @@ export class AdminRewardsComponent implements OnInit {
   // Método auxiliar para Math.min que usa el HTML
   getMin(a: number, b: number): number {
     return Math.min(a, b);
+  }
+
+  // 🔧 NUEVO MÉTODO: Verificar si un tipo necesita stock (para usar en el template)
+  needsStockForType(tipo: string): boolean {
+    return ['producto', 'paquete', 'experiencia'].includes(tipo);
   }
 }

@@ -124,15 +124,57 @@ router.post('/',
     body('categoria').isIn(['peliculas', 'bar', 'especial', 'descuentos']).withMessage('Categoría inválida'),
     body('puntos_requeridos').isInt({ min: 1 }).withMessage('Puntos requeridos debe ser un número positivo'),
     body('tipo').isIn(['descuento', 'producto', 'paquete', 'experiencia', 'codigo', 'bonus']).withMessage('Tipo inválido'),
-    body('stock').optional().isInt({ min: 0 }).withMessage('Stock debe ser un número no negativo'),
-    body('valor').optional().isFloat({ min: 0 }).withMessage('Valor debe ser un número positivo'),
+    
+    // 🔧 CORRECCIÓN CRÍTICA: Stock es completamente opcional
+    body('stock').optional({ checkFalsy: true }).isInt({ min: 0 }).withMessage('Stock debe ser un número no negativo'),
+    
+    // 🔧 CORRECCIÓN CRÍTICA: Valor es completamente opcional
+    body('valor').optional({ checkFalsy: true }).isFloat({ min: 0 }).withMessage('Valor debe ser un número positivo o cero'),
+    
     body('limite_por_usuario').optional().isInt({ min: 1 }).withMessage('Límite por usuario debe ser positivo'),
-    body('validez_dias').optional().isInt({ min: 1 }).withMessage('Validez en días debe ser positiva')
+    body('validez_dias').optional().isInt({ min: 1 }).withMessage('Validez en días debe ser positiva'),
+    
+    // 🔧 CORRECCIÓN CRÍTICA: Imagen URL más flexible
+    body('imagen_url').optional({ checkFalsy: true }).custom((value, { req }) => {
+      // Si no hay valor, está bien
+      if (!value) {
+        return true;
+      }
+      
+      // Permitir URLs que empiecen con http, https, o assets/
+      if (typeof value === 'string' && 
+          (value.startsWith('http://') || 
+           value.startsWith('https://') || 
+           value.startsWith('assets/') ||
+           value.startsWith('data:'))) {
+        return true;
+      }
+      
+      throw new Error('URL de imagen debe ser válida (http/https/assets/data)');
+    }),
+    
+    // 🔧 CORRECCIÓN: Imagen también flexible
+    body('imagen').optional({ checkFalsy: true }).custom((value, { req }) => {
+      // Si no hay valor, está bien
+      if (!value) {
+        return true;
+      }
+      
+      // Permitir URLs que empiecen con http, https, o assets/
+      if (typeof value === 'string' && 
+          (value.startsWith('http://') || 
+           value.startsWith('https://') || 
+           value.startsWith('assets/') ||
+           value.startsWith('data:'))) {
+        return true;
+      }
+      
+      throw new Error('URL de imagen debe ser válida (http/https/assets/data)');
+    })
   ],
   validation,
   rewardsController.createReward
 );
-
 /**
  * PUT /api/rewards/:id
  * Actualizar recompensa (ADMIN)
@@ -147,8 +189,77 @@ router.put('/:id',
     body('categoria').optional().isIn(['peliculas', 'bar', 'especial', 'descuentos']).withMessage('Categoría inválida'),
     body('puntos_requeridos').optional().isInt({ min: 1 }).withMessage('Puntos requeridos debe ser un número positivo'),
     body('tipo').optional().isIn(['descuento', 'producto', 'paquete', 'experiencia', 'codigo', 'bonus']).withMessage('Tipo inválido'),
-    body('stock').optional().isInt({ min: 0 }).withMessage('Stock debe ser un número no negativo'),
-    body('valor').optional().isFloat({ min: 0 }).withMessage('Valor debe ser un número positivo')
+    
+    // 🔧 CORRECCIÓN: Stock completamente opcional en actualización
+    body('stock').optional({ checkFalsy: true }).custom((value, { req }) => {
+      // Si es null, undefined, vacío o 0, está bien
+      if (value === null || value === undefined || value === '' || value === 0) {
+        return true;
+      }
+      // Si es un número positivo, está bien
+      if (typeof value === 'number' && value >= 0) {
+        return true;
+      }
+      // Si es string que se puede convertir a número >= 0
+      if (typeof value === 'string' && !isNaN(Number(value)) && Number(value) >= 0) {
+        return true;
+      }
+      throw new Error('Stock debe ser un número no negativo');
+    }),
+    
+    // 🔧 CORRECCIÓN: Valor completamente opcional en actualización
+    body('valor').optional({ checkFalsy: true }).custom((value, { req }) => {
+      // Si es null, undefined, vacío o 0, está bien
+      if (value === null || value === undefined || value === '' || value === 0) {
+        return true;
+      }
+      // Si es un número no negativo, está bien
+      if (typeof value === 'number' && value >= 0) {
+        return true;
+      }
+      // Si es string que se puede convertir a número >= 0
+      if (typeof value === 'string' && !isNaN(Number(value)) && Number(value) >= 0) {
+        return true;
+      }
+      throw new Error('Valor debe ser un número positivo o cero');
+    }),
+    
+    // 🔧 CORRECCIÓN: Imagen URL flexible en actualización
+    body('imagen_url').optional({ checkFalsy: true }).custom((value, { req }) => {
+      // Si no hay valor, está bien
+      if (!value || value === null || value === undefined || value === '') {
+        return true;
+      }
+      
+      // Permitir URLs válidas
+      if (typeof value === 'string' && 
+          (value.startsWith('http://') || 
+           value.startsWith('https://') || 
+           value.startsWith('assets/') ||
+           value.startsWith('data:'))) {
+        return true;
+      }
+      
+      throw new Error('URL de imagen debe ser válida');
+    }),
+    
+    body('imagen').optional({ checkFalsy: true }).custom((value, { req }) => {
+      // Si no hay valor, está bien
+      if (!value || value === null || value === undefined || value === '') {
+        return true;
+      }
+      
+      // Permitir URLs válidas
+      if (typeof value === 'string' && 
+          (value.startsWith('http://') || 
+           value.startsWith('https://') || 
+           value.startsWith('assets/') ||
+           value.startsWith('data:'))) {
+        return true;
+      }
+      
+      throw new Error('URL de imagen debe ser válida');
+    })
   ],
   validation,
   rewardsController.updateReward

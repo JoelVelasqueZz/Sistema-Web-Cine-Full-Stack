@@ -1,4 +1,4 @@
-// backend/src/models/Reward.js
+// backend/src/models/Reward.js - VERSIÓN COMPLETAMENTE CORREGIDA
 const db = require('../config/database');
 
 class Reward {
@@ -127,7 +127,7 @@ class Reward {
   }
 
   /**
-   * Verificar si un usuario puede canjear una recompensa
+   * 🔧 CORRECCIÓN PRINCIPAL: Verificar si un usuario puede canjear una recompensa
    */
   static async canUserRedeem(userId, rewardId) {
     try {
@@ -150,14 +150,20 @@ class Reward {
         };
       }
 
-      // Verificar stock
-      if (reward.stock <= 0) {
-        return {
-          canRedeem: false,
-          reason: 'Esta recompensa está agotada',
-          reward
-        };
+      // 🔧 CORRECCIÓN CRÍTICA: Verificar stock solo para tipos que lo necesitan
+      const tiposConStock = ['producto', 'paquete', 'experiencia'];
+      
+      if (tiposConStock.includes(reward.tipo)) {
+        // Solo verificar stock si el tipo lo requiere Y tiene stock definido
+        if (reward.stock !== null && reward.stock !== undefined && reward.stock <= 0) {
+          return {
+            canRedeem: false,
+            reason: 'Esta recompensa está agotada',
+            reward
+          };
+        }
       }
+      // Para tipos sin stock (descuento, codigo, bonus), no verificar stock
 
       // Obtener puntos del usuario desde la tabla puntos_usuario
       const userPointsQuery = `
@@ -210,7 +216,7 @@ class Reward {
   // ==================== MÉTODOS DE ADMINISTRACIÓN ====================
 
   /**
-   * Crear nueva recompensa
+   * 🔧 CORRECCIÓN PRINCIPAL: Crear nueva recompensa
    */
   static async create(rewardData) {
     try {
@@ -219,15 +225,44 @@ class Reward {
         descripcion,
         categoria,
         puntos_requeridos,
-        imagen = null,
+        imagen = null, // 🔧 Este campo es el que recibe la URL de imagen
         disponible = true,
-        stock = 0,
+        stock = null, // 🔧 Por defecto NULL para tipos que no necesitan stock
         tipo,
         valor = 0,
         limite_por_usuario = 1,
         validez_dias = 30,
         terminos = []
       } = rewardData;
+
+      // 🔧 CORRECCIÓN: Manejar stock según el tipo
+      let finalStock = stock;
+      const tiposConStock = ['producto', 'paquete', 'experiencia'];
+      
+      if (!tiposConStock.includes(tipo)) {
+        // Para tipos que NO necesitan stock (descuento, codigo, bonus), establecer como NULL
+        finalStock = null;
+      } else {
+        // Para tipos que SÍ necesitan stock, usar el valor proporcionado o 0 por defecto
+        if (finalStock === undefined || finalStock === null || finalStock === '') {
+          finalStock = 0;
+        }
+      }
+
+      console.log('📝 Creando recompensa en BD:', {
+        nombre,
+        descripcion,
+        categoria,
+        puntos_requeridos,
+        imagen, // 🔧 Este debe tener la URL
+        disponible,
+        stock: finalStock,
+        tipo,
+        valor,
+        limite_por_usuario,
+        validez_dias,
+        terminos
+      });
 
       const query = `
         INSERT INTO recompensas (
@@ -239,10 +274,11 @@ class Reward {
 
       const values = [
         nombre, descripcion, categoria, puntos_requeridos, imagen,
-        disponible, stock, tipo, valor, limite_por_usuario, validez_dias, terminos
+        disponible, finalStock, tipo, valor, limite_por_usuario, validez_dias, terminos
       ];
 
       const result = await db.query(query, values);
+      console.log('✅ Recompensa creada exitosamente en BD:', result.rows[0]);
       return result.rows[0];
     } catch (error) {
       console.error('❌ Error en Reward.create:', error);
@@ -251,13 +287,26 @@ class Reward {
   }
 
   /**
-   * Actualizar recompensa
+   * 🔧 CORRECCIÓN: Actualizar recompensa
    */
   static async update(id, rewardData) {
     try {
       const reward = await this.getById(id);
       if (!reward) {
         return null;
+      }
+
+      // 🔧 CORRECCIÓN: Procesar stock según el tipo antes de actualizar
+      if (rewardData.tipo) {
+        const tiposConStock = ['producto', 'paquete', 'experiencia'];
+        
+        if (!tiposConStock.includes(rewardData.tipo)) {
+          // Si cambia a un tipo que NO necesita stock, establecer como NULL
+          rewardData.stock = null;
+        } else if (rewardData.stock === undefined || rewardData.stock === null) {
+          // Si cambia a un tipo que SÍ necesita stock pero no se proporciona, usar 0
+          rewardData.stock = 0;
+        }
       }
 
       const fields = [];
@@ -290,7 +339,11 @@ class Reward {
         RETURNING *
       `;
 
+      console.log('📝 Actualizando recompensa con query:', query);
+      console.log('📝 Valores:', values);
+
       const result = await db.query(query, values);
+      console.log('✅ Recompensa actualizada exitosamente:', result.rows[0]);
       return result.rows[0];
     } catch (error) {
       console.error('❌ Error en Reward.update:', error);
@@ -321,7 +374,7 @@ class Reward {
   // ==================== MÉTODOS DE ESTADÍSTICAS ====================
 
   /**
-   * Obtener estadísticas de recompensas
+   * 🔧 CORRECCIÓN: Obtener estadísticas de recompensas (corregir conteo de stock)
    */
   static async getStats() {
     try {
@@ -329,12 +382,12 @@ class Reward {
         SELECT 
           COUNT(*) as total_recompensas,
           COUNT(CASE WHEN disponible = true THEN 1 END) as recompensas_disponibles,
-          COUNT(CASE WHEN stock > 0 THEN 1 END) as recompensas_con_stock,
+          COUNT(CASE WHEN stock > 0 OR stock IS NULL THEN 1 END) as recompensas_con_stock,
           COUNT(DISTINCT categoria) as total_categorias,
           AVG(puntos_requeridos) as promedio_puntos_requeridos,
           MIN(puntos_requeridos) as min_puntos_requeridos,
           MAX(puntos_requeridos) as max_puntos_requeridos,
-          SUM(stock) as stock_total
+          SUM(COALESCE(stock, 0)) as stock_total
         FROM recompensas
       `;
 
@@ -369,7 +422,7 @@ class Reward {
           COUNT(*) as total,
           COUNT(CASE WHEN disponible = true THEN 1 END) as disponibles,
           AVG(puntos_requeridos) as promedio_puntos,
-          SUM(stock) as stock_total
+          SUM(COALESCE(stock, 0)) as stock_total
         FROM recompensas
         GROUP BY categoria
         ORDER BY categoria
@@ -440,10 +493,24 @@ class Reward {
   // ==================== MÉTODOS DE UTILIDAD ====================
 
   /**
-   * Reducir stock de recompensa
+   * 🔧 CORRECCIÓN: Reducir stock de recompensa (solo para tipos que lo necesitan)
    */
   static async reduceStock(id, cantidad = 1) {
     try {
+      // Primero verificar si el tipo necesita stock
+      const reward = await this.getById(id);
+      if (!reward) {
+        return null;
+      }
+
+      const tiposConStock = ['producto', 'paquete', 'experiencia'];
+      
+      if (!tiposConStock.includes(reward.tipo)) {
+        // Si el tipo no necesita stock, no hacer nada
+        console.log(`ℹ️ Tipo ${reward.tipo} no requiere stock, no se reduce`);
+        return { stock: null };
+      }
+
       const query = `
         UPDATE recompensas 
         SET stock = GREATEST(stock - $1, 0)

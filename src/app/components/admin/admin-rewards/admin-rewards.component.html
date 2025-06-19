@@ -1,4 +1,4 @@
-<!-- admin-rewards.component.html -->
+<!-- admin-rewards.component.html - VERSIÓN FINAL COMPLETA -->
 <div class="container-fluid py-4">
   <!-- ENCABEZADO -->
   <div class="row mb-4">
@@ -202,54 +202,78 @@
               
               <td>
                 <div class="d-flex align-items-center">
-                  <img *ngIf="reward.imagen_url" 
+                  <img *ngIf="reward?.imagen_url" 
                        [src]="reward.imagen_url" 
                        [alt]="reward.nombre"
                        class="rounded me-3" 
                        style="width: 50px; height: 50px; object-fit: cover;">
-                  <div *ngIf="!reward.imagen_url" 
+                  <div *ngIf="!reward?.imagen_url" 
                        class="bg-light rounded me-3 d-flex align-items-center justify-content-center"
                        style="width: 50px; height: 50px;">
-                    <i [class]="getTipoIcon(reward.tipo)" class="text-muted"></i>
+                    <i [class]="getTipoIcon(reward?.tipo || '')" class="text-muted"></i>
                   </div>
                   <div>
-                    <h6 class="mb-1">{{ reward.nombre }}</h6>
-                    <small class="text-muted">{{ reward.descripcion | slice:0:50 }}...</small>
+                    <h6 class="mb-1">{{ reward?.nombre || 'Sin nombre' }}</h6>
+                    <small class="text-muted">{{ (reward?.descripcion || '') | slice:0:50 }}...</small>
                   </div>
                 </div>
               </td>
               
               <td>
                 <span class="badge rounded-pill" 
-                      [class]="'bg-' + (reward.categoria === 'peliculas' ? 'primary' : 
-                                      reward.categoria === 'bar' ? 'success' : 
-                                      reward.categoria === 'especial' ? 'warning' : 'info')">
-                  <i [class]="getCategoryIcon(reward.categoria)" class="me-1"></i>
-                  {{ getCategoryLabel(reward.categoria) }}
+                      [class]="'bg-' + (reward?.categoria === 'peliculas' ? 'primary' : 
+                                      reward?.categoria === 'bar' ? 'success' : 
+                                      reward?.categoria === 'especial' ? 'warning' : 'info')">
+                  <i [class]="getCategoryIcon(reward?.categoria || '')" class="me-1"></i>
+                  {{ getCategoryLabel(reward?.categoria || '') }}
                 </span>
               </td>
               
               <td>
                 <span class="badge bg-light text-dark">
-                  <i [class]="getTipoIcon(reward.tipo)" class="me-1"></i>
-                  {{ getTipoLabel(reward.tipo) }}
+                  <i [class]="getTipoIcon(reward?.tipo || '')" class="me-1"></i>
+                  {{ getTipoLabel(reward?.tipo || '') }}
                 </span>
               </td>
               
               <td>
                 <span class="fw-bold text-warning">
                   <i class="fas fa-coins me-1"></i>
-                  {{ reward.puntos_requeridos }}
+                  {{ reward?.puntos_requeridos || 0 }}
                 </span>
               </td>
               
+              <!-- 🔧 COLUMNA CORREGIDA PARA EVITAR ERRORES TYPESCRIPT -->
               <td>
                 <div>
-                  <span *ngIf="reward.valor" class="d-block">
-                    <i class="fas fa-dollar-sign me-1"></i>${{ reward.valor }}
+                  <!-- Mostrar valor si existe -->
+                  <span *ngIf="reward && reward.valor && reward.valor > 0" class="d-block">
+                    <i class="fas fa-dollar-sign me-1 text-success"></i>
+                    <span *ngIf="reward.tipo === 'descuento'">${{ reward.valor }}%</span>
+                    <span *ngIf="reward.tipo !== 'descuento'">${{ reward.valor }}</span>
                   </span>
-                  <span *ngIf="reward.stock !== null" class="d-block text-muted">
-                    <i class="fas fa-boxes me-1"></i>Stock: {{ reward.stock }}
+                  
+                  <!-- Mostrar stock solo para tipos que lo necesitan -->
+                  <span *ngIf="reward && needsStockForType(reward.tipo)" class="d-block">
+                    <i class="fas fa-boxes me-1" 
+                       [class.text-danger]="reward.stock !== null && reward.stock !== undefined && reward.stock <= 0"
+                       [class.text-warning]="reward.stock !== null && reward.stock !== undefined && reward.stock > 0 && reward.stock <= 5"
+                       [class.text-success]="reward.stock !== null && reward.stock !== undefined && reward.stock > 5"></i>
+                    Stock: 
+                    <span *ngIf="reward.stock === null || reward.stock === undefined">∞</span>
+                    <span *ngIf="reward.stock !== null && reward.stock !== undefined">{{ reward.stock }}</span>
+                  </span>
+                  
+                  <!-- Para tipos sin stock, mostrar indicador -->
+                  <span *ngIf="reward && !needsStockForType(reward.tipo)" class="d-block text-muted">
+                    <i class="fas fa-infinity me-1"></i>
+                    Sin límite
+                  </span>
+
+                  <!-- Si no hay valor ni stock que mostrar, mostrar placeholder -->
+                  <span *ngIf="reward && (!reward.valor || reward.valor <= 0) && !needsStockForType(reward.tipo)" class="text-muted">
+                    <i class="fas fa-minus me-1"></i>
+                    N/A
                   </span>
                 </div>
               </td>
@@ -273,13 +297,13 @@
                   <!-- Botón toggle estado -->
                   <button type="button" 
                           class="btn" 
-                          [class.btn-outline-success]="!reward.disponible"
-                          [class.btn-outline-danger]="reward.disponible"
+                          [class.btn-outline-success]="!reward?.disponible"
+                          [class.btn-outline-danger]="reward?.disponible"
                           (click)="toggleRewardStatus(reward)"
-                          [title]="reward.disponible ? 'Desactivar' : 'Activar'">
+                          [title]="reward?.disponible ? 'Desactivar' : 'Activar'">
                     <i class="fas" 
-                       [class.fa-eye]="!reward.disponible"
-                       [class.fa-eye-slash]="reward.disponible"></i>
+                       [class.fa-eye]="!reward?.disponible"
+                       [class.fa-eye-slash]="reward?.disponible"></i>
                   </button>
                   
                   <!-- Botón eliminar -->
@@ -431,6 +455,7 @@
                       id="tipo"
                       name="tipo"
                       [(ngModel)]="rewardForm.tipo"
+                      (change)="onTipoChange()"
                       required>
                 <option *ngFor="let tipo of TIPOS" [value]="tipo.value">
                   {{ tipo.label }}
@@ -461,9 +486,11 @@
               </div>
             </div>
 
-            <!-- Stock -->
+            <!-- 🔧 CAMPO DE STOCK -->
             <div class="col-md-4 mb-3" *ngIf="needsStock()">
-              <label for="stock" class="form-label">Stock disponible</label>
+              <label for="stock" class="form-label">
+                Stock disponible <span class="text-danger">*</span>
+              </label>
               <input type="number" 
                      class="form-control" 
                      id="stock"
@@ -471,7 +498,10 @@
                      [(ngModel)]="rewardForm.stock"
                      [class.is-invalid]="formErrors['stock']"
                      min="0"
-                     placeholder="0 = ilimitado">
+                     placeholder="Cantidad disponible">
+              <small class="form-text text-muted">
+                Cantidad de unidades disponibles para canje
+              </small>
               <div *ngIf="formErrors['stock']" class="invalid-feedback">
                 {{ formErrors['stock'] }}
               </div>
@@ -505,94 +535,89 @@
               <small class="form-text text-muted">Días de validez del código después del canje</small>
             </div>
 
-            <div class="col-12 mb-3">
-  <label for="imagen_url" class="form-label fw-semibold">
-    <i class="fas fa-image me-1 text-warning"></i>
-    URL de la Imagen *
-  </label>
-  
-  <div class="row">
-    <!-- Input del URL -->
-    <div class="col-md-8">
-      <input type="url" 
-             class="form-control" 
-             id="imagen_url"
-             name="imagen_url"
-             [(ngModel)]="rewardForm.imagen_url"
-             [class.is-invalid]="formErrors['imagen_url']"
-             placeholder="https://ejemplo.com/recompensa.jpg o assets/rewards/recompensa.png"
-             (input)="onImageUrlChange()">
-      <small class="form-text text-muted">
-        Puedes usar URLs de internet o rutas locales como assets/rewards/recompensa.png
-      </small>
-      <div *ngIf="formErrors['imagen_url']" class="invalid-feedback">
-        {{ formErrors['imagen_url'] }}
-      </div>
-    </div>
-    
-    <!-- Vista previa -->
-    <div class="col-md-4">
-      <div class="image-preview-container text-center">
-        <div *ngIf="rewardForm.imagen_url?.trim(); else noImageReward" 
-             class="border rounded p-2 bg-light">
-          <img [src]="rewardForm.imagen_url" 
-               class="img-fluid rounded" 
-               style="max-height: 120px; max-width: 100%; object-fit: cover;"
-               [alt]="rewardForm.nombre || 'Vista previa de recompensa'"
-               (error)="onRewardImageError($event)"
-               (load)="onRewardImageLoad($event)">
-          <div class="mt-1">
-            <small class="text-success" *ngIf="rewardImageLoaded">
-              <i class="fas fa-check-circle"></i> Imagen válida
-            </small>
-            <small class="text-danger" *ngIf="rewardImageError">
-              <i class="fas fa-exclamation-triangle"></i> Error al cargar
-            </small>
+            <!-- Campo de imagen URL -->
+            <div class="col-md-6 mb-3">
+              <label for="imagen_url" class="form-label fw-semibold">
+                <i class="fas fa-image me-1 text-warning"></i>
+                URL de la Imagen *
+              </label>
+              <input type="url" 
+                     class="form-control" 
+                     id="imagen_url"
+                     name="imagen_url"
+                     [(ngModel)]="rewardForm.imagen_url"
+                     [class.is-invalid]="formErrors['imagen_url']"
+                     placeholder="https://ejemplo.com/recompensa.jpg"
+                     (input)="onImageUrlChange()">
+              <small class="form-text text-muted">
+                URL de la imagen de la recompensa
+              </small>
+              <div *ngIf="formErrors['imagen_url']" class="invalid-feedback">
+                {{ formErrors['imagen_url'] }}
+              </div>
+            </div>
           </div>
-        </div>
-        <ng-template #noImageReward>
-          <div class="border rounded p-3 bg-light text-muted">
-            <i class="fas fa-gift fa-2x text-warning"></i>
-            <br>
-            <small>Vista previa de la recompensa</small>
+
+          <!-- Vista previa de imagen -->
+          <div class="mb-3" *ngIf="rewardForm.imagen_url?.trim()">
+            <label class="form-label">Vista previa de la imagen</label>
+            <div class="border rounded p-2 bg-light text-center">
+              <img [src]="rewardForm.imagen_url" 
+                   class="img-fluid rounded" 
+                   style="max-height: 150px; max-width: 100%; object-fit: cover;"
+                   [alt]="rewardForm.nombre || 'Vista previa de recompensa'"
+                   (error)="onRewardImageError($event)"
+                   (load)="onRewardImageLoad($event)">
+              <div class="mt-2">
+                <small class="text-success" *ngIf="rewardImageLoaded">
+                  <i class="fas fa-check-circle"></i> Imagen cargada correctamente
+                </small>
+                <small class="text-danger" *ngIf="rewardImageError">
+                  <i class="fas fa-exclamation-triangle"></i> Error al cargar la imagen
+                </small>
+              </div>
+            </div>
           </div>
-        </ng-template>
-      </div>
-    </div>
-  </div>
-  
-  <!-- Ejemplos de URLs para recompensas -->
-  <div class="mt-2">
-    <small class="text-muted"><strong>Ejemplos para recompensas:</strong></small>
-    <div class="d-flex flex-wrap gap-2 mt-1">
-      <button type="button" 
-              class="btn btn-outline-warning btn-sm"
-              (click)="setRewardExampleImage('assets/recompensas/entrada-gratis.png')">
-        <i class="fas fa-folder me-1"></i>Entrada Local
-      </button>
-      <button type="button" 
-              class="btn btn-outline-warning btn-sm"
-              (click)="setRewardExampleImage('assets/recompensas/descuento-bar.png')">
-        <i class="fas fa-folder me-1"></i>Descuento Local
-      </button>
-      <button type="button" 
-              class="btn btn-outline-warning btn-sm"
-              (click)="setRewardExampleImage('https://via.placeholder.com/300x300/ffc107/000000?text=Recompensa')">
-        <i class="fas fa-globe me-1"></i>URL Externa
-      </button>
-      <button type="button" 
-              class="btn btn-outline-warning btn-sm"
-              (click)="setRewardExampleImage('https://images.unsplash.com/photo-1489599833388-c2c359e01be3?w=300&h=300&fit=crop')">
-        <i class="fas fa-gift me-1"></i>Ejemplo Gift
-      </button>
-      <button type="button" 
-              class="btn btn-outline-warning btn-sm"
-              (click)="setRewardExampleImage('https://images.unsplash.com/photo-1616077167555-51f6bc516dfa?w=300&h=300&fit=crop')">
-        <i class="fas fa-ticket-alt me-1"></i>Ejemplo Ticket
-      </button>
-    </div>
-  </div>
-</div>
+
+          <!-- Ejemplos de URLs -->
+          <div class="mb-3">
+            <small class="text-muted"><strong>Ejemplos de URLs:</strong></small>
+            <div class="d-flex flex-wrap gap-2 mt-1">
+              <button type="button" 
+                      class="btn btn-outline-warning btn-sm"
+                      (click)="setRewardExampleImage('https://via.placeholder.com/300x300/ffc107/000000?text=Recompensa')">
+                <i class="fas fa-globe me-1"></i>Placeholder
+              </button>
+              <button type="button" 
+                      class="btn btn-outline-warning btn-sm"
+                      (click)="setRewardExampleImage('https://images.unsplash.com/photo-1489599833388-c2c359e01be3?w=300&h=300&fit=crop')">
+                <i class="fas fa-gift me-1"></i>Regalo
+              </button>
+              <button type="button" 
+                      class="btn btn-outline-warning btn-sm"
+                      (click)="setRewardExampleImage('https://images.unsplash.com/photo-1616077167555-51f6bc516dfa?w=300&h=300&fit=crop')">
+                <i class="fas fa-ticket-alt me-1"></i>Ticket
+              </button>
+            </div>
+          </div>
+
+          <!-- Información sobre tipos -->
+          <div class="mb-3">
+            <div class="alert alert-info" role="alert">
+              <h6 class="alert-heading">
+                <i class="fas fa-info-circle me-2"></i>
+                Información sobre tipos de recompensa
+              </h6>
+              <ul class="mb-0 small">
+                <li><strong>Descuento %:</strong> Requiere valor (porcentaje). No necesita stock.</li>
+                <li><strong>Producto Gratis:</strong> Requiere valor y stock. Stock se reduce con cada canje.</li>
+                <li><strong>Paquete Especial:</strong> Requiere valor y stock. Incluye múltiples items.</li>
+                <li><strong>Experiencia VIP:</strong> Requiere stock limitado. Experiencias únicas.</li>
+                <li><strong>Código Promocional:</strong> No requiere stock. Genera códigos únicos.</li>
+                <li><strong>Bonus Extra:</strong> No requiere stock. Bonificaciones adicionales.</li>
+              </ul>
+            </div>
+          </div>
 
           <!-- Estado disponible -->
           <div class="mb-3">
@@ -607,8 +632,8 @@
               </label>
             </div>
           </div>
+        </form>
       </div>
-      </form>
       
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" (click)="closeForm()">

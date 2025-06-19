@@ -9,7 +9,6 @@ class RewardsController {
   }
 
   // ==================== OBTENER RECOMPENSAS ====================
-
   /**
    * Obtener todas las recompensas disponibles (público)
    */
@@ -31,8 +30,13 @@ class RewardsController {
         rewards = rewards.slice(0, parseInt(limite));
       }
       
-      // 🔧 CORRECCIÓN: Enviar los datos directamente como array
-      res.json(rewards);
+      // 🔧 CORRECCIÓN: Mapear 'imagen' a 'imagen_url' para el frontend
+      const mappedRewards = rewards.map(reward => ({
+        ...reward,
+        imagen_url: reward.imagen // Mapear imagen -> imagen_url
+      }));
+      
+      res.json(mappedRewards);
       
     } catch (error) {
       console.error('❌ Error al obtener recompensas:', error);
@@ -75,10 +79,16 @@ class RewardsController {
         canRedeem = await Reward.canUserRedeem(req.user.id, rewardId);
       }
       
+      // 🔧 CORRECCIÓN: Mapear 'imagen' a 'imagen_url'
+      const mappedReward = {
+        ...reward,
+        imagen_url: reward.imagen
+      };
+      
       res.json({
         success: true,
         data: {
-          ...reward,
+          ...mappedReward,
           canRedeem
         }
       });
@@ -100,7 +110,6 @@ class RewardsController {
       
       const categories = await Reward.getCategories();
       
-      // 🔧 CORRECCIÓN: Enviar categorías directamente como array
       res.json(categories);
       
     } catch (error) {
@@ -113,7 +122,6 @@ class RewardsController {
   }
 
   // ==================== CANJE DE RECOMPENSAS ====================
-
   /**
    * Canjear una recompensa
    */
@@ -154,7 +162,6 @@ class RewardsController {
       res.json({
         success: true,
         message: '¡Recompensa canjeada exitosamente!',
-        // 🔧 CORRECCIÓN: Cambiar 'codigo_canje' a 'codigo' para el frontend
         codigo: redemption.codigo_canje,
         data: {
           codigo_canje: redemption.codigo_canje,
@@ -189,7 +196,6 @@ class RewardsController {
   }
 
   // ==================== HISTORIAL DE CANJES ====================
-
   /**
    * Obtener canjes del usuario
    */
@@ -312,87 +318,212 @@ class RewardsController {
   }
 
   // ==================== ADMINISTRACIÓN DE RECOMPENSAS ====================
-
   /**
    * Crear nueva recompensa (ADMIN)
    */
   async createReward(req, res) {
-    try {
-      const rewardData = req.body;
-      
-      // Validaciones básicas
-      if (!rewardData.nombre || !rewardData.descripcion || !rewardData.categoria) {
-        return res.status(400).json({
-          success: false,
-          error: 'Nombre, descripción y categoría son obligatorios'
-        });
-      }
-      
-      if (!rewardData.puntos_requeridos || rewardData.puntos_requeridos < 1) {
-        return res.status(400).json({
-          success: false,
-          error: 'Puntos requeridos debe ser mayor a 0'
-        });
-      }
-      
-      console.log(`📝 Admin ${req.user.id} creando nueva recompensa: ${rewardData.nombre}`);
-      
-      const newReward = await Reward.create(rewardData);
-      
-      res.status(201).json({
-        success: true,
-        data: newReward,
-        message: 'Recompensa creada exitosamente'
-      });
-    } catch (error) {
-      console.error('❌ Error al crear recompensa:', error);
-      res.status(500).json({
+  try {
+    const rewardData = req.body;
+    
+    console.log('📝 Datos recibidos del frontend:', rewardData);
+    
+    // Validaciones básicas
+    if (!rewardData.nombre || !rewardData.descripcion || !rewardData.categoria) {
+      return res.status(400).json({
         success: false,
-        error: 'Error al crear la recompensa'
+        error: 'Nombre, descripción y categoría son obligatorios'
       });
     }
+    
+    if (!rewardData.puntos_requeridos || rewardData.puntos_requeridos < 1) {
+      return res.status(400).json({
+        success: false,
+        error: 'Puntos requeridos debe ser mayor a 0'
+      });
+    }
+
+    // 🔧 CORRECCIÓN PRINCIPAL: Procesamiento inteligente de datos según tipo
+    const processedData = {
+      nombre: rewardData.nombre,
+      descripcion: rewardData.descripcion,
+      categoria: rewardData.categoria,
+      puntos_requeridos: parseInt(rewardData.puntos_requeridos),
+      tipo: rewardData.tipo,
+      disponible: rewardData.disponible !== false, // Default true
+      limite_por_usuario: parseInt(rewardData.limite_por_usuario) || 1,
+      validez_dias: parseInt(rewardData.validez_dias) || 30,
+      terminos: rewardData.terminos || []
+    };
+
+    // 🔧 CORRECCIÓN: Mapear imagen_url a imagen
+    if (rewardData.imagen_url) {
+      processedData.imagen = rewardData.imagen_url;
+    } else if (rewardData.imagen) {
+      processedData.imagen = rewardData.imagen;
+    } else {
+      processedData.imagen = null;
+    }
+
+    // 🔧 CORRECCIÓN: Manejo inteligente de valor según tipo
+    const tiposConValor = ['descuento', 'producto', 'paquete'];
+    if (tiposConValor.includes(processedData.tipo)) {
+      if (!rewardData.valor || rewardData.valor <= 0) {
+        return res.status(400).json({
+          success: false,
+          error: `El tipo ${processedData.tipo} requiere un valor mayor a 0`
+        });
+      }
+      processedData.valor = parseFloat(rewardData.valor);
+    } else {
+      // Para tipos que no necesitan valor, establecer como 0
+      processedData.valor = 0;
+    }
+
+    // 🔧 CORRECCIÓN: Manejo inteligente de stock según tipo
+    const tiposConStock = ['producto', 'paquete', 'experiencia'];
+    if (tiposConStock.includes(processedData.tipo)) {
+      // Para tipos que necesitan stock
+      if (rewardData.stock === null || rewardData.stock === undefined || rewardData.stock === '') {
+        processedData.stock = 0; // Default 0 para tipos con stock
+      } else {
+        processedData.stock = parseInt(rewardData.stock);
+        if (processedData.stock < 0) {
+          return res.status(400).json({
+            success: false,
+            error: 'El stock no puede ser negativo'
+          });
+        }
+      }
+    } else {
+      // Para tipos que NO necesitan stock (descuento, codigo, bonus)
+      processedData.stock = null;
+    }
+
+    console.log('📝 Datos procesados para BD:', processedData);
+    console.log(`📝 Admin ${req.user.id} creando nueva recompensa: ${processedData.nombre}`);
+    
+    const newReward = await Reward.create(processedData);
+    
+    // 🔧 CORRECCIÓN: Mapear imagen de vuelta a imagen_url para el frontend
+    const responseReward = {
+      ...newReward,
+      imagen_url: newReward.imagen
+    };
+    
+    res.status(201).json({
+      success: true,
+      data: responseReward,
+      message: 'Recompensa creada exitosamente'
+    });
+  } catch (error) {
+    console.error('❌ Error al crear recompensa:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al crear la recompensa',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
+}
 
   /**
    * Actualizar recompensa (ADMIN)
    */
   async updateReward(req, res) {
-    try {
-      const { id } = req.params;
-      const rewardData = req.body;
-      
-      const rewardId = parseInt(id);
-      if (isNaN(rewardId) || rewardId <= 0) {
-        return res.status(400).json({
-          success: false,
-          error: 'ID de recompensa inválido'
-        });
-      }
-      
-      console.log(`📝 Admin ${req.user.id} actualizando recompensa ${rewardId}`);
-      
-      const updatedReward = await Reward.update(rewardId, rewardData);
-      
-      if (!updatedReward) {
-        return res.status(404).json({
-          success: false,
-          error: 'Recompensa no encontrada'
-        });
-      }
-      
-      res.json({
-        success: true,
-        data: updatedReward,
-        message: 'Recompensa actualizada exitosamente'
-      });
-    } catch (error) {
-      console.error('❌ Error al actualizar recompensa:', error);
-      res.status(500).json({
+  try {
+    const { id } = req.params;
+    const rewardData = req.body;
+    
+    const rewardId = parseInt(id);
+    if (isNaN(rewardId) || rewardId <= 0) {
+      return res.status(400).json({
         success: false,
-        error: 'Error al actualizar la recompensa'
+        error: 'ID de recompensa inválido'
       });
     }
+    
+    console.log('📝 Datos de actualización recibidos:', rewardData);
+    
+    // 🔧 CORRECCIÓN: Procesamiento similar al create
+    const processedData = { ...rewardData };
+
+    // 🔧 CORRECCIÓN: Mapear imagen_url a imagen
+    if (rewardData.imagen_url !== undefined) {
+      processedData.imagen = rewardData.imagen_url;
+      delete processedData.imagen_url;
+    }
+
+    // 🔧 CORRECCIÓN: Manejo de valor según tipo
+    if (processedData.tipo) {
+      const tiposConValor = ['descuento', 'producto', 'paquete'];
+      if (tiposConValor.includes(processedData.tipo)) {
+        if (processedData.valor === undefined || processedData.valor === null) {
+          // Si no se proporciona valor para un tipo que lo necesita, mantener el actual
+        } else if (processedData.valor <= 0) {
+          return res.status(400).json({
+            success: false,
+            error: `El tipo ${processedData.tipo} requiere un valor mayor a 0`
+          });
+        }
+      } else {
+        // Para tipos que no necesitan valor, establecer como 0
+        processedData.valor = 0;
+      }
+    }
+
+    // 🔧 CORRECCIÓN: Manejo de stock según tipo
+    if (processedData.tipo) {
+      const tiposConStock = ['producto', 'paquete', 'experiencia'];
+      if (tiposConStock.includes(processedData.tipo)) {
+        // Para tipos que necesitan stock, mantener el valor proporcionado o usar 0
+        if (processedData.stock === undefined || processedData.stock === null || processedData.stock === '') {
+          processedData.stock = 0;
+        } else {
+          processedData.stock = parseInt(processedData.stock);
+          if (processedData.stock < 0) {
+            return res.status(400).json({
+              success: false,
+              error: 'El stock no puede ser negativo'
+            });
+          }
+        }
+      } else {
+        // Para tipos que no necesitan stock, establecer como NULL
+        processedData.stock = null;
+      }
+    }
+
+    console.log('📝 Datos procesados para actualización:', processedData);
+    console.log(`📝 Admin ${req.user.id} actualizando recompensa ${rewardId}`);
+    
+    const updatedReward = await Reward.update(rewardId, processedData);
+    
+    if (!updatedReward) {
+      return res.status(404).json({
+        success: false,
+        error: 'Recompensa no encontrada'
+      });
+    }
+    
+    // 🔧 CORRECCIÓN: Mapear imagen de vuelta a imagen_url para el frontend
+    const responseReward = {
+      ...updatedReward,
+      imagen_url: updatedReward.imagen
+    };
+    
+    res.json({
+      success: true,
+      data: responseReward,
+      message: 'Recompensa actualizada exitosamente'
+    });
+  } catch (error) {
+    console.error('❌ Error al actualizar recompensa:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al actualizar la recompensa',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
+}
 
   /**
    * Eliminar recompensa (ADMIN)
@@ -435,7 +566,6 @@ class RewardsController {
   }
 
   // ==================== ESTADÍSTICAS Y REPORTES (ADMIN) ====================
-
   /**
    * Obtener estadísticas de recompensas (ADMIN)
    */
