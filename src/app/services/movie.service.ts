@@ -1,3 +1,4 @@
+// movie.service.ts - VERSIÓN COMPLETA CON RECOMENDACIONES
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
@@ -58,35 +59,36 @@ export class MovieService {
   };
 
   private proximosEstrenos: ProximoEstreno[] = [
-  {
-    id: 1,
-    idx: 1, // 🆕 AGREGAR idx
-    titulo: "Kayara: La Princesa Inca",
-    sinopsis: "Una épica aventura que narra la historia de Kayara, una valiente princesa inca que debe salvar su reino de una amenaza ancestral.",
-    poster: "assets/movies/kayara.png",
-    fechaEstreno: "2025-06-06",
-    estudio: "assets/studios/paramount.png",
-    genero: "Aventura",
-    director: "Carlos López Estrada",
-    trailer: "rDX5wVVBW4Y",
-    duracion: "2h 10min",
-    actores: ["Yalitza Aparicio", "Oscar Isaac", "Stephanie Beatriz", "John Leguizamo"]
-  },
-  {
-    id: 2,
-    idx: 2, // 🆕 AGREGAR idx
-    titulo: "Elio",
-    sinopsis: "Elio, un niño soñador y fanático del espacio, es confundido accidentalmente con el representante intergaláctico de la Tierra.",
-    poster: "assets/movies/elio.png",
-    fechaEstreno: "2025-06-13",
-    estudio: "assets/studios/disney.png",
-    genero: "Animación",
-    director: "Adrian Molina",
-    trailer: "QkA4XR5GUos",
-    duracion: "1h 35min",
-    actores: ["Yonas Kibreab", "Zoe Saldaña", "Remy Edgerly", "Brad Garrett"]
-  }
-];
+    {
+      id: 1,
+      idx: 1, // 🆕 AGREGAR idx
+      titulo: "Kayara: La Princesa Inca",
+      sinopsis: "Una épica aventura que narra la historia de Kayara, una valiente princesa inca que debe salvar su reino de una amenaza ancestral.",
+      poster: "assets/movies/kayara.png",
+      fechaEstreno: "2025-06-06",
+      estudio: "assets/studios/paramount.png",
+      genero: "Aventura",
+      director: "Carlos López Estrada",
+      trailer: "rDX5wVVBW4Y",
+      duracion: "2h 10min",
+      actores: ["Yalitza Aparicio", "Oscar Isaac", "Stephanie Beatriz", "John Leguizamo"]
+    },
+    {
+      id: 2,
+      idx: 2, // 🆕 AGREGAR idx
+      titulo: "Elio",
+      sinopsis: "Elio, un niño soñador y fanático del espacio, es confundido accidentalmente con el representante intergaláctico de la Tierra.",
+      poster: "assets/movies/elio.png",
+      fechaEstreno: "2025-06-13",
+      estudio: "assets/studios/disney.png",
+      genero: "Animación",
+      director: "Adrian Molina",
+      trailer: "QkA4XR5GUos",
+      duracion: "1h 35min",
+      actores: ["Yonas Kibreab", "Zoe Saldaña", "Remy Edgerly", "Brad Garrett"]
+    }
+  ];
+
   private seatMaps: { [salaId: string]: SeatMap } = {
     'Sala 1 - IMAX': {
       rows: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'],
@@ -113,6 +115,59 @@ export class MovieService {
 
   constructor(private http: HttpClient) {
     console.log('🎬 MovieService conectado a API:', this.API_URL);
+  }
+
+  // ==================== MÉTODOS DE RECOMENDACIONES ====================
+
+  /**
+   * 🎯 Obtener recomendaciones personalizadas para el usuario
+   */
+  getRecommendations(): Observable<Pelicula[]> {
+    const headers = this.getAuthHeaders();
+    
+    return this.http.get<ApiResponse<any[]>>(`${this.API_URL}/movies/recommendations`, { headers }).pipe(
+      map(response => {
+        console.log('🎯 Recomendaciones obtenidas:', response.data?.length || 0);
+        if (response.meta) {
+          console.log('📊 Metadatos de recomendaciones:', {
+            algorithm: response.meta.algorithm,
+            basedOnPurchases: response.meta.basedOnPurchases,
+            userId: response.meta.userId
+          });
+        }
+        return (response.data || []).map(pelicula => this.convertApiToLocal(pelicula));
+      }),
+      catchError(error => {
+        console.error('❌ Error al obtener recomendaciones:', error);
+        // Fallback: retornar películas destacadas si falla
+        return this.getFallbackRecommendations();
+      })
+    );
+  }
+
+  /**
+   * Obtener recomendaciones de fallback (películas destacadas)
+   */
+  private getFallbackRecommendations(): Observable<Pelicula[]> {
+    console.log('🔄 Usando recomendaciones de fallback');
+    
+    return this.getPeliculas().pipe(
+      map(peliculas => {
+        // Filtrar y ordenar por rating para fallback
+        return peliculas
+          .filter(p => p.rating >= 7.0)
+          .sort((a, b) => b.rating - a.rating)
+          .slice(0, 8);
+      })
+    );
+  }
+
+  /**
+   * Verificar si el usuario puede obtener recomendaciones
+   */
+  canGetRecommendations(): boolean {
+    const token = localStorage.getItem('auth_token');
+    return !!token;
   }
 
   // ==================== MÉTODOS DE API (PELÍCULAS) ====================
@@ -164,7 +219,6 @@ export class MovieService {
       }),
       catchError(error => {
         console.error('❌ Error en búsqueda:', error);
-        // Si falla, buscar en datos locales como fallback
         return of([]);
       })
     );
@@ -285,41 +339,39 @@ export class MovieService {
    * Obtener headers con token de autenticación
    */
   private getAuthHeaders(): HttpHeaders {
-  // 🔍 VERIFICAR el nombre correcto del token en localStorage
-  const token = localStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
-  
-  if (!token) {
-    console.warn('⚠️ No hay token de autenticación');
-    return new HttpHeaders();
+    // 🔍 VERIFICAR el nombre correcto del token en localStorage
+    const token = localStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
+    
+    if (!token) {
+      console.warn('⚠️ No hay token de autenticación');
+      return new HttpHeaders();
+    }
+
+    return new HttpHeaders({
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    });
   }
 
-  return new HttpHeaders({
-    'Authorization': `Bearer ${token}`,
-    'Content-Type': 'application/json'
-  });
-}
-testComingSoonConnection(): void {
-  console.log('🧪 Probando conexión a API de próximos estrenos...');
-  
-  this.http.get<ApiResponse<any[]>>(`${this.API_URL}/coming-soon`).subscribe(
-    response => {
-      console.log('✅ Conexión exitosa:', response);
-      console.log('📊 Datos recibidos:', response.data?.length || 0, 'estrenos');
-    },
-    error => {
-      console.error('❌ Error de conexión:', error);
-      console.log('🔧 Verificar:');
-      console.log('  - Servidor backend funcionando en', this.API_URL);
-      console.log('  - Ruta /coming-soon agregada en routes/index.js');
-      console.log('  - CORS configurado para localhost:4200');
-    }
-  );
-}
-  // ==================== MÉTODOS LOCALES (FUNCIONES, ASIENTOS, ETC.) ====================
+  // ==================== RESTO DE MÉTODOS EXISTENTES ====================
 
-  /**
-   * Métodos que mantienen la funcionalidad local existente
-   */
+  testComingSoonConnection(): void {
+    console.log('🧪 Probando conexión a API de próximos estrenos...');
+    
+    this.http.get<ApiResponse<any[]>>(`${this.API_URL}/coming-soon`).subscribe(
+      response => {
+        console.log('✅ Conexión exitosa:', response);
+        console.log('📊 Datos recibidos:', response.data?.length || 0, 'estrenos');
+      },
+      error => {
+        console.error('❌ Error de conexión:', error);
+        console.log('🔧 Verificar:');
+        console.log('  - Servidor backend funcionando en', this.API_URL);
+        console.log('  - Ruta /coming-soon agregada en routes/index.js');
+        console.log('  - CORS configurado para localhost:4200');
+      }
+    );
+  }
 
   getPelicula(idx: number): Pelicula | null {
     console.warn('⚠️ Método getPelicula() es obsoleto. Usa getPeliculaById()');
@@ -332,224 +384,215 @@ testComingSoonConnection(): void {
     }
     return '';
   }
-getProximosEstrenosFromAPI(): Observable<ProximoEstreno[]> {
-  return this.http.get<ApiResponse<any[]>>(`${this.API_URL}/coming-soon`).pipe(
-    map(response => {
-      console.log('📡 Próximos estrenos obtenidos de PostgreSQL:', response.data?.length || 0);
-      return (response.data || []).map((estreno, index) => ({
-        ...this.convertApiEstrenoToLocal(estreno),
-        idx: estreno.id || index // 🆕 AGREGAR idx para compatibilidad
-      }));
-    }),
-    catchError(error => {
-      console.error('❌ Error al obtener próximos estrenos:', error);
-      // Fallback a datos locales
-      console.log('🔄 Usando datos locales como fallback');
-      return of(this.proximosEstrenos.map((estreno, index) => ({
-        ...estreno,
-        idx: estreno.id || index // 🆕 AGREGAR idx también en fallback
-      })));
-    })
-  );
-}
 
-/**
- * Obtener próximo estreno por ID desde API
- */
-getProximoEstrenoByIdFromAPI(id: number): Observable<ProximoEstreno | null> {
-  return this.http.get<ApiResponse<any>>(`${this.API_URL}/coming-soon/${id}`).pipe(
-    map(response => {
-      if (response.success && response.data) {
-        console.log('📡 Próximo estreno obtenido:', response.data.titulo);
-        return this.convertApiEstrenoToLocal(response.data);
-      }
-      return null;
-    }),
-    catchError(error => {
-      console.error('❌ Error al obtener próximo estreno:', error);
-      // Fallback a datos locales
-      return of(this.getProximoEstreno(id));
-    })
-  );
-}
-
-/**
- * Crear nuevo próximo estreno (solo admin)
- */
-addProximoEstreno(estrenoData: Omit<ProximoEstreno, 'id'>): Observable<boolean> {
-  const headers = this.getAuthHeaders();
-  
-  // Convertir formato local a formato API
-  const apiData = this.convertLocalEstrenoToApi(estrenoData);
-  
-  return this.http.post<ApiResponse<any>>(`${this.API_URL}/coming-soon`, apiData, { headers }).pipe(
-    map(response => {
-      if (response.success) {
-        console.log('✅ Próximo estreno creado:', response.data?.titulo || 'Sin título');
-        return true;
-      }
-      return false;
-    }),
-    catchError(error => {
-      console.error('❌ Error al crear próximo estreno:', error);
-      return of(false);
-    })
-  );
-}
-private convertLocalEstrenoToApi(localEstreno: any): any {
-  return {
-    titulo: localEstreno.titulo,
-    sinopsis: localEstreno.sinopsis,
-    poster: localEstreno.poster,
-    fecha_estreno: localEstreno.fechaEstreno,
-    estudio: localEstreno.estudio,
-    genero: localEstreno.genero,
-    director: localEstreno.director,
-    trailer: localEstreno.trailer,
-    duracion: localEstreno.duracion,
-    actores: localEstreno.actores || []
-  };
-}
-/**
- * Actualizar próximo estreno existente (solo admin)
- */
-updateProximoEstreno(id: number, estrenoData: Partial<ProximoEstreno>): Observable<boolean> {
-  const headers = this.getAuthHeaders();
-  const apiData = this.convertLocalEstrenoToApi(estrenoData);
-  
-  return this.http.put<ApiResponse<any>>(`${this.API_URL}/coming-soon/${id}`, apiData, { headers }).pipe(
-    map(response => {
-      if (response.success) {
-        console.log('✅ Próximo estreno actualizado');
-        return true;
-      }
-      return false;
-    }),
-    catchError(error => {
-      console.error('❌ Error al actualizar próximo estreno:', error);
-      return of(false);
-    })
-  );
-}
-
-/**
- * Eliminar próximo estreno (solo admin)
- */
-deleteProximoEstreno(id: number): Observable<boolean> {
-  const headers = this.getAuthHeaders();
-  
-  return this.http.delete<ApiResponse<any>>(`${this.API_URL}/coming-soon/${id}`, { headers }).pipe(
-    map(response => {
-      if (response.success) {
-        console.log('✅ Próximo estreno eliminado');
-        return true;
-      }
-      return false;
-    }),
-    catchError(error => {
-      console.error('❌ Error al eliminar próximo estreno:', error);
-      return of(false);
-    })
-  );
-}
-
-/**
- * Buscar próximos estrenos por término
- */
-buscarProximosEstrenos(termino: string): Observable<ProximoEstreno[]> {
-  if (!termino.trim()) {
-    return of([]);
+  getProximosEstrenosFromAPI(): Observable<ProximoEstreno[]> {
+    return this.http.get<ApiResponse<any[]>>(`${this.API_URL}/coming-soon`).pipe(
+      map(response => {
+        console.log('📡 Próximos estrenos obtenidos de PostgreSQL:', response.data?.length || 0);
+        return (response.data || []).map((estreno, index) => ({
+          ...this.convertApiEstrenoToLocal(estreno),
+          idx: estreno.id || index // 🆕 AGREGAR idx para compatibilidad
+        }));
+      }),
+      catchError(error => {
+        console.error('❌ Error al obtener próximos estrenos:', error);
+        // Fallback a datos locales
+        console.log('🔄 Usando datos locales como fallback');
+        return of(this.proximosEstrenos.map((estreno, index) => ({
+          ...estreno,
+          idx: estreno.id || index // 🆕 AGREGAR idx también en fallback
+        })));
+      })
+    );
   }
 
-  const encodedTerm = encodeURIComponent(termino);
-  return this.http.get<ApiResponse<any[]>>(`${this.API_URL}/coming-soon/search?q=${encodedTerm}`).pipe(
-    map(response => {
-      console.log(`🔍 Próximos estrenos encontrados para "${termino}":`, response.data?.length || 0);
-      return (response.data || []).map(estreno => this.convertApiEstrenoToLocal(estreno));
-    }),
-    catchError(error => {
-      console.error('❌ Error en búsqueda de próximos estrenos:', error);
-      return of([]);
-    })
-  );
-}
-private convertApiEstrenoToLocal(apiEstreno: any): ProximoEstreno {
-  return {
-    id: apiEstreno.id,
-    idx: apiEstreno.id, // 🆕 AGREGAR idx
-    titulo: apiEstreno.titulo,
-    sinopsis: apiEstreno.sinopsis,
-    poster: apiEstreno.poster,
-    fechaEstreno: apiEstreno.fecha_estreno,
-    estudio: apiEstreno.estudio,
-    genero: apiEstreno.genero,
-    director: apiEstreno.director,
-    trailer: apiEstreno.trailer,
-    duracion: apiEstreno.duracion,
-    actores: apiEstreno.actores || []
-  };
-}
-  getProximosEstrenos(): ProximoEstreno[] {
-  // Este método sigue siendo síncrono para compatibilidad
-  // Para nuevos desarrollos, usar getProximosEstrenosFromAPI()
-  console.log('⚠️ Usando datos locales. Para API usa getProximosEstrenosFromAPI()');
-  return this.proximosEstrenos
-    .map((estreno, index) => ({
-      ...estreno,
-      idx: estreno.id || index // 🆕 AGREGAR idx para compatibilidad
-    }))
-    .sort((a, b) => {
-      return new Date(a.fechaEstreno).getTime() - new Date(b.fechaEstreno).getTime();
-    });
-}
-getProximosEstrenosHybrid(): Observable<ProximoEstreno[]> {
-  return this.getProximosEstrenosFromAPI().pipe(
-    catchError(() => {
-      console.log('🔄 API no disponible, usando datos locales');
-      return of(this.getProximosEstrenos());
-    })
-  );
-}
-validateProximoEstrenoData(estreno: Partial<ProximoEstreno>): { valid: boolean; errors: string[] } {
-  const errors: string[] = [];
+  getProximoEstrenoByIdFromAPI(id: number): Observable<ProximoEstreno | null> {
+    return this.http.get<ApiResponse<any>>(`${this.API_URL}/coming-soon/${id}`).pipe(
+      map(response => {
+        if (response.success && response.data) {
+          console.log('📡 Próximo estreno obtenido:', response.data.titulo);
+          return this.convertApiEstrenoToLocal(response.data);
+        }
+        return null;
+      }),
+      catchError(error => {
+        console.error('❌ Error al obtener próximo estreno:', error);
+        // Fallback a datos locales
+        return of(this.getProximoEstreno(id));
+      })
+    );
+  }
 
-  if (!estreno.titulo?.trim()) errors.push('El título es requerido');
-  if (!estreno.director?.trim()) errors.push('El director es requerido');
-  if (!estreno.sinopsis?.trim()) errors.push('La sinopsis es requerida');
-  if (!estreno.genero?.trim()) errors.push('El género es requerido');
-  if (!estreno.poster?.trim()) errors.push('La URL del poster es requerida');
-  if (!estreno.fechaEstreno?.trim()) errors.push('La fecha de estreno es requerida');
-  
-  // Validar que la fecha sea futura
-  if (estreno.fechaEstreno) {
-    const fechaEstreno = new Date(estreno.fechaEstreno);
-    const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
+  addProximoEstreno(estrenoData: Omit<ProximoEstreno, 'id'>): Observable<boolean> {
+    const headers = this.getAuthHeaders();
     
-    if (fechaEstreno < hoy) {
-      errors.push('La fecha de estreno debe ser futura');
-    }
+    // Convertir formato local a formato API
+    const apiData = this.convertLocalEstrenoToApi(estrenoData);
+    
+    return this.http.post<ApiResponse<any>>(`${this.API_URL}/coming-soon`, apiData, { headers }).pipe(
+      map(response => {
+        if (response.success) {
+          console.log('✅ Próximo estreno creado:', response.data?.titulo || 'Sin título');
+          return true;
+        }
+        return false;
+      }),
+      catchError(error => {
+        console.error('❌ Error al crear próximo estreno:', error);
+        return of(false);
+      })
+    );
   }
 
-  // Validar trailer de YouTube
-  if (estreno.trailer && !/^[a-zA-Z0-9_-]{11}$/.test(estreno.trailer)) {
-    errors.push('El trailer debe ser un ID válido de YouTube (11 caracteres)');
-  }
-
-  return { valid: errors.length === 0, errors };
-}
-
-
-  getProximoEstreno(id: number): ProximoEstreno | null {
-  const estreno = this.proximosEstrenos.find(estreno => estreno.id === id);
-  if (estreno) {
+  private convertLocalEstrenoToApi(localEstreno: any): any {
     return {
-      ...estreno,
-      idx: estreno.id // 🆕 AGREGAR idx
+      titulo: localEstreno.titulo,
+      sinopsis: localEstreno.sinopsis,
+      poster: localEstreno.poster,
+      fecha_estreno: localEstreno.fechaEstreno,
+      estudio: localEstreno.estudio,
+      genero: localEstreno.genero,
+      director: localEstreno.director,
+      trailer: localEstreno.trailer,
+      duracion: localEstreno.duracion,
+      actores: localEstreno.actores || []
     };
   }
-  return null;
-}
+
+  updateProximoEstreno(id: number, estrenoData: Partial<ProximoEstreno>): Observable<boolean> {
+    const headers = this.getAuthHeaders();
+    const apiData = this.convertLocalEstrenoToApi(estrenoData);
+    
+    return this.http.put<ApiResponse<any>>(`${this.API_URL}/coming-soon/${id}`, apiData, { headers }).pipe(
+      map(response => {
+        if (response.success) {
+          console.log('✅ Próximo estreno actualizado');
+          return true;
+        }
+        return false;
+      }),
+      catchError(error => {
+        console.error('❌ Error al actualizar próximo estreno:', error);
+        return of(false);
+      })
+    );
+  }
+
+  deleteProximoEstreno(id: number): Observable<boolean> {
+    const headers = this.getAuthHeaders();
+    
+    return this.http.delete<ApiResponse<any>>(`${this.API_URL}/coming-soon/${id}`, { headers }).pipe(
+      map(response => {
+        if (response.success) {
+          console.log('✅ Próximo estreno eliminado');
+          return true;
+        }
+        return false;
+      }),
+      catchError(error => {
+        console.error('❌ Error al eliminar próximo estreno:', error);
+        return of(false);
+      })
+    );
+  }
+
+  buscarProximosEstrenos(termino: string): Observable<ProximoEstreno[]> {
+    if (!termino.trim()) {
+      return of([]);
+    }
+
+    const encodedTerm = encodeURIComponent(termino);
+    return this.http.get<ApiResponse<any[]>>(`${this.API_URL}/coming-soon/search?q=${encodedTerm}`).pipe(
+      map(response => {
+        console.log(`🔍 Próximos estrenos encontrados para "${termino}":`, response.data?.length || 0);
+        return (response.data || []).map(estreno => this.convertApiEstrenoToLocal(estreno));
+      }),
+      catchError(error => {
+        console.error('❌ Error en búsqueda de próximos estrenos:', error);
+        return of([]);
+      })
+    );
+  }
+
+  private convertApiEstrenoToLocal(apiEstreno: any): ProximoEstreno {
+    return {
+      id: apiEstreno.id,
+      idx: apiEstreno.id, // 🆕 AGREGAR idx
+      titulo: apiEstreno.titulo,
+      sinopsis: apiEstreno.sinopsis,
+      poster: apiEstreno.poster,
+      fechaEstreno: apiEstreno.fecha_estreno,
+      estudio: apiEstreno.estudio,
+      genero: apiEstreno.genero,
+      director: apiEstreno.director,
+      trailer: apiEstreno.trailer,
+      duracion: apiEstreno.duracion,
+      actores: apiEstreno.actores || []
+    };
+  }
+
+  getProximosEstrenos(): ProximoEstreno[] {
+    // Este método sigue siendo síncrono para compatibilidad
+    // Para nuevos desarrollos, usar getProximosEstrenosFromAPI()
+    console.log('⚠️ Usando datos locales. Para API usa getProximosEstrenosFromAPI()');
+    return this.proximosEstrenos
+      .map((estreno, index) => ({
+        ...estreno,
+        idx: estreno.id || index // 🆕 AGREGAR idx para compatibilidad
+      }))
+      .sort((a, b) => {
+        return new Date(a.fechaEstreno).getTime() - new Date(b.fechaEstreno).getTime();
+      });
+  }
+
+  getProximosEstrenosHybrid(): Observable<ProximoEstreno[]> {
+    return this.getProximosEstrenosFromAPI().pipe(
+      catchError(() => {
+        console.log('🔄 API no disponible, usando datos locales');
+        return of(this.getProximosEstrenos());
+      })
+    );
+  }
+
+  validateProximoEstrenoData(estreno: Partial<ProximoEstreno>): { valid: boolean; errors: string[] } {
+    const errors: string[] = [];
+
+    if (!estreno.titulo?.trim()) errors.push('El título es requerido');
+    if (!estreno.director?.trim()) errors.push('El director es requerido');
+    if (!estreno.sinopsis?.trim()) errors.push('La sinopsis es requerida');
+    if (!estreno.genero?.trim()) errors.push('El género es requerido');
+    if (!estreno.poster?.trim()) errors.push('La URL del poster es requerida');
+    if (!estreno.fechaEstreno?.trim()) errors.push('La fecha de estreno es requerida');
+    
+    // Validar que la fecha sea futura
+    if (estreno.fechaEstreno) {
+      const fechaEstreno = new Date(estreno.fechaEstreno);
+      const hoy = new Date();
+      hoy.setHours(0, 0, 0, 0);
+      
+      if (fechaEstreno < hoy) {
+        errors.push('La fecha de estreno debe ser futura');
+      }
+    }
+
+    // Validar trailer de YouTube
+    if (estreno.trailer && !/^[a-zA-Z0-9_-]{11}$/.test(estreno.trailer)) {
+      errors.push('El trailer debe ser un ID válido de YouTube (11 caracteres)');
+    }
+
+    return { valid: errors.length === 0, errors };
+  }
+
+  getProximoEstreno(id: number): ProximoEstreno | null {
+    const estreno = this.proximosEstrenos.find(estreno => estreno.id === id);
+    if (estreno) {
+      return {
+        ...estreno,
+        idx: estreno.id // 🆕 AGREGAR idx
+      };
+    }
+    return null;
+  }
 
   getFuncionesPelicula(peliculaId: number): FuncionCine[] {
     return this.funcionesCine[peliculaId] || [];
@@ -733,4 +776,5 @@ interface ApiResponse<T> {
   total?: number;
   message?: string;
   error?: string;
+  meta?: any; // Permite que la respuesta tenga un campo meta opcional
 }

@@ -1,5 +1,9 @@
+// routes/movies.js - ORDEN CORREGIDO
 const express = require('express');
 const router = express.Router();
+const Movie = require('../models/Movie');
+const { authenticateToken } = require('../middleware/auth');
+const recommendationsController = require('../controllers/movies/recommendationsController');
 const {
   getAllMovies,
   getMovieById,
@@ -9,10 +13,8 @@ const {
   getGenres,
   getPopularMovies,
   getMovieStats,
-  searchMovies  // ✅ AGREGAR AQUÍ
+  searchMovies
 } = require('../controllers/movies/movieController');
-
-// Rutas públicas (no necesitan autenticación)
 
 // ✅ RUTAS ESPECÍFICAS PRIMERO (antes de /:id)
 
@@ -25,6 +27,9 @@ router.get('/genres', getGenres);
 // GET /api/movies/popular - Obtener películas más populares
 router.get('/popular', getPopularMovies);
 
+// 🎯 NUEVA: GET /api/movies/recommendations - Obtener recomendaciones (DEBE IR ANTES DE /:id)
+router.get('/recommendations', authenticateToken, recommendationsController.getUserRecommendations);
+
 // ✅ RUTAS GENERALES DESPUÉS
 
 // GET /api/movies - Obtener todas las películas (con filtros opcionales)
@@ -36,7 +41,7 @@ router.get('/:id', getMovieById);
 // GET /api/movies/:id/stats - Obtener estadísticas de una película
 router.get('/:id/stats', getMovieStats);
 
-// Rutas para administradores (por ahora sin autenticación, después la agregamos)
+// Rutas para administradores
 
 // POST /api/movies - Crear nueva película
 router.post('/', createMovie);

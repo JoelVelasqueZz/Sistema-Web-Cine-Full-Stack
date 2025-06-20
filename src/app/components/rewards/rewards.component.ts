@@ -810,7 +810,12 @@ export class RewardsComponent implements OnInit, OnDestroy {
     img.src = 'assets/recompensas/default.png';
   }
 }
-
+irAAdminRewards(): void {
+  if (!this.authService.isAdmin()) {
+    return;
+  }
+  this.router.navigate(['/admin/rewards']);
+}
   /**
    * Obtiene las clases CSS para el estado de la recompensa
    * @param reward - La recompensa
