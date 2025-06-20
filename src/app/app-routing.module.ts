@@ -28,13 +28,16 @@ import { AdminUsersComponent } from './components/admin/admin-users/admin-users.
 import { AdminBarComponent } from './components/admin/admin-bar/admin-bar.component';
 import { AdminComingSoonComponent } from './components/admin/admin-coming-soon/admin-coming-soon.component';
 import { FunctionAdminComponent } from './components/admin/function-admin/function-admin.component';
-// 🆕 IMPORTAR ADMIN REWARDS
 import { AdminRewardsComponent } from './components/admin/admin-rewards/admin-rewards.component';
 
-// 🆕 COMPONENTES DEL SISTEMA DE PUNTOS Y RECOMPENSAS
+// COMPONENTES DEL SISTEMA DE PUNTOS Y RECOMPENSAS
 import { RewardsComponent } from './components/rewards/rewards.component';
 import { OrderHistoryComponent } from './components/order-history/order-history.component';
 import { PointsHistoryComponent } from './components/points-history/points-history.component';
+
+// 🆕 COMPONENTES DE RECUPERACIÓN DE CONTRASEÑA
+import { ForgotPasswordComponent } from './components/forgot-password/forgot-password.component';
+import { ResetPasswordComponent } from './components/reset-password/reset-password.component';
 
 const routes: Routes = [
   // ==================== RUTAS PRINCIPALES ====================
@@ -105,7 +108,7 @@ const routes: Routes = [
     data: { title: 'Finalizar Compra' }
   },
   
-  // ==================== 🆕 RUTAS DEL SISTEMA DE PUNTOS ====================
+  // ==================== RUTAS DEL SISTEMA DE PUNTOS ====================
   { 
     path: 'rewards', 
     component: RewardsComponent,
@@ -168,6 +171,17 @@ const routes: Routes = [
     component: RegisterComponent,
     data: { title: 'Registrarse' }
   },
+  // 🆕 RUTAS DE RECUPERACIÓN DE CONTRASEÑA
+  { 
+    path: 'forgot-password', 
+    component: ForgotPasswordComponent,
+    data: { title: 'Recuperar Contraseña' }
+  },
+  { 
+    path: 'reset-password/:token', 
+    component: ResetPasswordComponent,
+    data: { title: 'Nueva Contraseña' }
+  },
   
   // ==================== RUTAS DE ADMINISTRACIÓN (PROTEGIDAS) ====================
   {
@@ -211,14 +225,13 @@ const routes: Routes = [
         component: AdminBarComponent,
         data: { title: 'Gestión del Bar' }
       },
-      // 🆕 RUTAS PARA PUNTOS Y RECOMPENSAS
       {
         path: 'points',
         component: AdminDashboardComponent, // Temporal, puedes crear AdminPointsComponent después
         data: { title: 'Gestión de Puntos' }
       },
       {
-        path: 'rewards', // 🔧 CORREGIDO: cambió de 'rewards-admin' a 'rewards'
+        path: 'rewards',
         component: AdminRewardsComponent,
         data: { title: 'Gestión de Recompensas' }
       }
@@ -239,7 +252,6 @@ const routes: Routes = [
 
 @NgModule({
   imports: [RouterModule.forRoot(routes, {
-    // 🆕 CONFIGURACIONES ADICIONALES
     enableTracing: false, // Cambiar a true para debug de rutas
     scrollPositionRestoration: 'top', // Scroll al top en cada navegación
     anchorScrolling: 'enabled' // Habilitar scroll a anclas

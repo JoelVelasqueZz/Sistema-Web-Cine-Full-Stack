@@ -68,6 +68,8 @@ import { FooterComponent } from './components/footer/footer.component';
 
 // 🎬 COMPONENTES STANDALONE (van en imports)
 import { AdminComingSoonComponent } from './components/admin/admin-coming-soon/admin-coming-soon.component';
+import { ForgotPasswordComponent } from './components/forgot-password/forgot-password.component';
+import { ResetPasswordComponent } from './components/reset-password/reset-password.component';
 
 @NgModule({
   declarations: [
@@ -125,7 +127,9 @@ import { AdminComingSoonComponent } from './components/admin/admin-coming-soon/a
     AdminBarComponent,
     FunctionAdminComponent,
     // 🆕 ADMIN REWARDS COMPONENT (movido aquí correctamente)
-    AdminRewardsComponent
+    AdminRewardsComponent,
+    ForgotPasswordComponent,
+    ResetPasswordComponent
   ],
   imports: [
     // Módulos de Angular

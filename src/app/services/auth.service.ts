@@ -94,7 +94,77 @@ login(email: string, password: string): Observable<AuthResponse> {
     })
   );
 }
+forgotPassword(email: string): Observable<AuthResponse> {
+  const body = { email };
 
+  return this.http.post<any>(`${this.API_URL}/auth/forgot-password`, body).pipe(
+    map(response => {
+      console.log('🔍 Respuesta de forgot password:', response);
+      
+      if (response.success) {
+        return {
+          success: true,
+          message: response.message || 'Se ha enviado un enlace de recuperación a tu email'
+        };
+      }
+      throw new Error(response.error || 'Error en la solicitud');
+    }),
+    catchError(error => {
+      console.error('❌ Error en forgot password:', error);
+      return of({
+        success: false,
+        message: error.error?.error || error.error?.message || 'Error al solicitar recuperación'
+      });
+    })
+  );
+}
+
+/**
+ * Validar token de recuperación
+ */
+validateResetToken(token: string): Observable<{success: boolean, message: string, data?: any}> {
+  return this.http.get<any>(`${this.API_URL}/auth/validate-reset-token/${token}`).pipe(
+    map(response => {
+      console.log('🔍 Respuesta de validate token:', response);
+      return response;
+    }),
+    catchError(error => {
+      console.error('❌ Error validando token:', error);
+      return of({
+        success: false,
+        message: error.error?.error || 'Token inválido o expirado'
+      });
+    })
+  );
+}
+
+/**
+ * Restablecer contraseña
+ */
+resetPassword(token: string, newPassword: string, confirmPassword: string): Observable<AuthResponse> {
+  const body = { token, newPassword, confirmPassword };
+
+  return this.http.post<any>(`${this.API_URL}/auth/reset-password`, body).pipe(
+    map(response => {
+      console.log('🔍 Respuesta de reset password:', response);
+      
+      if (response.success) {
+        return {
+          success: true,
+          message: response.message || 'Contraseña restablecida exitosamente'
+        };
+      }
+      throw new Error(response.error || 'Error al restablecer');
+    }),
+    catchError(error => {
+      console.error('❌ Error en reset password:', error);
+      return of({
+        success: false,
+        message: error.error?.error || error.error?.message || 'Error al restablecer contraseña'
+      });
+    })
+  );
+}
 /**
  * Verificar token
  */
