@@ -111,6 +111,8 @@ router.use('/rewards', require('./rewards'));
 // 🆕 NUEVA - Rutas de administración
 router.use('/admin', require('./admin'));
 
+router.use('/reports', require('./reports'));
+
 // ==================== RUTAS FUTURAS (COMENTADAS) ====================
 // Estas se pueden activar cuando las implementes
 // Rutas de administración general

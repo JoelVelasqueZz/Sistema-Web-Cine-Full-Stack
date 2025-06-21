@@ -5,6 +5,9 @@ import { AdminService } from '../../../services/admin.service';
 import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
 import { Subscription } from 'rxjs';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
+
 
 @Component({
   selector: 'app-admin-movies',
@@ -479,36 +482,160 @@ export class AdminMoviesComponent implements OnInit, OnDestroy {
   }
 
   exportarPeliculas(): void {
+  this.procesando = true;
+  this.toastService.showInfo('Generando exportación de películas en PDF...');
+
+  setTimeout(() => {
     try {
-      const datosExportar = {
-        fechaExportacion: new Date().toISOString(),
-        totalPeliculas: this.peliculas.length,
-        estadisticas: this.estadisticas,
-        fuente: 'API PostgreSQL',
-        peliculas: this.peliculas.map(({ titulo, director, genero, anio, rating, duracion }) => ({
-          titulo, director, genero, anio, rating, duracion
-        }))
-      };
+      const doc = new jsPDF();
       
-      const blob = new Blob([JSON.stringify(datosExportar, null, 2)], { type: 'application/json' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
+      // Header del PDF
+      this.setupPDFHeader(doc, 'EXPORTACIÓN DE PELÍCULAS', 
+        `Lista de películas del sistema - ${this.peliculasFiltradas.length} películas`);
       
-      Object.assign(link, {
-        href: url,
-        download: `peliculas-export-${new Date().toISOString().split('T')[0]}.json`
+      let currentY = 110;
+      
+      // Mostrar filtros si están activos
+      if (this.hasActiveFilters()) {
+        doc.setFillColor(240, 240, 240);
+        doc.rect(20, currentY - 5, 170, 15, 'F');
+        doc.setFontSize(12);
+        doc.setTextColor(52, 73, 94);
+        doc.text('FILTROS APLICADOS', 25, currentY + 5);
+        currentY += 20;
+        
+        const filtros = [];
+        if (this.terminoBusqueda) filtros.push(`Búsqueda: "${this.terminoBusqueda}"`);
+        if (this.filtroGenero) filtros.push(`Género: ${this.filtroGenero}`);
+        if (this.filtroAnio) filtros.push(`Año: ${this.filtroAnio}`);
+        if (this.filtroRating) filtros.push(`Rating: ≥${this.filtroRating}`);
+        
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
+        filtros.forEach(filtro => {
+          doc.text(`• ${filtro}`, 25, currentY);
+          currentY += 8;
+        });
+        currentY += 10;
+      }
+      
+      // Datos de la tabla
+      const peliculasData = this.peliculasFiltradas.map((pelicula, index) => [
+        (index + 1).toString(),
+        pelicula.titulo.length > 25 ? pelicula.titulo.substring(0, 25) + '...' : pelicula.titulo,
+        pelicula.director.length > 20 ? pelicula.director.substring(0, 20) + '...' : pelicula.director,
+        pelicula.genero,
+        pelicula.anio.toString(),
+        pelicula.rating.toFixed(1),
+        pelicula.duracion || 'N/A'
+      ]);
+      
+      // Crear tabla
+      autoTable(doc, {
+        head: [['#', 'Título', 'Director', 'Género', 'Año', 'Rating', 'Duración']],
+        body: peliculasData,
+        startY: currentY,
+        theme: 'striped',
+        headStyles: { 
+          fillColor: [52, 152, 219],
+          textColor: [255, 255, 255],
+          fontSize: 10,
+          fontStyle: 'bold'
+        },
+        styles: { 
+          fontSize: 8,
+          cellPadding: { top: 3, right: 4, bottom: 3, left: 4 }
+        },
+        columnStyles: {
+          0: { cellWidth: 15, halign: 'center' },
+          1: { cellWidth: 45 },
+          2: { cellWidth: 35 },
+          3: { cellWidth: 25 },
+          4: { cellWidth: 20, halign: 'center' },
+          5: { cellWidth: 20, halign: 'center' },
+          6: { cellWidth: 25, halign: 'center' }
+        },
+        alternateRowStyles: { fillColor: [248, 249, 250] }
       });
       
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      this.setupPDFFooter(doc, 'Películas');
+      doc.save(`peliculas-export-${new Date().toISOString().split('T')[0]}.pdf`);
       
-      this.toastService.showSuccess('Lista de películas exportada');
+      this.procesando = false;
+      this.toastService.showSuccess('Exportación de películas completada en PDF');
+      
     } catch (error) {
-      this.toastService.showError('Error al exportar la lista');
+      console.error('Error generando exportación:', error);
+      this.procesando = false;
+      this.toastService.showError('Error al generar la exportación PDF');
     }
+  }, 1000);
+}
+private setupPDFHeader(doc: jsPDF, titulo: string, subtitulo?: string): void {
+  // Header azul
+  doc.setFillColor(52, 152, 219);
+  doc.rect(0, 0, 210, 45, 'F');
+  
+  // Logo y título principal
+  doc.setFontSize(24);
+  doc.setTextColor(255, 255, 255);
+  doc.text('ParkyFilms', 20, 25);
+  
+  doc.setFontSize(12);
+  doc.text('Gestión de Películas', 20, 35);
+  
+  // Título del reporte
+  doc.setFontSize(18);
+  doc.setTextColor(0, 0, 0);
+  doc.text(titulo, 20, 60);
+  
+  if (subtitulo) {
+    doc.setFontSize(12);
+    doc.setTextColor(100, 100, 100);
+    doc.text(subtitulo, 20, 72);
   }
+  
+  // Información de generación
+  doc.setFontSize(10);
+  doc.setTextColor(150, 150, 150);
+  const fechaGeneracion = new Date().toLocaleString('es-ES');
+  doc.text(`Generado el: ${fechaGeneracion}`, 20, 85);
+  doc.text(`Por: ${this.authService.getCurrentUser()?.nombre || 'Admin'}`, 20, 95);
+  
+  // Línea separadora
+  doc.setDrawColor(200, 200, 200);
+  doc.setLineWidth(0.5);
+  doc.line(20, 100, 190, 100);
+}
+
+private setupPDFFooter(doc: jsPDF, seccion: string): void {
+  const pageCount = (doc as any).internal.getNumberOfPages();
+  
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    
+    // Línea superior del footer
+    doc.setDrawColor(52, 152, 219);
+    doc.setLineWidth(1);
+    doc.line(20, 275, 190, 275);
+    
+    // Información del footer
+    doc.setFontSize(8);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`ParkyFilms - ${seccion}`, 20, 282);
+    doc.text('Documento Confidencial - Solo uso interno', 20, 287);
+    
+    // Número de página
+    doc.setTextColor(52, 152, 219);
+    doc.text(`Página ${i} de ${pageCount}`, 150, 282);
+    
+    const timestamp = new Date().toLocaleTimeString('es-ES', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+    doc.text(`Hora: ${timestamp}`, 150, 287);
+  }
+}
 
   getRangoElementos(): string {
     if (!this.peliculasFiltradas.length) return '0-0 de 0';

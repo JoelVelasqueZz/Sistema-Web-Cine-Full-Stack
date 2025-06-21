@@ -9,6 +9,8 @@ import { AdminService } from '../../../services/admin.service';
 import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
 import { Subscription } from 'rxjs';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 @Component({
   selector: 'app-admin-coming-soon',
@@ -611,37 +613,159 @@ export class AdminComingSoonComponent implements OnInit, OnDestroy {
   }
 
   exportarEstrenos(): void {
+  this.procesando = true;
+  this.toastService.showInfo('Generando exportación de próximos estrenos en PDF...');
+
+  setTimeout(() => {
     try {
-      const datosExportar = {
-        fechaExportacion: new Date().toISOString(),
-        totalEstrenos: this.estrenos.length,
-        estadisticas: this.estadisticas,
-        fuente: 'API PostgreSQL con fallback local',
-        estrenos: this.estrenos.map(({ titulo, director, genero, fechaEstreno, estudio }) => ({
-          titulo, director, genero, fechaEstreno, estudio
-        }))
-      };
+      const doc = new jsPDF();
       
-      const blob = new Blob([JSON.stringify(datosExportar, null, 2)], { type: 'application/json' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
+      // Header del PDF
+      this.setupPDFHeader(doc, 'EXPORTACIÓN DE PRÓXIMOS ESTRENOS', 
+        `Lista de próximos estrenos - ${this.estrenosFiltrados.length} estrenos`);
       
-      Object.assign(link, {
-        href: url,
-        download: `proximos-estrenos-export-${new Date().toISOString().split('T')[0]}.json`
+      let currentY = 110;
+      
+      // Mostrar filtros si están activos
+      if (this.hasActiveFilters()) {
+        doc.setFillColor(240, 240, 240);
+        doc.rect(20, currentY - 5, 170, 15, 'F');
+        doc.setFontSize(12);
+        doc.setTextColor(52, 73, 94);
+        doc.text('FILTROS APLICADOS', 25, currentY + 5);
+        currentY += 20;
+        
+        const filtros = [];
+        if (this.terminoBusqueda) filtros.push(`Búsqueda: "${this.terminoBusqueda}"`);
+        if (this.filtroGenero) filtros.push(`Género: ${this.filtroGenero}`);
+        if (this.filtroAnio) filtros.push(`Año: ${this.filtroAnio}`);
+        
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
+        filtros.forEach(filtro => {
+          doc.text(`• ${filtro}`, 25, currentY);
+          currentY += 8;
+        });
+        currentY += 10;
+      }
+      
+      // Datos de la tabla
+      const estrenosData = this.estrenosFiltrados.map((estreno, index) => [
+        (index + 1).toString(),
+        estreno.titulo.length > 25 ? estreno.titulo.substring(0, 25) + '...' : estreno.titulo,
+        estreno.director.length > 20 ? estreno.director.substring(0, 20) + '...' : estreno.director,
+        estreno.genero,
+        this.formatearFecha(estreno.fechaEstreno),
+        estreno.estudio || 'N/A',
+        estreno.duracion || 'N/A'
+      ]);
+      
+      // Crear tabla
+      autoTable(doc, {
+        head: [['#', 'Título', 'Director', 'Género', 'Fecha Estreno', 'Estudio', 'Duración']],
+        body: estrenosData,
+        startY: currentY,
+        theme: 'striped',
+        headStyles: { 
+          fillColor: [40, 167, 69],
+          textColor: [255, 255, 255],
+          fontSize: 10,
+          fontStyle: 'bold'
+        },
+        styles: { 
+          fontSize: 8,
+          cellPadding: { top: 3, right: 4, bottom: 3, left: 4 }
+        },
+        columnStyles: {
+          0: { cellWidth: 15, halign: 'center' },
+          1: { cellWidth: 40 },
+          2: { cellWidth: 30 },
+          3: { cellWidth: 25 },
+          4: { cellWidth: 25, halign: 'center' },
+          5: { cellWidth: 30 },
+          6: { cellWidth: 20, halign: 'center' }
+        },
+        alternateRowStyles: { fillColor: [248, 249, 250] }
       });
       
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      this.setupPDFFooter(doc, 'Próximos Estrenos');
+      doc.save(`proximos-estrenos-export-${new Date().toISOString().split('T')[0]}.pdf`);
       
-      this.toastService.showSuccess('Lista de próximos estrenos exportada');
+      this.procesando = false;
+      this.toastService.showSuccess('Exportación de próximos estrenos completada en PDF');
+      
     } catch (error) {
-      this.toastService.showError('Error al exportar la lista');
+      console.error('Error generando exportación:', error);
+      this.procesando = false;
+      this.toastService.showError('Error al generar la exportación PDF');
     }
+  }, 1000);
+}
+private setupPDFHeader(doc: jsPDF, titulo: string, subtitulo?: string): void {
+  // Header verde
+  doc.setFillColor(40, 167, 69);
+  doc.rect(0, 0, 210, 45, 'F');
+  
+  // Logo y título principal
+  doc.setFontSize(24);
+  doc.setTextColor(255, 255, 255);
+  doc.text('ParkyFilms', 20, 25);
+  
+  doc.setFontSize(12);
+  doc.text('Próximos Estrenos', 20, 35);
+  
+  // Título del reporte
+  doc.setFontSize(18);
+  doc.setTextColor(0, 0, 0);
+  doc.text(titulo, 20, 60);
+  
+  if (subtitulo) {
+    doc.setFontSize(12);
+    doc.setTextColor(100, 100, 100);
+    doc.text(subtitulo, 20, 72);
   }
+  
+  // Información de generación
+  doc.setFontSize(10);
+  doc.setTextColor(150, 150, 150);
+  const fechaGeneracion = new Date().toLocaleString('es-ES');
+  doc.text(`Generado el: ${fechaGeneracion}`, 20, 85);
+  doc.text(`Por: ${this.authService.getCurrentUser()?.nombre || 'Admin'}`, 20, 95);
+  
+  // Línea separadora
+  doc.setDrawColor(200, 200, 200);
+  doc.setLineWidth(0.5);
+  doc.line(20, 100, 190, 100);
+}
 
+private setupPDFFooter(doc: jsPDF, seccion: string): void {
+  const pageCount = (doc as any).internal.getNumberOfPages();
+  
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    
+    // Línea superior del footer
+    doc.setDrawColor(40, 167, 69);
+    doc.setLineWidth(1);
+    doc.line(20, 275, 190, 275);
+    
+    // Información del footer
+    doc.setFontSize(8);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`ParkyFilms - ${seccion}`, 20, 282);
+    doc.text('Documento Confidencial - Solo uso interno', 20, 287);
+    
+    // Número de página
+    doc.setTextColor(40, 167, 69);
+    doc.text(`Página ${i} de ${pageCount}`, 150, 282);
+    
+    const timestamp = new Date().toLocaleTimeString('es-ES', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+    doc.text(`Hora: ${timestamp}`, 150, 287);
+  }
+}
   trackEstrenoFn(index: number, estreno: ProximoEstreno): string {
     return estreno.titulo + estreno.director;
   }

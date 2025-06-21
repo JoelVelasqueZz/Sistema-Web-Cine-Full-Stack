@@ -269,14 +269,6 @@
               </ng-container>
               
               <li><hr class="dropdown-divider"></li>
-              
-              <!-- NUEVO: Acciones rápidas de puntos -->
-              <li *ngIf="authService.isLoggedIn() && shouldShowPoints()">
-                <h6 class="dropdown-header text-success">
-                  <i class="fas fa-coins me-2"></i>
-                  Acciones Rápidas
-                </h6>
-              </li>
               <li *ngIf="shouldShowPoints()">
                 <button class="dropdown-item" (click)="refreshPoints()">
                   <i class="fas fa-sync-alt me-2 text-primary"></i>

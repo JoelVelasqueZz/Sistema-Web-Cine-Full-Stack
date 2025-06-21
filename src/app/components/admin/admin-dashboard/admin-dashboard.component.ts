@@ -3,6 +3,9 @@ import { Router } from '@angular/router';
 import { AdminService, AdminStats } from '../../../services/admin.service';
 import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
+import { ReportsService } from '../../../services/reports.service';
+import { HttpClient } from '@angular/common/http';
+import { forkJoin } from 'rxjs';
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -45,6 +48,8 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     private authService: AuthService,
     private toastService: ToastService,
     private router: Router,
+    private reportsService: ReportsService,
+    private http: HttpClient
     
   ) { }
 
@@ -536,78 +541,103 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   // ==================== REPORTES SIMPLIFICADOS ====================
 
   generateSalesReport(): void {
-    this.generatingReport = true;
-    this.toastService.showInfo('📊 Generando reporte de ventas...');
-    
-    try {
-      this.adminService.generateSalesReport();
+  this.generatingReport = true;
+  this.toastService.showInfo('📊 Generando reporte de ventas en PDF...');
+  
+  this.downloadReportPDF('ventas', 'Reporte de Ventas');
+}
+
+generateBarReport(): void {
+  this.generatingReport = true;
+  this.toastService.showInfo('📊 Generando reporte del bar en PDF...');
+  
+  this.downloadReportPDF('bar', 'Reporte del Bar');
+}
+
+generateUsersReport(): void {
+  this.generatingReport = true;
+  this.toastService.showInfo('📊 Generando reporte de usuarios en PDF...');
+  
+  this.downloadReportPDF('usuarios', 'Reporte de Usuarios');
+}
+
+generateMoviesReport(): void {
+  this.generatingReport = true;
+  this.toastService.showInfo('📊 Generando reporte de películas en PDF...');
+  
+  this.downloadReportPDF('peliculas', 'Reporte de Películas');
+}
+
+generateCombinedReport(): void {
+  this.generatingReport = true;
+  this.toastService.showInfo('📊 Generando reporte combinado en PDF...');
+  
+  this.downloadReportPDF('combinado', 'Reporte Combinado');
+}
+
+generateCompleteReport(): void {
+  this.generatingReport = true;
+  this.toastService.showInfo('📊 Generando reporte ejecutivo en PDF...');
+  
+  this.downloadReportPDF('ejecutivo', 'Reporte Ejecutivo');
+}
+private downloadReportPDF(tipoReporte: string, nombreReporte: string): void {
+  const token = this.authService.getToken();
+  
+  if (!token) {
+    this.generatingReport = false;
+    this.toastService.showError('❌ No hay token de autenticación');
+    return;
+  }
+
+  const headers = {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  };
+
+  const url = `http://localhost:3000/api/reports/${tipoReporte}?formato=pdf`;
+
+  // Usar HttpClient para descargar con headers de autenticación
+  this.http.get(url, { 
+    headers, 
+    responseType: 'blob' as 'json',
+    observe: 'response'
+  }).subscribe({
+    next: (response: any) => {
+      // Crear blob y descargar archivo
+      const blob = new Blob([response.body], { type: 'application/pdf' });
+      const downloadUrl = window.URL.createObjectURL(blob);
       
-      setTimeout(() => {
-        this.generatingReport = false;
-        this.toastService.showSuccess('✅ Reporte de ventas generado');
-      }, 2000);
-    } catch (error) {
-      this.generatingReport = false;
-      this.toastService.showError('❌ Error al generar reporte de ventas');
-    }
-  }
-
-  generateBarReport(): void {
-    this.generatingReport = true;
-    this.toastService.showInfo('📊 Generando reporte del bar...');
-    
-    try {
-      this.adminService.generateBarReport();
+      // Crear link para descarga
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = `${tipoReporte}-${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
       
-      setTimeout(() => {
-        this.generatingReport = false;
-        this.toastService.showSuccess('✅ Reporte del bar generado');
-      }, 2000);
-    } catch (error) {
+      // Limpiar URL
+      window.URL.revokeObjectURL(downloadUrl);
+      
       this.generatingReport = false;
-      this.toastService.showError('❌ Error al generar reporte del bar');
+      this.toastService.showSuccess(`✅ ${nombreReporte} descargado exitosamente`);
+    },
+    error: (error) => {
+      console.error(`❌ Error descargando ${nombreReporte}:`, error);
+      this.generatingReport = false;
+      
+      if (error.status === 401) {
+        this.toastService.showError('❌ No tienes permisos para generar reportes');
+        this.router.navigate(['/login']);
+      } else if (error.status === 0) {
+        this.toastService.showError('❌ Backend no disponible. Verifica que esté ejecutándose.');
+      } else {
+        this.toastService.showError(`❌ Error al generar ${nombreReporte}`);
+      }
     }
-  }
+  });
+}
 
-  generateUsersReport(): void {
-    this.generatingReport = true;
-    this.toastService.showInfo('📊 Generando reporte de usuarios...');
-    
-    setTimeout(() => {
-      this.generatingReport = false;
-      this.toastService.showSuccess('✅ Reporte de usuarios generado');
-    }, 2000);
-  }
-
-  generateMoviesReport(): void {
-    this.generatingReport = true;
-    this.toastService.showInfo('📊 Generando reporte de películas...');
-    
-    setTimeout(() => {
-      this.generatingReport = false;
-      this.toastService.showSuccess('✅ Reporte de películas generado');
-    }, 2000);
-  }
-
-  generateCombinedReport(): void {
-    this.generatingReport = true;
-    this.toastService.showInfo('📊 Generando reporte combinado...');
-    
-    setTimeout(() => {
-      this.generatingReport = false;
-      this.toastService.showSuccess('✅ Reporte combinado generado');
-    }, 2000);
-  }
-
-  generateCompleteReport(): void {
-    this.generatingReport = true;
-    this.toastService.showInfo('📊 Generando reporte ejecutivo...');
-    
-    setTimeout(() => {
-      this.generatingReport = false;
-      this.toastService.showSuccess('✅ Reporte ejecutivo generado');
-    }, 2000);
-  }
 
   // ==================== ACCIONES RÁPIDAS MEJORADAS ====================
 

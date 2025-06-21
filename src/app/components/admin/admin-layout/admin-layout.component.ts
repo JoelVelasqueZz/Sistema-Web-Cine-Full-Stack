@@ -1,13 +1,16 @@
-// src/app/components/admin/admin-layout/admin-layout.component.ts
+// src/app/components/admin/admin-layout/admin-layout.component.ts - CORREGIDO
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router, NavigationEnd } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
 import { MovieService } from '../../../services/movie.service';
 import { AdminService } from '../../../services/admin.service';
 import { ToastService } from '../../../services/toast.service';
+import { BarService } from '../../../services/bar.service';
+import { UserService } from '../../../services/user.service';
+import { RewardsService } from '../../../services/rewards.service';
 import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
-import { BarService } from '../../../services/bar.service';
+import { FunctionService } from '../../../services/function.service';
 
 @Component({
   selector: 'app-admin-layout',
@@ -22,12 +25,13 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
   refreshing: boolean = false;
   lastUpdate: string = '';
   
-  // PROPIEDADES PARA CACHE
+  // 🔧 PROPIEDADES PARA CACHE DE DATOS REALES
   private totalMovies: number = 0;
   private totalUsers: number = 0;
   private totalBarProducts: number = 0;
   private totalComingSoon: number = 0;
-  private totalFunctions: number = 0; // ✅ AGREGADO
+  private totalFunctions: number = 0;
+  private totalRewards: number = 0;
   
   private routerSubscription: Subscription = new Subscription();
 
@@ -37,7 +41,10 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
     private movieService: MovieService,
     private adminService: AdminService,
     private toastService: ToastService,
-    private barService: BarService
+    private barService: BarService,
+    private userService: UserService,
+    private rewardsService: RewardsService,
+    private functionService: FunctionService
   ) {}
 
   ngOnInit(): void {
@@ -61,69 +68,231 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
       this.updateLastUpdate();
     }, 60000);
 
-    console.log('Panel de administración inicializado');
+    console.log('📊 Panel de administración inicializado');
   }
-  getTotalRewards(): number {
-  // 🔧 Por ahora regresa 0, luego puedes conectar con el servicio real
-  return 0; // placeholder - puedes implementar la lógica real después
-}
-quickAddReward(): void {
-  // 🔧 Navegar a crear nueva recompensa
-  console.log('📝 Navegando a agregar nueva recompensa...');
-  this.router.navigate(['/admin/rewards']).then(() => {
-    // Si tienes un modal o formulario específico, puedes agregarlo aquí
-    console.log('✅ Navegación completada a /admin/rewards');
-  });
-}
-  // ✅ MÉTODO ACTUALIZADO PARA CARGAR DATOS INICIALES
-  private loadInitialData(): void {
-    // Cargar total de películas
-    this.movieService.getPeliculas().subscribe(
-      peliculas => {
-        this.totalMovies = peliculas.length;
-      },
-      error => {
-        console.error('Error al cargar películas:', error);
-        this.totalMovies = 0;
-      }
-    );
 
-    // Cargar total de próximos estrenos
-    this.movieService.getProximosEstrenosHybrid().subscribe(
-      estrenos => {
-        this.totalComingSoon = estrenos.length;
-      },
-      error => {
-        console.error('Error al cargar próximos estrenos:', error);
-        this.totalComingSoon = 0;
-      }
-    );
+  // 🔧 MÉTODO CORREGIDO: Cargar datos reales
+  // CORRECCIÓN ESPECÍFICA para admin-layout.component.ts
+// Reemplaza solo la parte de carga de productos del bar:
 
-    // ✅ CARGAR TOTAL DE FUNCIONES (simulado por ahora)
-    try {
-      // Valor simulado - puedes implementar un método real después
-      this.totalFunctions = 15;
-    } catch (error) {
-      console.error('Error al cargar funciones:', error);
-      this.totalFunctions = 0;
+private loadInitialData(): void {
+  console.log('🔄 Cargando datos iniciales...');
+
+  // ✅ CARGAR TOTAL DE PELÍCULAS (sin cambios)
+  this.movieService.getPeliculas().subscribe({
+    next: (peliculas) => {
+      this.totalMovies = peliculas.length;
+      console.log(`✅ Películas cargadas: ${this.totalMovies}`);
+    },
+    error: (error) => {
+      console.error('❌ Error al cargar películas:', error);
+      this.totalMovies = 0;
     }
+  });
 
-    // Cargar total de usuarios
+  // ✅ CARGAR TOTAL DE PRÓXIMOS ESTRENOS (sin cambios)
+  this.movieService.getProximosEstrenosHybrid().subscribe({
+    next: (estrenos) => {
+      this.totalComingSoon = estrenos.length;
+      console.log(`✅ Próximos estrenos cargados: ${this.totalComingSoon}`);
+    },
+    error: (error) => {
+      console.error('❌ Error al cargar próximos estrenos:', error);
+      this.totalComingSoon = 0;
+    }
+  });
+
+  // 🔧 CARGAR TOTAL DE PRODUCTOS DEL BAR - CORREGIDO
+  console.log('🍿 Intentando cargar productos del bar...');
+  
+  // MÉTODO 1: Usar getProductosObservable() en lugar de getProductos()
+  this.barService.getProductosObservable().subscribe({
+    next: (productos) => {
+      console.log('📦 Productos recibidos del servicio:', productos);
+      
+      if (productos && Array.isArray(productos)) {
+        this.totalBarProducts = productos.length;
+        console.log(`✅ Productos del bar cargados: ${this.totalBarProducts}`);
+      } else {
+        console.warn('⚠️ Productos no es un array válido:', productos);
+        this.totalBarProducts = 0;
+      }
+    },
+    error: (error) => {
+      console.error('❌ Error al cargar productos del bar:', error);
+      console.log('🔄 Intentando método directo...');
+      
+      // MÉTODO 2: Usar getProductos() directamente (no Observable)
+      try {
+        const productosDirect = this.barService.getProductos();
+        console.log('📦 Productos directos:', productosDirect);
+        
+        if (productosDirect && Array.isArray(productosDirect)) {
+          this.totalBarProducts = productosDirect.length;
+          console.log(`✅ Productos del bar cargados (directo): ${this.totalBarProducts}`);
+        } else {
+          console.warn('⚠️ Método directo sin resultados');
+          this.loadBarProductsHTTP(); // Método 3: HTTP directo
+        }
+      } catch (directError) {
+        console.error('❌ Error en método directo:', directError);
+        this.loadBarProductsHTTP(); // Método 3: HTTP directo
+      }
+    }
+  });
+
+  // ✅ CARGAR TOTAL DE USUARIOS (sin cambios)
+  if (this.userService && this.userService.getAllUsers) {
+    this.userService.getAllUsers().subscribe({
+      next: (usuarios) => {
+        this.totalUsers = usuarios.length;
+        console.log(`✅ Usuarios cargados: ${this.totalUsers}`);
+      },
+      error: (error) => {
+        console.error('❌ Error al cargar usuarios:', error);
+        // Fallback: usar el método del adminService si existe
+        try {
+          const adminUsers = this.adminService.getAllUsers();
+          this.totalUsers = adminUsers.length;
+          console.log(`✅ Usuarios cargados (fallback): ${this.totalUsers}`);
+        } catch (fallbackError) {
+          console.error('❌ Error en fallback de usuarios:', fallbackError);
+          this.totalUsers = 0;
+        }
+      }
+    });
+  } else {
+    // Usar AdminService directamente
     try {
-      this.totalUsers = this.adminService.getAllUsers().length;
+      const adminUsers = this.adminService.getAllUsers();
+      this.totalUsers = adminUsers.length;
+      console.log(`✅ Usuarios cargados (admin service): ${this.totalUsers}`);
     } catch (error) {
-      console.error('Error al cargar usuarios:', error);
+      console.error('❌ Error al cargar usuarios (admin service):', error);
       this.totalUsers = 0;
     }
+  }
 
-    // Cargar total de productos del bar
-    try {
-      this.totalBarProducts = this.barService.getProductos().length;
-    } catch (error) {
-      console.error('Error al cargar productos del bar:', error);
+  // ✅ CARGAR TOTAL DE RECOMPENSAS
+  if (this.rewardsService && this.rewardsService.getAllRewards) {
+    this.rewardsService.getAllRewards().subscribe({
+      next: (recompensas) => {
+        this.totalRewards = recompensas.length;
+        console.log(`✅ Recompensas cargadas: ${this.totalRewards}`);
+      },
+      error: (error) => {
+        console.error('❌ Error al cargar recompensas:', error);
+        this.totalRewards = 0;
+      }
+    });
+  } else {
+    console.log('⚠️ RewardsService no disponible');
+    this.totalRewards = 0;
+  }
+
+  // ✅ CARGAR TOTAL DE FUNCIONES (simulado por ahora)
+  this.loadFunctionsFromService();
+  console.log(`⚠️ Funciones (simulado): ${this.totalFunctions}`);
+}
+private loadFunctionsFromService(): void {
+  console.log('⏰ Cargando funciones desde FunctionService...');
+  
+  this.functionService.getAllFunctions().subscribe({
+    next: (funciones) => {
+      console.log('📅 Funciones recibidas del servicio:', funciones);
+      
+      if (funciones && Array.isArray(funciones)) {
+        // Filtrar solo funciones activas
+        const funcionesActivas = funciones.filter(f => f.activo !== false);
+        this.totalFunctions = funcionesActivas.length;
+        console.log(`✅ Funciones cargadas: ${this.totalFunctions} (${funciones.length} total, ${funcionesActivas.length} activas)`);
+      } else {
+        console.warn('⚠️ Funciones no es un array válido:', funciones);
+        this.totalFunctions = 0;
+      }
+    },
+    error: (error) => {
+      console.error('❌ Error al cargar funciones desde servicio:', error);
+      console.log('🔄 Intentando método HTTP directo...');
+      
+      // Fallback: HTTP directo
+      this.loadFunctionsHTTP();
+    }
+  });
+}
+
+/**
+ * 🔧 MÉTODO FALLBACK: Cargar funciones con HTTP directo
+ */
+private loadFunctionsHTTP(): void {
+  console.log('🔄 Cargando funciones con HTTP directo...');
+  
+  const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
+  
+  fetch('http://localhost:3000/api/functions', {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    console.log('📅 Respuesta HTTP funciones:', data);
+    
+    if (data.success && data.data && Array.isArray(data.data)) {
+      // Filtrar funciones activas
+      const funcionesActivas = data.data.filter((f: any) => f.activo !== false);
+      this.totalFunctions = funcionesActivas.length;
+      console.log(`✅ Funciones cargadas (HTTP): ${this.totalFunctions}`);
+    } else if (Array.isArray(data)) {
+      // Respuesta directa como array
+      const funcionesActivas = data.filter((f: any) => f.activo !== false);
+      this.totalFunctions = funcionesActivas.length;
+      console.log(`✅ Funciones cargadas (HTTP array): ${this.totalFunctions}`);
+    } else {
+      console.warn('⚠️ Formato de respuesta HTTP inesperado:', data);
+      this.totalFunctions = 0;
+    }
+  })
+  .catch(error => {
+    console.error('❌ Error en HTTP directo para funciones:', error);
+    this.totalFunctions = 0;
+  });
+}
+
+
+
+// 🆕 MÉTODO ADICIONAL: HTTP directo para productos del bar
+private loadBarProductsHTTP(): void {
+  console.log('🔄 Intentando cargar productos con HTTP directo...');
+  
+  const token = localStorage.getItem('token');
+  
+  fetch('http://localhost:3000/api/bar', {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    console.log('📦 Respuesta HTTP directa:', data);
+    
+    if (data.success && data.data && Array.isArray(data.data)) {
+      this.totalBarProducts = data.data.length;
+      console.log(`✅ Productos del bar cargados (HTTP directo): ${this.totalBarProducts}`);
+    } else {
+      console.warn('⚠️ Respuesta HTTP inesperada:', data);
       this.totalBarProducts = 0;
     }
-  }
+  })
+  .catch(error => {
+    console.error('❌ Error en HTTP directo:', error);
+    this.totalBarProducts = 0;
+  });
+}
 
   ngOnDestroy(): void {
     if (this.routerSubscription) {
@@ -131,7 +300,7 @@ quickAddReward(): void {
     }
   }
 
-  // ==================== MÉTODOS GETTER ====================
+  // ==================== MÉTODOS GETTER CORREGIDOS ====================
 
   getTotalMovies(): number {
     return this.totalMovies;
@@ -149,28 +318,42 @@ quickAddReward(): void {
     return this.totalComingSoon;
   }
 
-  // ✅ MÉTODO FALTANTE AGREGADO
   getTotalFunctions(): number {
     return this.totalFunctions;
+  }
+
+  getTotalRewards(): number {
+    return this.totalRewards;
   }
 
   // ==================== MÉTODO REFRESH ACTUALIZADO ====================
 
   refreshData(): void {
-    this.refreshing = true;
+  this.refreshing = true;
+  console.log('🔄 Refrescando datos...');
+  
+  // Recargar todos los datos reales
+  this.loadInitialData();
+  
+  setTimeout(() => {
+    this.refreshing = false;
+    this.updateLastUpdate();
+    this.toastService.showSuccess('✅ Datos actualizados correctamente');
     
-    // Recargar datos reales
-    this.loadInitialData();
+    // Log del estado actual
+    console.log('📊 Estado después del refresh:', {
+      peliculas: this.totalMovies,
+      proximosEstrenos: this.totalComingSoon,
+      funciones: this.totalFunctions,
+      usuarios: this.totalUsers,
+      productosBar: this.totalBarProducts,
+      recompensas: this.totalRewards
+    });
     
-    setTimeout(() => {
-      this.refreshing = false;
-      this.updateLastUpdate();
-      this.toastService.showSuccess('Datos actualizados correctamente');
-      
-      // Recargar datos de la sección actual
-      this.reloadCurrentSectionData();
-    }, 1500);
-  }
+    // Recargar datos de la sección actual
+    this.reloadCurrentSectionData();
+  }, 1500);
+}
 
   // ✅ MÉTODO updateCurrentSection ACTUALIZADO
   private updateCurrentSection(url: string): void {
@@ -180,12 +363,16 @@ quickAddReward(): void {
       this.currentSection = 'Gestión de Películas';
     } else if (url.includes('/admin/coming-soon')) {
       this.currentSection = 'Gestión de Próximos Estrenos';
-    } else if (url.includes('/admin/functions')) { // ✅ AGREGADO
+    } else if (url.includes('/admin/functions')) {
       this.currentSection = 'Gestión de Funciones';
     } else if (url.includes('/admin/bar')) {
       this.currentSection = 'Gestión del Bar';
+    } else if (url.includes('/admin/rewards')) {
+      this.currentSection = 'Gestión de Recompensas';
     } else if (url.includes('/admin/users')) {
       this.currentSection = 'Gestión de Usuarios';
+    } else if (url.includes('/admin/points')) {
+      this.currentSection = 'Sistema de Puntos';
     } else if (url.includes('/admin/reports')) {
       this.currentSection = 'Reportes';
     } else if (url.includes('/admin/settings')) {
@@ -197,14 +384,14 @@ quickAddReward(): void {
     }
   }
 
-  // ==================== MÉTODO quickAddComingSoon ====================
+  // ==================== MÉTODOS DE ACCIONES RÁPIDAS ====================
 
   quickAddComingSoon(): void {
     this.router.navigate(['/admin/coming-soon'], { 
       queryParams: { action: 'add' } 
     });
     
-    this.toastService.showInfo('Redirigiendo a agregar próximo estreno...');
+    this.toastService.showInfo('📅 Redirigiendo a agregar próximo estreno...');
   }
 
   quickAddFuncion(): void {
@@ -212,7 +399,31 @@ quickAddReward(): void {
       queryParams: { action: 'add' } 
     });
     
-    this.toastService.showInfo('Redirigiendo a agregar función...');
+    this.toastService.showInfo('⏰ Redirigiendo a agregar función...');
+  }
+
+  quickAddReward(): void {
+    console.log('🎁 Navegando a agregar nueva recompensa...');
+    this.router.navigate(['/admin/rewards']).then(() => {
+      console.log('✅ Navegación completada a /admin/rewards');
+      this.toastService.showInfo('🎁 Redirigiendo a agregar recompensa...');
+    });
+  }
+
+  quickAddMovie(): void {
+    this.router.navigate(['/admin/movies'], { 
+      queryParams: { action: 'add' } 
+    });
+    
+    this.toastService.showInfo('🎬 Redirigiendo a agregar película...');
+  }
+
+  quickAddBarProduct(): void {
+    this.router.navigate(['/admin/bar'], { 
+      queryParams: { action: 'add' } 
+    });
+    
+    this.toastService.showInfo('🍿 Redirigiendo a agregar producto del bar...');
   }
 
   // ✅ MÉTODO getSystemStatus ACTUALIZADO
@@ -220,9 +431,10 @@ quickAddReward(): void {
     return {
       peliculas: this.totalMovies,
       proximosEstrenos: this.totalComingSoon,
-      funciones: this.totalFunctions, // ✅ AGREGADO
+      funciones: this.totalFunctions,
       usuarios: this.totalUsers,
       productosBar: this.totalBarProducts,
+      recompensas: this.totalRewards,
       estado: 'Operativo',
       memoria: Math.floor(Math.random() * 40) + 20,
       ultimaActualizacion: this.lastUpdate
@@ -233,18 +445,19 @@ quickAddReward(): void {
   viewSystemStatus(): void {
     const status = this.getSystemStatus();
     
-    const mensaje = `Estado del Sistema:\n\n` +
+    const mensaje = `🖥️ Estado del Sistema:\n\n` +
                    `• Películas: ${status.peliculas} registradas\n` +
                    `• Próximos Estrenos: ${status.proximosEstrenos} programados\n` +
-                   `• Funciones: ${status.funciones} programadas\n` + // ✅ AGREGADO
+                   `• Funciones: ${status.funciones} programadas\n` +
                    `• Usuarios: ${status.usuarios} activos\n` +
                    `• Productos del Bar: ${status.productosBar} registrados\n` +
+                   `• Recompensas: ${status.recompensas} disponibles\n` +
                    `• Última actualización: ${this.lastUpdate}\n` +
                    `• Estado: ${status.estado}\n` +
                    `• Memoria: ${status.memoria}% usado`;
     
     alert(mensaje);
-    console.log('Estado del sistema:', status);
+    console.log('📊 Estado del sistema:', status);
   }
 
   // ==================== RESTO DE MÉTODOS (SIN CAMBIOS) ====================
@@ -290,57 +503,42 @@ quickAddReward(): void {
     
     if (confirmar) {
       this.authService.logout();
-      this.toastService.showInfo('Sesión cerrada. ¡Hasta pronto!');
+      this.toastService.showInfo('👋 Sesión cerrada. ¡Hasta pronto!');
       this.router.navigate(['/home']);
     }
-  }
-
-  quickAddMovie(): void {
-    this.router.navigate(['/admin/movies'], { 
-      queryParams: { action: 'add' } 
-    });
-    
-    this.toastService.showInfo('Redirigiendo a agregar película...');
-  }
-
-  quickAddBarProduct(): void {
-    this.router.navigate(['/admin/bar'], { 
-      queryParams: { action: 'add' } 
-    });
-    
-    this.toastService.showInfo('Redirigiendo a agregar producto del bar...');
   }
 
   generateReport(): void {
     this.loading = true;
     
-    this.adminService.getAdminStats().subscribe(
-      stats => {
+    this.adminService.getAdminStats().subscribe({
+      next: (stats) => {
         setTimeout(() => {
           this.loading = false;
           
           const reportData = {
             fechaGeneracion: new Date().toLocaleString('es-ES'),
-            totalPeliculas: stats.totalPeliculas,
+            totalPeliculas: this.totalMovies,
             totalProximosEstrenos: this.totalComingSoon,
-            totalFunciones: this.totalFunctions, // ✅ AGREGADO
-            totalUsuarios: stats.totalUsuarios,
+            totalFunciones: this.totalFunctions,
+            totalUsuarios: this.totalUsers,
             totalProductosBar: this.totalBarProducts,
+            totalRecompensas: this.totalRewards,
             ingresosMes: stats.ingresosMes,
             ventasRecientes: stats.ventasRecientes.length
           };
           
-          console.log('Reporte generado:', reportData);
-          this.toastService.showSuccess('Reporte generado exitosamente (ver consola)');
+          console.log('📊 Reporte generado:', reportData);
+          this.toastService.showSuccess('✅ Reporte generado exitosamente (ver consola)');
           
         }, 2000);
       },
-      error => {
-        console.error('Error al generar reporte:', error);
+      error: (error) => {
+        console.error('❌ Error al generar reporte:', error);
         this.loading = false;
-        this.toastService.showError('Error al generar el reporte');
+        this.toastService.showError('❌ Error al generar el reporte');
       }
-    );
+    });
   }
 
   isRouteActive(route: string): boolean {
@@ -363,12 +561,12 @@ quickAddReward(): void {
 
   onSidebarClick(): void {
     if (window.innerWidth < 768) {
-      console.log('Click en sidebar móvil');
+      console.log('📱 Click en sidebar móvil');
     }
   }
 
   onWindowResize(): void {
-    console.log('Ventana redimensionada');
+    console.log('📐 Ventana redimensionada');
   }
 
   showDebugInfo(): void {
@@ -377,11 +575,19 @@ quickAddReward(): void {
       seccionActual: this.currentSection,
       ruta: this.router.url,
       ultimaActualizacion: this.lastUpdate,
-      estadoSistema: this.getSystemStatus()
+      estadoSistema: this.getSystemStatus(),
+      totales: {
+        peliculas: this.totalMovies,
+        proximosEstrenos: this.totalComingSoon,
+        funciones: this.totalFunctions,
+        usuarios: this.totalUsers,
+        productosBar: this.totalBarProducts,
+        recompensas: this.totalRewards
+      }
     };
     
-    console.log('=== DEBUG ADMIN PANEL ===');
+    console.log('=== 🔍 DEBUG ADMIN PANEL ===');
     console.log(debugInfo);
-    console.log('========================');
+    console.log('============================');
   }
 }
