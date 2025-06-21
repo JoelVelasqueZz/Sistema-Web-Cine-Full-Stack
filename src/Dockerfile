@@ -11,18 +11,14 @@ WORKDIR /app/src
 # Instalar dependencias
 RUN npm install
 
-# Compilar Angular con debug
-RUN echo "=== Iniciando build ===" 
-RUN npm run build || echo "Build falló"
-RUN echo "=== Build terminado ==="
+# Compilar Angular (esto crea /app/dist/proyecto-cine)
+RUN npm run build
 
-# Ver estructura completa
-RUN echo "=== Contenido de /app/src ==="
-RUN ls -la 
-RUN echo "=== Buscando dist ==="
-RUN find . -name "dist" -type d || echo "No encontró carpeta dist"
-RUN echo "=== Buscando archivos .html ==="
-RUN find . -name "*.html" || echo "No encontró archivos HTML"
+# Ver qué se creó exactamente
+RUN echo "=== Verificando estructura después del build ==="
+RUN ls -la /app/
+RUN ls -la /app/dist/ || echo "No existe /app/dist/"
+RUN ls -la /app/dist/proyecto-cine/ || echo "No existe /app/dist/proyecto-cine/"
 
 # Ejecutar desde src/
 CMD ["npm", "start"]
