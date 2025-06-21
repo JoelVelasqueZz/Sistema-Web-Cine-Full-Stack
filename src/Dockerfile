@@ -1,19 +1,21 @@
 FROM node:18-alpine
 
-# Crear carpeta de trabajo
 WORKDIR /app
 
-# Copiar todo el proyecto
+# Copiar todo el código fuente
 COPY . .
 
-# Instalar dependencias desde raíz (donde está package.json)
+# Ir a la carpeta src y instalar dependencias
+WORKDIR /app/src
+
+# Instalar dependencias
 RUN npm install
 
-# Compilar Angular (si está definido en tu package.json)
+# Compilar Angular
 RUN npm run build
 
-# Exponer puerto que usa tu servidor (ajústalo si usas otro)
+# Exponer puerto
 EXPOSE 8080
 
-# Ejecutar servidor correctamente desde src
-CMD ["node", "src/server.js"]
+# Iniciar aplicación
+CMD ["npm", "start"]
