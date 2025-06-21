@@ -23,6 +23,7 @@ import { AdminService } from './services/admin.service';
 import { BarService } from './services/bar.service';
 import { FunctionService } from './services/function.service';
 import { OrderService } from './services/order.service';
+import { LogsService } from './services/logs.service';
 // 🆕 NUEVOS SERVICIOS
 import { PointsService } from './services/points.service';
 import { RewardsService } from './services/rewards.service';
@@ -70,6 +71,10 @@ import { FooterComponent } from './components/footer/footer.component';
 import { AdminComingSoonComponent } from './components/admin/admin-coming-soon/admin-coming-soon.component';
 import { ForgotPasswordComponent } from './components/forgot-password/forgot-password.component';
 import { ResetPasswordComponent } from './components/reset-password/reset-password.component';
+import { AdminConfigComponent } from './components/admin/admin-config/admin-config.component';
+import { AdminLogsComponent } from './components/admin/admin-logs/admin-logs.component';
+
+
 
 @NgModule({
   declarations: [
@@ -80,6 +85,7 @@ import { ResetPasswordComponent } from './components/reset-password/reset-passwo
     NavbarComponent,
     FooterComponent,
     ToastComponent,
+    
     
     // Componentes principales
     HomeComponent,
@@ -100,7 +106,7 @@ import { ResetPasswordComponent } from './components/reset-password/reset-passwo
     // Componentes de películas y estrenos
     ComingSoonComponent, 
     ComingSoonDetailComponent, 
-    
+    AdminLogsComponent,
     // Componentes de usuario
     ProfileComponent, 
     FavoritesComponent, 
@@ -129,7 +135,9 @@ import { ResetPasswordComponent } from './components/reset-password/reset-passwo
     // 🆕 ADMIN REWARDS COMPONENT (movido aquí correctamente)
     AdminRewardsComponent,
     ForgotPasswordComponent,
-    ResetPasswordComponent
+    ResetPasswordComponent,
+    AdminConfigComponent
+    
   ],
   imports: [
     // Módulos de Angular
@@ -139,6 +147,7 @@ import { ResetPasswordComponent } from './components/reset-password/reset-passwo
     HttpClientModule,
     ReactiveFormsModule,
     FormsModule,
+    
     
     // 🎬 COMPONENTES STANDALONE
     AdminComingSoonComponent
@@ -151,6 +160,7 @@ import { ResetPasswordComponent } from './components/reset-password/reset-passwo
     // Servicios de compra y carrito
     CartService,
     OrderService,
+    LogsService,
     
     // 🆕 SERVICIOS DEL SISTEMA DE PUNTOS
     PointsService,

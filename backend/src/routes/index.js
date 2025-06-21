@@ -113,6 +113,8 @@ router.use('/admin', require('./admin'));
 
 router.use('/reports', require('./reports'));
 
+router.use('/logs', require('./logs'));
+
 // ==================== RUTAS FUTURAS (COMENTADAS) ====================
 // Estas se pueden activar cuando las implementes
 // Rutas de administración general
