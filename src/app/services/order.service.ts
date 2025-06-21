@@ -5,13 +5,15 @@ import { catchError, map } from 'rxjs/operators';
 import { CartItem } from './cart.service';
 import { AuthService } from './auth.service';
 import { PayPalResult, PaypalSimulationService } from './paypal-simulation.service';
+import { environment } from '../../environments/environment';
+
 
 @Injectable({
   providedIn: 'root'
 })
 export class OrderService {
 
-  private readonly API_URL = `http://localhost:3000/api/orders`;
+  private readonly API_URL = `${environment.apiUrl}/orders`;
 
   constructor(
     private http: HttpClient,
@@ -19,6 +21,7 @@ export class OrderService {
     private paypalService: PaypalSimulationService
   ) {
     console.log('🆕 OrderService inicializado con autenticación completa');
+    console.log('📡 OrderService conectado a API:', this.API_URL);
   }
 
   // ==================== MÉTODOS DE AUTENTICACIÓN ====================

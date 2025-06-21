@@ -3,13 +3,14 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, BehaviorSubject, of } from 'rxjs';
 import { catchError, map, tap } from 'rxjs/operators';
 import { AuthService } from './auth.service';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class PointsService {
 
-  private readonly API_URL = `http://localhost:3000/api/points`;
+  private readonly API_URL = `${environment.apiUrl}/points`;
   private userPointsSubject = new BehaviorSubject<number>(0);
   public userPoints$ = this.userPointsSubject.asObservable();
 
@@ -18,6 +19,7 @@ export class PointsService {
     private authService: AuthService
   ) {
     console.log('🆕 PointsService actualizado con API backend');
+    console.log('📡 PointsService conectado a API:', this.API_URL); 
     this.initializeService();
   }
 

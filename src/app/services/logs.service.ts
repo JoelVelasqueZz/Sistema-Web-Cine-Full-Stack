@@ -2,6 +2,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 export interface ActivityLog {
   tipo: string;
@@ -55,9 +56,11 @@ export interface SystemStats {
   providedIn: 'root'
 })
 export class LogsService {
-  private apiUrl = 'http://localhost:3000/api/logs';
+  private apiUrl = `${environment.apiUrl}/logs`;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) {
+    console.log('📋 LogsService conectado a API:', this.apiUrl);
+  }
 
   // Método para obtener headers con autenticación
   private getAuthHeaders(): HttpHeaders {
