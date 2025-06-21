@@ -2,34 +2,51 @@ const { Pool } = require('pg');
 
 // Configuración de la conexión a PostgreSQL
 const pool = new Pool({
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
-  database: process.env.DB_NAME,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
+  // Priorizar DATABASE_URL si existe (para Railway)
+  connectionString: process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL,
   
-  // Configuraciones adicionales de la conexión
-  max: 20, // máximo número de conexiones en el pool
-  idleTimeoutMillis: 30000, // tiempo antes de cerrar conexiones inactivas
-  connectionTimeoutMillis: 2000, // tiempo de espera para establecer conexión
+  // Fallback a variables individuales (para desarrollo local)
+  ...(!process.env.DATABASE_URL && !process.env.DATABASE_PUBLIC_URL && {
+    host: process.env.DB_HOST || 'localhost',
+    port: process.env.DB_PORT || 5432,
+    database: process.env.DB_NAME || 'parkyfilms',
+    user: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD
+  }),
+  
+  // Configuraciones adicionales
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+  
+  // SSL para Railway (requerido en producción)
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
 // Función para conectar a la base de datos
 const connectDB = async () => {
   try {
     const client = await pool.connect();
-    console.log('Conexión exitosa a PostgreSQL');
-    console.log(`Base de datos: ${process.env.DB_NAME}`);
-    console.log(`Host: ${process.env.DB_HOST}:${process.env.DB_PORT}`);
+    console.log('✅ Conexión exitosa a PostgreSQL');
+    
+    // Detectar si está usando DATABASE_URL o variables individuales
+    if (process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL) {
+      console.log('🌐 Conectado usando DATABASE_URL (Railway/Cloud)');
+    } else {
+      console.log(`🏠 Conectado usando variables individuales (Local)`);
+      console.log(`   Host: ${process.env.DB_HOST}:${process.env.DB_PORT}`);
+      console.log(`   Database: ${process.env.DB_NAME}`);
+    }
     
     // Probar la conexión
-    const result = await client.query('SELECT NOW()');
-    console.log(`Servidor de BD: ${result.rows[0].now}`);
-
+    const result = await client.query('SELECT NOW(), current_database()');
+    console.log(`📅 Servidor de BD: ${result.rows[0].now}`);
+    console.log(`📊 Base de datos activa: ${result.rows[0].current_database}`);
+    
     client.release();
     return pool;
   } catch (error) {
-    console.error('Error conectando a PostgreSQL:', error.message);
+    console.error('❌ Error conectando a PostgreSQL:', error.message);
     throw error;
   }
 };
@@ -48,7 +65,7 @@ const query = async (text, params) => {
     
     return result;
   } catch (error) {
-    console.error('Error en query:', error.message);
+    console.error('❌ Error en query:', error.message);
     console.error('Query:', text);
     console.error('Parámetros:', params);
     throw error;
@@ -75,7 +92,7 @@ const transaction = async (callback) => {
 // Función para cerrar la conexión (útil para tests)
 const closeDB = async () => {
   await pool.end();
-  console.log('Conexión a PostgreSQL cerrada');
+  console.log('🔒 Conexión a PostgreSQL cerrada');
 };
 
 // Event listeners para debugging
@@ -84,7 +101,7 @@ pool.on('connect', () => {
 });
 
 pool.on('error', (err) => {
-  console.error('Error inesperado en el pool de PostgreSQL:', err);
+  console.error('💥 Error inesperado en el pool de PostgreSQL:', err);
   process.exit(-1);
 });
 
