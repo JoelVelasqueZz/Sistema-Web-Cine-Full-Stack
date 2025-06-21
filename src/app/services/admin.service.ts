@@ -7,6 +7,7 @@ import { UserService } from './user.service';
 import { AuthService, Usuario } from './auth.service';
 import { BarService } from './bar.service';
 import { OrderService } from './order.service';
+import { environment } from '../../environments/environment';
 
 // 🆕 IMPORTACIONES PARA PDF
 import { jsPDF } from 'jspdf';
@@ -131,7 +132,7 @@ export interface TendenciasBar {
 })
 export class AdminService {
   
-  private readonly API_URL = 'http://localhost:3000/api';
+  private readonly API_URL = environment.apiUrl;
   
   // 🆕 SUBJECT PARA NOTIFICAR CAMBIOS
   private peliculasSubject = new BehaviorSubject<Pelicula[]>([]);

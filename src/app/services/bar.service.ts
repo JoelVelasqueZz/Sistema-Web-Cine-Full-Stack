@@ -4,6 +4,7 @@ import { BehaviorSubject, Observable, throwError } from 'rxjs';
 import { map, catchError, tap } from 'rxjs/operators';
 import { AuthService } from './auth.service';
 import { ToastService } from './toast.service';
+import { environment } from '../../environments/environment';
 
 // ==================== INTERFACES ====================
 export interface ProductoBar {
@@ -72,7 +73,7 @@ export interface ProductoCreateRequest {
 })
 export class BarService {
 
-  private readonly API_URL = 'http://localhost:3000/api/bar';
+  private readonly API_URL = environment.apiUrl;
   
   // Cache local
   private productosSubject = new BehaviorSubject<ProductoBar[]>([]);
