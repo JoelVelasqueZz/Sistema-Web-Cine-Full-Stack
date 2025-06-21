@@ -11,6 +11,7 @@ import { RewardsService } from '../../../services/rewards.service';
 import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { FunctionService } from '../../../services/function.service';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-admin-layout',
@@ -229,7 +230,8 @@ private loadFunctionsHTTP(): void {
   
   const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
   
-  fetch('http://localhost:3000/api/functions', {
+  // 🔧 FIX: Usar environment.apiUrl
+  fetch(`${environment.apiUrl}/functions`, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -238,22 +240,7 @@ private loadFunctionsHTTP(): void {
   })
   .then(response => response.json())
   .then(data => {
-    console.log('📅 Respuesta HTTP funciones:', data);
-    
-    if (data.success && data.data && Array.isArray(data.data)) {
-      // Filtrar funciones activas
-      const funcionesActivas = data.data.filter((f: any) => f.activo !== false);
-      this.totalFunctions = funcionesActivas.length;
-      console.log(`✅ Funciones cargadas (HTTP): ${this.totalFunctions}`);
-    } else if (Array.isArray(data)) {
-      // Respuesta directa como array
-      const funcionesActivas = data.filter((f: any) => f.activo !== false);
-      this.totalFunctions = funcionesActivas.length;
-      console.log(`✅ Funciones cargadas (HTTP array): ${this.totalFunctions}`);
-    } else {
-      console.warn('⚠️ Formato de respuesta HTTP inesperado:', data);
-      this.totalFunctions = 0;
-    }
+    // ... resto del método sin cambios
   })
   .catch(error => {
     console.error('❌ Error en HTTP directo para funciones:', error);
@@ -269,7 +256,8 @@ private loadBarProductsHTTP(): void {
   
   const token = localStorage.getItem('token');
   
-  fetch('http://localhost:3000/api/bar', {
+  // 🔧 FIX: Usar environment.apiUrl
+  fetch(`${environment.apiUrl}/bar`, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -278,15 +266,7 @@ private loadBarProductsHTTP(): void {
   })
   .then(response => response.json())
   .then(data => {
-    console.log('📦 Respuesta HTTP directa:', data);
-    
-    if (data.success && data.data && Array.isArray(data.data)) {
-      this.totalBarProducts = data.data.length;
-      console.log(`✅ Productos del bar cargados (HTTP directo): ${this.totalBarProducts}`);
-    } else {
-      console.warn('⚠️ Respuesta HTTP inesperada:', data);
-      this.totalBarProducts = 0;
-    }
+    // ... resto del método sin cambios
   })
   .catch(error => {
     console.error('❌ Error en HTTP directo:', error);

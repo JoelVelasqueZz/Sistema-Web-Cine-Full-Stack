@@ -9,6 +9,7 @@ import { EmailService } from '../../services/email.service';
 import { PaypalSimulationService, PayPalResult } from '../../services/paypal-simulation.service';
 import { AuthService } from '../../services/auth.service'; 
 import { UserService } from '../../services/user.service';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-checkout', 
@@ -427,36 +428,32 @@ export class CheckoutComponent implements OnInit {
   }
 
   pagoExitoso(paymentResponse: any, paypalData?: any): void {
-    this.procesandoPago = false;
+  this.procesandoPago = false;
+  this.cartService.clearCart();
 
-    this.cartService.clearCart();
-
-    const currentUser = this.authService.getCurrentUser();
-    if (currentUser) {
-      // 🔧 CORRECCIÓN: Usar HTTP calls para guardar en historial por "comprada"
-      this.cartItems
-        .filter(item => item.tipo === 'pelicula' && item.pelicula)
-        .forEach((item) => {
-          // 🆕 USAR HTTP POST al backend para guardar historial
-          this.http.post(`http://localhost:3000/api/history`, {
-            peliculaId: item.pelicula!.id,
-            tipoAccion: 'comprada'
-          }, {
-            headers: {
-              'Authorization': `Bearer ${this.authService.getToken()}`,
-              'Content-Type': 'application/json'
+  const currentUser = this.authService.getCurrentUser();
+  if (currentUser) {
+    // 🔧 FIX: Usar environment.apiUrl
+    this.cartItems
+      .filter(item => item.tipo === 'pelicula' && item.pelicula)
+      .forEach((item) => {
+        this.http.post(`${environment.apiUrl}/history`, {
+          peliculaId: item.pelicula!.id,
+          tipoAccion: 'comprada'
+        }, {
+          headers: {
+            'Authorization': `Bearer ${this.authService.getToken()}`,
+            'Content-Type': 'application/json'
+          }
+        }).subscribe({
+          next: (response: any) => {
+            if (response.success) {
+              console.log(`✅ Historial guardado: ${item.pelicula!.titulo} - comprada`);
             }
-          }).subscribe({
-            next: (response: any) => {
-              if (response.success) {
-                console.log(`✅ Historial guardado: ${item.pelicula!.titulo} - comprada`);
-              } else {
-                console.warn(`⚠️ No se pudo guardar historial para: ${item.pelicula!.titulo}`);
-              }
-            },
-            error: (error) => {
-              console.error(`❌ Error guardando historial para ${item.pelicula!.titulo}:`, error);
-            }
+          },
+          error: (error) => {
+            console.error(`❌ Error guardando historial para ${item.pelicula!.titulo}:`, error);
+          }
           });
         });
     }

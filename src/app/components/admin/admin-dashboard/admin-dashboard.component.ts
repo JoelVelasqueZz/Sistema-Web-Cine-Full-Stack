@@ -6,6 +6,7 @@ import { ToastService } from '../../../services/toast.service';
 import { ReportsService } from '../../../services/reports.service';
 import { HttpClient } from '@angular/common/http';
 import { forkJoin } from 'rxjs';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -595,7 +596,7 @@ private downloadReportPDF(tipoReporte: string, nombreReporte: string): void {
     'Content-Type': 'application/json'
   };
 
-  const url = `http://localhost:3000/api/reports/${tipoReporte}?formato=pdf`;
+ const url = `${environment.apiUrl}/reports/${tipoReporte}?formato=pdf`;
 
   // Usar HttpClient para descargar con headers de autenticación
   this.http.get(url, { 
