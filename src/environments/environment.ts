@@ -1,5 +1,5 @@
 export const environment = {
   production: false,
-  apiUrl: 'http://localhost:3000/api',
+  apiUrl: 'https://webcinenew-production.up.railway.app/api', // ← Cambiar a Railway
   appUrl: 'http://localhost:4200'
 };
