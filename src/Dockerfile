@@ -8,14 +8,21 @@ COPY . .
 # Ir a src/
 WORKDIR /app/src
 
-# Instalar y compilar
+# Instalar dependencias
 RUN npm install
-RUN npm run build
 
-# Ver qué archivos se generaron (DEBUG)
+# Compilar Angular con debug
+RUN echo "=== Iniciando build ===" 
+RUN npm run build || echo "Build falló"
+RUN echo "=== Build terminado ==="
+
+# Ver estructura completa
+RUN echo "=== Contenido de /app/src ==="
 RUN ls -la 
-RUN ls -la dist/ || echo "No existe dist/"
-RUN ls -la dist/proyecto-cine/ || echo "No existe dist/proyecto-cine/"
+RUN echo "=== Buscando dist ==="
+RUN find . -name "dist" -type d || echo "No encontró carpeta dist"
+RUN echo "=== Buscando archivos .html ==="
+RUN find . -name "*.html" || echo "No encontró archivos HTML"
 
 # Ejecutar desde src/
 CMD ["npm", "start"]
