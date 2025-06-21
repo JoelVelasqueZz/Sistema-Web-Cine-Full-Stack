@@ -11,11 +11,11 @@ WORKDIR /app/src
 # Instalar dependencias
 RUN npm install
 
-# Compilar Angular (esto crea /app/dist/proyecto-cine)
+# Compilar Angular (esto crea /app/dist/proyecto-cine/browser)
 RUN npm run build
 
-# Verificar que los archivos existen
-RUN ls -la /app/dist/proyecto-cine/ || echo "ERROR: No se encontraron archivos compilados"
+# Verificar que los archivos existen en la ubicación correcta
+RUN ls -la /app/dist/proyecto-cine/browser/ || echo "ERROR: No se encontraron archivos compilados en browser/"
 
 # Exponer puerto
 EXPOSE 8080
