@@ -2,14 +2,14 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Copiar package files
-COPY package*.json ./
-
-# Instalar dependencias (sin --only=production porque falta package-lock.json)
-RUN npm install
-
-# Copiar código fuente
+# Copiar todo el código fuente
 COPY . .
+
+# Ir a la carpeta src y instalar dependencias
+WORKDIR /app/src
+
+# Instalar dependencias
+RUN npm install
 
 # Compilar Angular
 RUN npm run build
