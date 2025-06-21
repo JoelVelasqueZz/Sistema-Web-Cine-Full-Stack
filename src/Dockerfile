@@ -11,14 +11,14 @@ WORKDIR /app/src
 # Instalar dependencias
 RUN npm install
 
-# Compilar Angular (esto crea /app/dist/proyecto-cine)
+# Compilar Angular
 RUN npm run build
 
-# Ver qué se creó exactamente
-RUN echo "=== Verificando estructura después del build ==="
-RUN ls -la /app/
-RUN ls -la /app/dist/ || echo "No existe /app/dist/"
-RUN ls -la /app/dist/proyecto-cine/ || echo "No existe /app/dist/proyecto-cine/"
+# Copiar archivos compilados a src/dist
+RUN cp -r ../dist ./ || echo "Copiando dist a src/"
+
+# Ver estructura final
+RUN ls -la dist/
 
 # Ejecutar desde src/
 CMD ["npm", "start"]
