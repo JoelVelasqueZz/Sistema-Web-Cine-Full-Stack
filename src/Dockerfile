@@ -17,5 +17,5 @@ RUN npm run build
 # Exponer puerto
 EXPOSE 8080
 
-# Iniciar aplicación
-CMD ["npm", "start"]
+# Iniciar aplicación desde la carpeta src
+CMD ["node", "server.js"]
