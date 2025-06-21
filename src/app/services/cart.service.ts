@@ -4,6 +4,7 @@ import { BehaviorSubject, Observable, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { Pelicula, FuncionCine } from './movie.service';
 import { ProductoBar, TamañoProducto, ExtraProducto } from './bar.service';
+import { environment } from '../../environments/environment';
 
 
 @Injectable({
@@ -11,7 +12,7 @@ import { ProductoBar, TamañoProducto, ExtraProducto } from './bar.service';
 })
 export class CartService {
 
-  private readonly API_URL = `http://localhost:3000/api/orders`;
+  private readonly API_URL = environment.apiUrl;
   private cartItems: CartItem[] = [];
   private cartSubject = new BehaviorSubject<CartItem[]>([]);
   public cart$ = this.cartSubject.asObservable();
