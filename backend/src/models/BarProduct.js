@@ -8,7 +8,7 @@ class BarProduct {
         SELECT 
           pb.*,
           COALESCE(
-            json_agg(
+            json_agg( 
               json_build_object(
                 'id', pt.id,
                 'nombre', pt.nombre,
@@ -54,53 +54,61 @@ class BarProduct {
 
   // ✅ Obtener producto por ID (solo si no está eliminado)
   static async getById(id) {
-    try {
-      const queryText = `
-        SELECT 
-          pb.*,
-          COALESCE(
-            json_agg(
-              json_build_object(
-                'id', pt.id,
-                'nombre', pt.nombre,
-                'precio', pt.precio
-              )
-            ) FILTER (WHERE pt.id IS NOT NULL), 
-            '[]'
-          ) as tamanos,
-          COALESCE(
-            json_agg(
-              json_build_object(
-                'id', pe.id,
-                'nombre', pe.nombre,
-                'precio', pe.precio
-              )
-            ) FILTER (WHERE pe.id IS NOT NULL), 
-            '[]'
-          ) as extras,
-          COALESCE(
-            json_agg(
-              json_build_object(
-                'id', ci.id,
-                'item_nombre', ci.item_nombre
-              )
-            ) FILTER (WHERE ci.id IS NOT NULL), 
-            '[]'
-          ) as combo_items
-        FROM productos_bar pb
-        LEFT JOIN producto_tamanos pt ON pb.id = pt.producto_id
-        LEFT JOIN producto_extras pe ON pb.id = pe.producto_id
-        LEFT JOIN combo_items ci ON pb.id = ci.producto_id
-        WHERE pb.id = $1 AND pb.eliminado = false
-        GROUP BY pb.id
-      `;
-      
-      const result = await query(queryText, [id]);
-      return result.rows[0];
-    } catch (error) {
-      throw new Error(`Error al obtener producto: ${error.message}`);
+  try {
+    // 🔧 FIX: Consultas separadas para evitar duplicados
+    
+    // 1. Obtener producto principal
+    const productQuery = `
+      SELECT * FROM productos_bar 
+      WHERE id = $1 AND eliminado = false
+    `;
+    const productResult = await query(productQuery, [id]);
+    
+    if (productResult.rows.length === 0) {
+      return null;
     }
+    
+    const producto = productResult.rows[0];
+    
+    // 2. Obtener tamaños (sin duplicados)
+    const tamanosQuery = `
+      SELECT DISTINCT id, nombre, precio 
+      FROM producto_tamanos 
+      WHERE producto_id = $1 
+      ORDER BY precio ASC
+    `;
+    const tamanosResult = await query(tamanosQuery, [id]);
+    
+    // 3. Obtener extras (sin duplicados)
+    const extrasQuery = `
+      SELECT DISTINCT id, nombre, precio 
+      FROM producto_extras 
+      WHERE producto_id = $1 
+      ORDER BY precio ASC
+    `;
+    const extrasResult = await query(extrasQuery, [id]);
+    
+    // 4. Obtener combo items (sin duplicados)
+    const comboItemsQuery = `
+      SELECT DISTINCT id, item_nombre 
+      FROM combo_items 
+      WHERE producto_id = $1 
+      ORDER BY id ASC
+    `;
+    const comboItemsResult = await query(comboItemsQuery, [id]);
+    
+    // 5. Construir objeto final
+    return {
+      ...producto,
+      tamanos: tamanosResult.rows,
+      extras: extrasResult.rows,
+      combo_items: comboItemsResult.rows
+    };
+    
+  } catch (error) {
+    throw new Error(`Error al obtener producto: ${error.message}`);
   }
+}
 
   static async create(productData) {
     try {

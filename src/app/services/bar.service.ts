@@ -417,35 +417,72 @@ export class BarService {
   }
 
   private adaptarProductoDesdeAPI(producto: any): ProductoBar {
-    // 🔧 FIX: Validación más robusta
-    if (!producto) {
-      console.warn('⚠️ Producto vacío recibido');
-      return {} as ProductoBar;
+  // 🔧 FIX: Validación más robusta
+  if (!producto) {
+    console.warn('⚠️ Producto vacío recibido');
+    return {} as ProductoBar;
+  }
+
+  return {
+    id: producto.id || 0,
+    nombre: producto.nombre || '',
+    descripcion: producto.descripcion || '',
+    precio: parseFloat(producto.precio) || 0,
+    categoria: producto.categoria || 'otros',
+    imagen: producto.imagen || 'assets/bar/default.png',
+    disponible: producto.disponible !== false,
+    es_combo: Boolean(producto.es_combo),
+    descuento: producto.descuento ? parseFloat(producto.descuento) : undefined,
+    eliminado: producto.eliminado || false,
+    fecha_creacion: producto.fecha_creacion,
+    fecha_actualizacion: producto.fecha_actualizacion,
+    // 🔧 FIX: Usar el nuevo método para limpiar duplicados
+    tamanos: this.limpiarDuplicadosCorrectamente(producto.tamanos || []),
+    extras: this.limpiarDuplicadosCorrectamente(producto.extras || []),
+    combo_items: this.limpiarDuplicadosCorrectamente(producto.combo_items || [])
+  };
+}
+
+// 🔧 FIX: Nuevo método para limpiar duplicados correctamente
+private limpiarDuplicadosCorrectamente<T extends { id?: number; nombre?: string; item_nombre?: string }>(items: T[]): T[] {
+  if (!Array.isArray(items) || items.length === 0) {
+    return [];
+  }
+
+  const seen = new Set<string>();
+  const result: T[] = [];
+
+  for (const item of items) {
+    // Crear una clave única para cada item
+    const key = item.id ? 
+      `id-${item.id}` : 
+      `name-${item.nombre || item.item_nombre || JSON.stringify(item)}`;
+    
+    // Solo agregar si no hemos visto esta clave antes
+    if (!seen.has(key)) {
+      seen.add(key);
+      result.push(item);
     }
-
-    return {
-      id: producto.id || 0,
-      nombre: producto.nombre || '',
-      descripcion: producto.descripcion || '',
-      precio: parseFloat(producto.precio) || 0,
-      categoria: producto.categoria || 'otros',
-      imagen: producto.imagen || 'assets/bar/default.png',
-      disponible: producto.disponible !== false,
-      es_combo: Boolean(producto.es_combo),
-      descuento: producto.descuento ? parseFloat(producto.descuento) : undefined,
-      eliminado: producto.eliminado || false,
-      fecha_creacion: producto.fecha_creacion,
-      fecha_actualizacion: producto.fecha_actualizacion,
-      tamanos: this.limpiarArray(producto.tamanos || []),
-      extras: this.limpiarArray(producto.extras || []),
-      combo_items: this.limpiarArray(producto.combo_items || [])
-    };
   }
 
+  return result;
+}
   private limpiarArray<T>(items: T[]): T[] {
-    if (!Array.isArray(items)) return [];
-    return items.filter(item => item != null);
-  }
+  if (!Array.isArray(items)) return [];
+  
+  // Filtrar items null/undefined Y eliminar duplicados por JSON
+  const seen = new Set<string>();
+  return items
+    .filter(item => item != null)
+    .filter(item => {
+      const key = JSON.stringify(item);
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+}
 
   private getAuthHeaders(): HttpHeaders {
     const token = this.authService.getToken();
