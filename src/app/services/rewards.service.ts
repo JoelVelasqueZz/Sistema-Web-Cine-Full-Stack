@@ -1,8 +1,10 @@
+// src/app/services/rewards.service.ts - VERSIÓN MÍNIMA CORREGIDA
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { AuthService } from './auth.service';
+import { environment } from '../../environments/environment';
 
 // ==================== INTERFACES ====================
 export interface Reward {
@@ -54,22 +56,47 @@ export interface ApiResponse<T> {
 })
 export class RewardsService {
 
-  private readonly API_URL = `http://localhost:3000/api/rewards`;
+  // 🔧 CORRECCIÓN PRINCIPAL: URL fija y validada
+  private readonly API_URL: string;
 
   constructor(
     private http: HttpClient,
     private authService: AuthService
   ) {
+    // 🔧 CONSTRUCCIÓN SEGURA DE URL
+    this.API_URL = this.buildApiUrl();
+    
     console.log('🆕 RewardsService inicializado');
+    console.log('📡 API URL:', this.API_URL);
+    console.log('🔍 Environment:', environment.production ? 'PRODUCCIÓN' : 'DESARROLLO');
+    
+    // 🔧 VALIDACIÓN CRÍTICA
+    if (this.API_URL.includes('localhost') && environment.production) {
+      console.error('❌ ERROR CRÍTICO: localhost en producción!');
+    }
   }
 
-  // ==================== MÉTODOS DE AUTENTICACIÓN ====================
+  // 🔧 MÉTODO CORREGIDO: Construir URL de API
+  private buildApiUrl(): string {
+    if (!environment.apiUrl) {
+      throw new Error('API URL no configurada en environment');
+    }
+    
+    let baseUrl = environment.apiUrl.trim();
+    if (baseUrl.endsWith('/')) {
+      baseUrl = baseUrl.slice(0, -1);
+    }
+    
+    return `${baseUrl}/rewards`;
+  }
 
+  // ==================== HEADERS ====================
+  
   private getAuthHeaders(): HttpHeaders {
     const token = this.authService.getToken();
     
     if (!token) {
-      console.warn('⚠️ No hay token de autenticación para RewardsService');
+      console.warn('⚠️ No hay token de autenticación');
       return new HttpHeaders({
         'Content-Type': 'application/json'
       });
@@ -81,27 +108,123 @@ export class RewardsService {
     });
   }
 
-  // ==================== MÉTODOS PÚBLICOS DE RECOMPENSAS ====================
+  // ==================== MÉTODOS PRINCIPALES CORREGIDOS ====================
 
   /**
-   * Obtener todas las recompensas disponibles
+   * 🔧 CORREGIDO: Obtener todas las recompensas
    */
   getAllRewards(): Observable<Reward[]> {
     const headers = this.getAuthHeaders();
     
-    // 🔧 CORRECCIÓN: El backend ahora retorna directamente el array
-    return this.http.get<Reward[]>(`${this.API_URL}`, { headers }).pipe(
+    console.log('🎁 Obteniendo recompensas desde:', this.API_URL);
+    
+    return this.http.get<any>(this.API_URL, { headers }).pipe(
       map(response => {
-        console.log('✅ Recompensas recibidas del backend:', response);
-        // Si el backend retorna un objeto con data, extraer el array
-        if (response && typeof response === 'object' && 'data' in response) {
-          return (response as any).data;
+        console.log('✅ Respuesta recibida:', response);
+        
+        // 🔧 MANEJO INTELIGENTE DE RESPUESTA
+        let rewards: Reward[] = [];
+        
+        if (Array.isArray(response)) {
+          rewards = response;
+        } else if (response && response.data && Array.isArray(response.data)) {
+          rewards = response.data;
+        } else {
+          console.warn('⚠️ Formato de respuesta inesperado:', response);
+          rewards = [];
         }
-        // Si es directamente un array, retornarlo
-        return Array.isArray(response) ? response : [];
+        
+        // 🔧 PROCESAR CADA RECOMPENSA
+        const processedRewards = rewards.map(reward => ({
+          ...reward,
+          // Normalizar tipos numéricos
+          puntos_requeridos: Number(reward.puntos_requeridos) || 0,
+          valor: Number(reward.valor) || 0,
+          stock: reward.stock !== null ? Number(reward.stock) : null,
+          limite_por_usuario: Number(reward.limite_por_usuario) || 1,
+          validez_dias: Number(reward.validez_dias) || 30,
+          disponible: Boolean(reward.disponible),
+          // 🔧 MAPEAR IMAGEN
+          imagen_url: reward.imagen_url !== null && reward.imagen_url !== undefined ? reward.imagen_url : undefined
+        }));
+        
+        console.log(`✅ ${processedRewards.length} recompensas procesadas`);
+        return processedRewards;
       }),
       catchError(error => {
         console.error('❌ Error al obtener recompensas:', error);
+        console.error('❌ URL que falló:', this.API_URL);
+        
+        // 🔧 LOG DE DIAGNÓSTICO
+        if (error.status === 0) {
+          console.error('🚫 CONEXIÓN RECHAZADA - Verificar backend y CORS');
+        }
+        
+        return of([]);
+      })
+    );
+  }
+
+  /**
+   * 🔧 CORREGIDO: Obtener categorías
+   */
+  getCategories(): Observable<string[]> {
+    const headers = this.getAuthHeaders();
+    const url = `${this.API_URL}/categories`;
+    
+    console.log('📂 Obteniendo categorías desde:', url);
+    
+    return this.http.get<any>(url, { headers }).pipe(
+      map(response => {
+        console.log('✅ Categorías recibidas:', response);
+        
+        // 🔧 MANEJO INTELIGENTE
+        let categories: string[] = [];
+        
+        if (Array.isArray(response)) {
+          categories = response;
+        } else if (response && response.data && Array.isArray(response.data)) {
+          categories = response.data;
+        } else {
+          categories = ['peliculas', 'bar', 'especial', 'descuentos'];
+        }
+        
+        return categories;
+      }),
+      catchError(error => {
+        console.error('❌ Error al obtener categorías:', error);
+        return of(['peliculas', 'bar', 'especial', 'descuentos']);
+      })
+    );
+  }
+
+  /**
+   * 🔧 CORREGIDO: Obtener canjes del usuario
+   */
+  getUserRedemptions(incluirUsados: boolean = true): Observable<RedemptionCode[]> {
+    const headers = this.getAuthHeaders();
+    const params = { incluir_usados: incluirUsados.toString() };
+    const url = `${this.API_URL}/my/redemptions`;
+    
+    console.log('📋 Obteniendo canjes desde:', url);
+    
+    return this.http.get<any>(url, { headers, params }).pipe(
+      map(response => {
+        console.log('✅ Canjes recibidos:', response);
+        
+        // 🔧 MANEJO INTELIGENTE
+        let redemptions: RedemptionCode[] = [];
+        
+        if (Array.isArray(response)) {
+          redemptions = response;
+        } else if (response && response.data && Array.isArray(response.data)) {
+          redemptions = response.data;
+        }
+        
+        return redemptions;
+      }),
+      catchError(error => {
+        console.error('❌ Error al obtener canjes:', error);
         return of([]);
       })
     );
@@ -123,58 +246,20 @@ export class RewardsService {
   }
 
   /**
-   * Obtener categorías de recompensas
-   */
-  getCategories(): Observable<string[]> {
-    const headers = this.getAuthHeaders();
-    
-    // 🔧 CORRECCIÓN: El backend ahora retorna directamente el array
-    return this.http.get<string[]>(`${this.API_URL}/categories`, { headers }).pipe(
-      map(response => {
-        console.log('✅ Categorías recibidas del backend:', response);
-        // Si el backend retorna un objeto con data, extraer el array
-        if (response && typeof response === 'object' && 'data' in response) {
-          return (response as any).data;
-        }
-        // Si es directamente un array, retornarlo
-        return Array.isArray(response) ? response : ['peliculas', 'bar', 'especial', 'descuentos'];
-      }),
-      catchError(error => {
-        console.error('❌ Error al obtener categorías:', error);
-        return of(['peliculas', 'bar', 'especial', 'descuentos']);
-      })
-    );
-  }
-
-  /**
-   * Obtener estadísticas de recompensas
-   */
-  getRewardsStats(): Observable<RewardsStats> {
-    const headers = this.getAuthHeaders();
-    
-    return this.http.get<ApiResponse<RewardsStats>>(`${this.API_URL}/admin/stats`, { headers }).pipe(
-      map(response => response.success ? response.data : this.getDefaultStats()),
-      catchError(error => {
-        console.error('❌ Error al obtener estadísticas:', error);
-        return of(this.getDefaultStats());
-      })
-    );
-  }
-
-  // ==================== MÉTODOS DE CANJE ====================
-
-  /**
-   * Canjear una recompensa
+   * 🔧 CORREGIDO: Canjear recompensa
    */
   redeemReward(rewardId: number): Observable<{ success: boolean; codigo?: string; message: string }> {
     const headers = this.getAuthHeaders();
+    const url = `${this.API_URL}/redeem/${rewardId}`;
     
-    return this.http.post<any>(`${this.API_URL}/redeem/${rewardId}`, {}, { headers }).pipe(
+    console.log('🎁 Canjeando recompensa en:', url);
+    
+    return this.http.post<any>(url, {}, { headers }).pipe(
       map(response => {
         console.log('✅ Respuesta de canje:', response);
         return {
           success: response.success || false,
-          codigo: response.codigo || response.data?.codigo_canje,
+          codigo: response.codigo || response.data?.codigo_canje || response.data?.codigo,
           message: response.message || (response.success ? 'Recompensa canjeada exitosamente' : 'Error al canjear recompensa')
         };
       }),
@@ -184,31 +269,6 @@ export class RewardsService {
           success: false,
           message: error.error?.message || 'Error al canjear recompensa'
         });
-      })
-    );
-  }
-
-  /**
-   * Obtener canjes del usuario
-   */
-  getUserRedemptions(incluirUsados: boolean = true): Observable<RedemptionCode[]> {
-    const headers = this.getAuthHeaders();
-    const params = { incluir_usados: incluirUsados.toString() };
-    
-    // 🔧 CORRECCIÓN: El backend ahora retorna directamente el array
-    return this.http.get<RedemptionCode[]>(`${this.API_URL}/my/redemptions`, { headers, params }).pipe(
-      map(response => {
-        console.log('✅ Canjes del usuario recibidos:', response);
-        // Si el backend retorna un objeto con data, extraer el array
-        if (response && typeof response === 'object' && 'data' in response) {
-          return (response as any).data;
-        }
-        // Si es directamente un array, retornarlo
-        return Array.isArray(response) ? response : [];
-      }),
-      catchError(error => {
-        console.error('❌ Error al obtener canjes:', error);
-        return of([]);
       })
     );
   }
@@ -257,7 +317,7 @@ export class RewardsService {
   }
 
   /**
-   * Verificar disponibilidad de puntos para canje
+   * Verificar disponibilidad de puntos
    */
   checkRedeemAvailability(puntos: number): Observable<{ available: boolean; message: string }> {
     const headers = this.getAuthHeaders();
@@ -279,9 +339,6 @@ export class RewardsService {
 
   // ==================== MÉTODOS DE ADMINISTRACIÓN ====================
 
-  /**
-   * Crear nueva recompensa (ADMIN)
-   */
   createReward(rewardData: Partial<Reward>): Observable<boolean> {
     if (!this.authService.isAdmin()) {
       console.error('❌ Usuario no tiene permisos de administrador');
@@ -290,7 +347,7 @@ export class RewardsService {
 
     const headers = this.getAuthHeaders();
     
-    return this.http.post<ApiResponse<any>>(`${this.API_URL}`, rewardData, { headers }).pipe(
+    return this.http.post<ApiResponse<any>>(this.API_URL, rewardData, { headers }).pipe(
       map(response => response.success),
       catchError(error => {
         console.error('❌ Error al crear recompensa:', error);
@@ -299,9 +356,6 @@ export class RewardsService {
     );
   }
 
-  /**
-   * Actualizar recompensa (ADMIN)
-   */
   updateReward(id: number, rewardData: Partial<Reward>): Observable<boolean> {
     if (!this.authService.isAdmin()) {
       console.error('❌ Usuario no tiene permisos de administrador');
@@ -319,9 +373,6 @@ export class RewardsService {
     );
   }
 
-  /**
-   * Eliminar recompensa (ADMIN)
-   */
   deleteReward(id: number): Observable<boolean> {
     if (!this.authService.isAdmin()) {
       console.error('❌ Usuario no tiene permisos de administrador');
@@ -339,9 +390,18 @@ export class RewardsService {
     );
   }
 
-  /**
-   * Obtener todos los canjes para administración (ADMIN)
-   */
+  getRewardsStats(): Observable<RewardsStats> {
+    const headers = this.getAuthHeaders();
+    
+    return this.http.get<ApiResponse<RewardsStats>>(`${this.API_URL}/admin/stats`, { headers }).pipe(
+      map(response => response.success ? response.data : this.getDefaultStats()),
+      catchError(error => {
+        console.error('❌ Error al obtener estadísticas:', error);
+        return of(this.getDefaultStats());
+      })
+    );
+  }
+
   getAllRedemptions(page: number = 1, limit: number = 50, recompensaId?: number): Observable<RedemptionCode[]> {
     if (!this.authService.isAdmin()) {
       console.error('❌ Usuario no tiene permisos de administrador');
@@ -366,9 +426,6 @@ export class RewardsService {
 
   // ==================== MÉTODOS AUXILIARES ====================
 
-  /**
-   * Verificar si el servicio está disponible
-   */
   isServiceAvailable(): Observable<boolean> {
     return this.http.get<any>(`${this.API_URL}/health`).pipe(
       map(() => true),
@@ -376,9 +433,6 @@ export class RewardsService {
     );
   }
 
-  /**
-   * Formatear categoría para mostrar
-   */
   formatCategory(categoria: string): string {
     const categorias: { [key: string]: string } = {
       'peliculas': 'Películas',
@@ -390,9 +444,6 @@ export class RewardsService {
     return categorias[categoria] || categoria;
   }
 
-  /**
-   * Formatear tipo para mostrar
-   */
   formatType(tipo: string): string {
     const tipos: { [key: string]: string } = {
       'descuento': 'Descuento %',
@@ -406,9 +457,6 @@ export class RewardsService {
     return tipos[tipo] || tipo;
   }
 
-  /**
-   * Obtener ícono de categoría
-   */
   getCategoryIcon(categoria: string): string {
     const iconos: { [key: string]: string } = {
       'peliculas': 'fas fa-film',
@@ -420,9 +468,6 @@ export class RewardsService {
     return iconos[categoria] || 'fas fa-tag';
   }
 
-  /**
-   * Obtener ícono de tipo
-   */
   getTypeIcon(tipo: string): string {
     const iconos: { [key: string]: string } = {
       'descuento': 'fas fa-percent',
@@ -436,9 +481,6 @@ export class RewardsService {
     return iconos[tipo] || 'fas fa-question';
   }
 
-  /**
-   * Verificar si una recompensa está disponible
-   */
   isRewardAvailable(reward: Reward): boolean {
     if (!reward.disponible) {
       return false;
@@ -451,17 +493,10 @@ export class RewardsService {
     return true;
   }
 
-  /**
-   * Calcular valor en dólares de puntos
-   */
   getPointsValue(puntos: number): number {
-    // 100 puntos = $1
     return puntos / 100;
   }
 
-  /**
-   * Obtener estadísticas por defecto
-   */
   private getDefaultStats(): RewardsStats {
     return {
       totalRecompensas: 0,
@@ -473,9 +508,6 @@ export class RewardsService {
     };
   }
 
-  /**
-   * Filtrar recompensas por categoría
-   */
   filterByCategory(rewards: Reward[], categoria: string): Reward[] {
     if (!categoria) {
       return rewards;
@@ -483,9 +515,6 @@ export class RewardsService {
     return rewards.filter(reward => reward.categoria === categoria);
   }
 
-  /**
-   * Filtrar recompensas por disponibilidad
-   */
   filterByAvailability(rewards: Reward[], onlyAvailable: boolean = true): Reward[] {
     if (!onlyAvailable) {
       return rewards;
@@ -493,9 +522,6 @@ export class RewardsService {
     return rewards.filter(reward => this.isRewardAvailable(reward));
   }
 
-  /**
-   * Ordenar recompensas por puntos requeridos
-   */
   sortByPoints(rewards: Reward[], ascending: boolean = true): Reward[] {
     return [...rewards].sort((a, b) => {
       return ascending ? 
@@ -504,9 +530,6 @@ export class RewardsService {
     });
   }
 
-  /**
-   * Buscar recompensas por término
-   */
   searchRewards(rewards: Reward[], searchTerm: string): Reward[] {
     if (!searchTerm || searchTerm.trim() === '') {
       return rewards;
@@ -521,13 +544,9 @@ export class RewardsService {
     );
   }
 
-  /**
-   * Validar datos de recompensa antes de enviar
-   */
   validateRewardData(reward: Partial<Reward>): { valid: boolean; errors: string[] } {
     const errors: string[] = [];
 
-    // Validaciones básicas
     if (!reward.nombre || reward.nombre.trim().length < 3) {
       errors.push('El nombre debe tener al menos 3 caracteres');
     }
@@ -548,7 +567,6 @@ export class RewardsService {
       errors.push('Los puntos requeridos deben ser mayor a 0');
     }
 
-    // Validaciones específicas por tipo
     if (['descuento', 'producto', 'paquete'].includes(reward.tipo || '')) {
       if (!reward.valor || reward.valor <= 0) {
         errors.push('El valor debe ser mayor a 0 para este tipo de recompensa');
@@ -575,18 +593,12 @@ export class RewardsService {
     };
   }
 
-  /**
-   * Generar código de canje único
-   */
   generateRedemptionCode(rewardId: number, userId: number): string {
     const timestamp = Date.now().toString(36);
     const random = Math.random().toString(36).substr(2, 5);
     return `RW${rewardId}U${userId}${timestamp}${random}`.toUpperCase();
   }
 
-  /**
-   * Formatear fecha de vencimiento
-   */
   formatExpirationDate(fecha: string): string {
     const date = new Date(fecha);
     const now = new Date();
@@ -605,16 +617,10 @@ export class RewardsService {
     }
   }
 
-  /**
-   * Verificar si un código está vencido
-   */
   isCodeExpired(fechaVencimiento: string): boolean {
     return new Date(fechaVencimiento) < new Date();
   }
 
-  /**
-   * Obtener recompensas por categoría para métricas
-   */
   getRewardsByCategory(rewards: Reward[]): { [key: string]: number } {
     const categoryCounts: { [key: string]: number } = {};
     
@@ -625,9 +631,6 @@ export class RewardsService {
     return categoryCounts;
   }
 
-  /**
-   * Calcular estadísticas locales de recompensas
-   */
   calculateLocalStats(rewards: Reward[]): RewardsStats {
     const activas = rewards.filter(r => r.disponible).length;
     const totalPuntos = rewards.reduce((sum, r) => sum + r.puntos_requeridos, 0);
@@ -639,8 +642,8 @@ export class RewardsService {
     return {
       totalRecompensas: rewards.length,
       recompensasActivas: activas,
-      totalCanjes: 0, // Este dato viene del backend
-      puntosCanjeados: 0, // Este dato viene del backend
+      totalCanjes: 0,
+      puntosCanjeados: 0,
       categoriaPopular,
       recompensaPopular: rewards.length > 0 ? rewards[0].nombre : 'N/A'
     };
