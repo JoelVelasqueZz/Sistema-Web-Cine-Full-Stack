@@ -1,6 +1,6 @@
-// backend/src/controllers/functions/functionController.js
+// backend/src/controllers/functions/functionController.js - VERSIÓN CORREGIDA
 const { query } = require('../../config/database');
-const { generateSeatsForFunction } = require('./seatController');
+const { generateSeatsData } = require('./seatController'); // 🔧 IMPORTAR FUNCIÓN PURA
 
 // Obtener todas las funciones
 const getAllFunctions = async (req, res) => {
@@ -60,6 +60,7 @@ const getFunctionsByMovie = async (req, res) => {
         error: 'ID de película inválido'
       });
     }
+    
     console.log(`📡 Obteniendo funciones para película ID: ${peliculaId}`);
     
     const sql = `
@@ -159,8 +160,7 @@ const getFunctionById = async (req, res) => {
   }
 };
 
-
-// Crear nueva función (solo admin)
+// 🔧 CREAR FUNCIÓN CORREGIDA
 const createFunction = async (req, res) => {
   try {
     const { peliculaId, fecha, hora, sala, precio, formato = '2D', asientosDisponibles = 50 } = req.body;
@@ -215,37 +215,52 @@ const createFunction = async (req, res) => {
     const funcionId = result.rows[0].id;
     console.log(`✅ Función creada con ID: ${funcionId}`);
     
-    // 🆕 GENERAR ASIENTOS AUTOMÁTICAMENTE
+    // 🔧 GENERACIÓN AUTOMÁTICA DE ASIENTOS CORREGIDA
     console.log('🪑 Generando asientos automáticamente...');
     
     try {
-      // Crear objetos mock de req y res para el seatController
-      const mockReq = {
-        params: { funcionId: funcionId },
-        body: {} // Usar configuración automática
-      };
+      // 🔧 USAR LA FUNCIÓN PURA DIRECTAMENTE
+      const asientosResult = await generateSeatsData(funcionId);
       
-      const mockRes = {
-        status: () => ({ json: () => {} }),
-        json: () => {}
-      };
+      console.log('✅ Asientos generados automáticamente:', {
+        total: asientosResult.totalAsientos,
+        disponibles: asientosResult.asientosDisponibles,
+        vip: asientosResult.asientosVip
+      });
       
-      // Llamar a la función de generar asientos
-      await generateSeatsForFunction(mockReq, mockRes);
-      
-      console.log('✅ Asientos generados automáticamente para función', funcionId);
+      // Devolver respuesta con información de asientos
+      res.status(201).json({
+        success: true,
+        message: 'Función creada exitosamente con asientos generados',
+        data: {
+          funcion: result.rows[0],
+          asientos: {
+            total: asientosResult.totalAsientos,
+            disponibles: asientosResult.asientosDisponibles,
+            vip: asientosResult.asientosVip,
+            configuracion: asientosResult.configuracion
+          }
+        }
+      });
       
     } catch (seatError) {
       console.error('⚠️ Error al generar asientos automáticamente:', seatError);
-      // No fallar la creación de función si los asientos fallan
-      // El usuario puede generarlos manualmente después
+      
+      // 🔧 DEVOLVER FUNCIÓN CREADA PERO SIN ASIENTOS
+      console.log('⚠️ Función creada sin asientos - se pueden generar manualmente después');
+      
+      res.status(201).json({
+        success: true,
+        message: 'Función creada exitosamente (asientos pendientes de generar)',
+        data: {
+          funcion: result.rows[0],
+          asientos: {
+            generados: false,
+            error: seatError.message
+          }
+        }
+      });
     }
-    
-    res.status(201).json({
-      success: true,
-      message: 'Función creada exitosamente con asientos',
-      data: result.rows[0]
-    });
     
   } catch (error) {
     console.error('❌ Error al crear función:', error);
@@ -306,23 +321,23 @@ const updateFunction = async (req, res) => {
       values.push(hora);
     }
     if (sala !== undefined) {
-      updates.push(`sala = $${paramCount++}`);
+      updates.push(`sala = ${paramCount++}`);
       values.push(sala);
     }
     if (precio !== undefined) {
-      updates.push(`precio = $${paramCount++}`);
+      updates.push(`precio = ${paramCount++}`);
       values.push(precio);
     }
     if (formato !== undefined) {
-      updates.push(`formato = $${paramCount++}`);
+      updates.push(`formato = ${paramCount++}`);
       values.push(formato);
     }
     if (asientosDisponibles !== undefined) {
-      updates.push(`asientos_disponibles = $${paramCount++}`);
+      updates.push(`asientos_disponibles = ${paramCount++}`);
       values.push(asientosDisponibles);
     }
     if (activo !== undefined) {
-      updates.push(`activo = $${paramCount++}`);
+      updates.push(`activo = ${paramCount++}`);
       values.push(activo);
     }
     
@@ -338,7 +353,7 @@ const updateFunction = async (req, res) => {
     const updateSql = `
       UPDATE funciones_cine 
       SET ${updates.join(', ')}
-      WHERE id = $${paramCount}
+      WHERE id = ${paramCount}
       RETURNING id, pelicula_id, fecha, hora, sala, precio, formato, asientos_disponibles, activo
     `;
     
@@ -400,7 +415,6 @@ const deleteFunction = async (req, res) => {
   }
 };
 
-
 // Obtener funciones por fecha
 const getFunctionsByDate = async (req, res) => {
   try {
@@ -454,4 +468,4 @@ module.exports = {
   updateFunction,
   deleteFunction,
   getFunctionsByDate
-};  
+};
