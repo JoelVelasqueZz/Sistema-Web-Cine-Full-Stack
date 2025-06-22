@@ -1,3 +1,4 @@
+// src/app/services/function.service.ts - VERSIÓN CORREGIDA
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
@@ -9,88 +10,190 @@ import { environment } from '../../environments/environment';
 })
 export class FunctionService {
 
-  private readonly API_URL = 'http://localhost:3000/api';
+  // 🔧 CORRECCIÓN PRINCIPAL: URL construida de forma segura
+  private readonly API_URL: string;
 
   constructor(private http: HttpClient) {
-    console.log('🎬 FunctionService conectado a API:', this.API_URL);
+    // 🔧 CONSTRUCCIÓN SEGURA DE URL
+    this.API_URL = this.buildApiUrl();
+    
+    console.log('🎬 FunctionService inicializado');
+    console.log('📡 API URL:', this.API_URL);
+    console.log('🔍 Environment:', environment.production ? 'PRODUCCIÓN' : 'DESARROLLO');
+    
+    // 🔧 VALIDACIÓN CRÍTICA
+    if (this.API_URL.includes('localhost') && environment.production) {
+      console.error('❌ ERROR CRÍTICO: localhost en producción para FunctionService!');
+    }
   }
 
-  // ==================== MÉTODOS PÚBLICOS ====================
+  // 🔧 MÉTODO NUEVO: Construir URL de API de forma segura
+  private buildApiUrl(): string {
+    if (!environment.apiUrl) {
+      throw new Error('API URL no configurada en environment');
+    }
+    
+    let baseUrl = environment.apiUrl.trim();
+    if (baseUrl.endsWith('/')) {
+      baseUrl = baseUrl.slice(0, -1);
+    }
+    
+    console.log('🔧 Construyendo URL de funciones desde:', baseUrl);
+    return baseUrl; // No agregamos /functions aquí porque se agrega en cada método
+  }
+
+  // ==================== MÉTODOS PÚBLICOS CORREGIDOS ====================
 
   /**
-   * Obtener todas las funciones
+   * 🔧 CORREGIDO: Obtener todas las funciones
    */
   getAllFunctions(): Observable<FuncionCine[]> {
-    return this.http.get<any>(`${this.API_URL}/functions`).pipe(
+    const url = `${this.API_URL}/functions`;
+    
+    console.log('🎬 Obteniendo todas las funciones desde:', url);
+    
+    return this.http.get<any>(url).pipe(
       map(response => {
-        console.log('📡 Funciones obtenidas de BD:', response.data?.length || 0);
-        return (response.data || []).map((func: any) => this.convertApiToLocal(func));
+        console.log('✅ Respuesta de funciones recibida:', response);
+        
+        // 🔧 MANEJO INTELIGENTE DE RESPUESTA
+        let functions: any[] = [];
+        
+        if (Array.isArray(response)) {
+          functions = response;
+        } else if (response && response.data && Array.isArray(response.data)) {
+          functions = response.data;
+        } else {
+          console.warn('⚠️ Formato de respuesta inesperado:', response);
+          functions = [];
+        }
+        
+        console.log(`📡 ${functions.length} funciones obtenidas de BD`);
+        return functions.map((func: any) => this.convertApiToLocal(func));
       }),
       catchError(error => {
         console.error('❌ Error al obtener funciones:', error);
+        console.error('❌ URL que falló:', url);
+        
+        // 🔧 LOG DE DIAGNÓSTICO
+        if (error.status === 0) {
+          console.error('🚫 CONEXIÓN RECHAZADA - Verificar backend y CORS');
+        }
+        
         return of([]);
       })
     );
   }
 
   /**
-   * Obtener funciones por película
+   * 🔧 CORREGIDO: Obtener funciones por película
    */
   getFunctionsByMovie(peliculaId: number): Observable<FuncionCine[]> {
-    return this.http.get<any>(`${this.API_URL}/functions/movie/${peliculaId}`).pipe(
+    const url = `${this.API_URL}/functions/movie/${peliculaId}`;
+    
+    console.log(`🎬 Obteniendo funciones para película ${peliculaId} desde:`, url);
+    
+    return this.http.get<any>(url).pipe(
       map(response => {
-        console.log(`📡 ${response.data?.length || 0} funciones encontradas para película ${peliculaId}`);
-        return (response.data || []).map((func: any) => this.convertApiToLocal(func));
+        console.log(`✅ Respuesta de funciones por película recibida:`, response);
+        
+        // 🔧 MANEJO INTELIGENTE DE RESPUESTA
+        let functions: any[] = [];
+        
+        if (Array.isArray(response)) {
+          functions = response;
+        } else if (response && response.data && Array.isArray(response.data)) {
+          functions = response.data;
+        } else {
+          functions = [];
+        }
+        
+        console.log(`📡 ${functions.length} funciones encontradas para película ${peliculaId}`);
+        return functions.map((func: any) => this.convertApiToLocal(func));
       }),
       catchError(error => {
         console.error('❌ Error al obtener funciones por película:', error);
+        console.error('❌ URL que falló:', url);
         return of([]);
       })
     );
   }
 
   /**
-   * Obtener función por ID
+   * 🔧 CORREGIDO: Obtener función por ID
    */
   getFunctionById(funcionId: string): Observable<FuncionCine | null> {
-    return this.http.get<any>(`${this.API_URL}/functions/${funcionId}`).pipe(
+    const url = `${this.API_URL}/functions/${funcionId}`;
+    
+    console.log(`🔍 Obteniendo función ${funcionId} desde:`, url);
+    
+    return this.http.get<any>(url).pipe(
       map(response => {
-        if (response.success && response.data) {
+        console.log('✅ Respuesta de función por ID:', response);
+        
+        if (response && response.success && response.data) {
           console.log('📡 Función obtenida:', response.data.pelicula_titulo);
           return this.convertApiToLocal(response.data);
+        } else if (response && !response.success) {
+          console.warn('⚠️ Función no encontrada o inactiva');
+          return null;
+        } else if (response) {
+          // Si la respuesta es directamente los datos
+          return this.convertApiToLocal(response);
         }
+        
         return null;
       }),
       catchError(error => {
         console.error('❌ Error al obtener función:', error);
+        console.error('❌ URL que falló:', url);
         return of(null);
       })
     );
   }
 
   /**
-   * Obtener funciones por fecha
+   * 🔧 CORREGIDO: Obtener funciones por fecha
    */
   getFunctionsByDate(fecha: string): Observable<FuncionCine[]> {
-    return this.http.get<any>(`${this.API_URL}/functions/date/${fecha}`).pipe(
+    const url = `${this.API_URL}/functions/date/${fecha}`;
+    
+    console.log(`📅 Obteniendo funciones para fecha ${fecha} desde:`, url);
+    
+    return this.http.get<any>(url).pipe(
       map(response => {
-        console.log(`📡 ${response.data?.length || 0} funciones encontradas para ${fecha}`);
-        return (response.data || []).map((func: any) => this.convertApiToLocal(func));
+        console.log(`✅ Respuesta de funciones por fecha:`, response);
+        
+        // 🔧 MANEJO INTELIGENTE DE RESPUESTA
+        let functions: any[] = [];
+        
+        if (Array.isArray(response)) {
+          functions = response;
+        } else if (response && response.data && Array.isArray(response.data)) {
+          functions = response.data;
+        } else {
+          functions = [];
+        }
+        
+        console.log(`📡 ${functions.length} funciones encontradas para ${fecha}`);
+        return functions.map((func: any) => this.convertApiToLocal(func));
       }),
       catchError(error => {
         console.error('❌ Error al obtener funciones por fecha:', error);
+        console.error('❌ URL que falló:', url);
         return of([]);
       })
     );
   }
 
-  // ==================== MÉTODOS ADMIN ====================
+  // ==================== MÉTODOS ADMIN CORREGIDOS ====================
 
   /**
-   * Crear nueva función (solo admin)
+   * 🔧 CORREGIDO: Crear nueva función (solo admin)
    */
   createFunction(funcionData: CreateFunctionData): Observable<boolean> {
     const headers = this.getAuthHeaders();
+    const url = `${this.API_URL}/functions`;
     
     const body = {
       peliculaId: funcionData.peliculaId,
@@ -102,58 +205,195 @@ export class FunctionService {
       asientosDisponibles: funcionData.asientosDisponibles || 50
     };
 
-    return this.http.post<any>(`${this.API_URL}/functions`, body, { headers }).pipe(
+    console.log('📝 Creando función en:', url);
+    console.log('📝 Datos de la función:', body);
+
+    return this.http.post<any>(url, body, { headers }).pipe(
       map(response => {
-        if (response.success) {
-          console.log('✅ Función creada:', response.data.id);
+        console.log('✅ Respuesta de creación de función:', response);
+        
+        if (response && response.success) {
+          console.log('✅ Función creada:', response.data?.id);
+          return true;
+        } else if (response && response.id) {
+          // Si la respuesta no tiene 'success' pero sí 'id', probablemente fue exitosa
+          console.log('✅ Función creada (formato alternativo):', response.id);
           return true;
         }
+        
+        console.warn('⚠️ Respuesta inesperada al crear función:', response);
         return false;
       }),
       catchError(error => {
         console.error('❌ Error al crear función:', error);
+        console.error('❌ URL que falló:', url);
         return of(false);
       })
     );
   }
 
   /**
-   * Actualizar función (solo admin)
+   * 🔧 CORREGIDO: Actualizar función (solo admin)
    */
   updateFunction(funcionId: string, funcionData: Partial<CreateFunctionData>): Observable<boolean> {
     const headers = this.getAuthHeaders();
+    const url = `${this.API_URL}/functions/${funcionId}`;
     
-    return this.http.put<any>(`${this.API_URL}/functions/${funcionId}`, funcionData, { headers }).pipe(
+    console.log(`📝 Actualizando función ${funcionId} en:`, url);
+    console.log('📝 Datos de actualización:', funcionData);
+    
+    return this.http.put<any>(url, funcionData, { headers }).pipe(
       map(response => {
-        if (response.success) {
+        console.log('✅ Respuesta de actualización de función:', response);
+        
+        if (response && response.success) {
           console.log('✅ Función actualizada:', funcionId);
           return true;
+        } else if (response && !response.hasOwnProperty('success')) {
+          // Si no hay campo 'success', asumir que fue exitosa
+          console.log('✅ Función actualizada (formato alternativo):', funcionId);
+          return true;
         }
+        
         return false;
       }),
       catchError(error => {
         console.error('❌ Error al actualizar función:', error);
+        console.error('❌ URL que falló:', url);
         return of(false);
       })
     );
   }
 
   /**
-   * Eliminar función (solo admin)
+   * 🔧 CORREGIDO: Eliminar función (solo admin)
    */
   deleteFunction(funcionId: string): Observable<boolean> {
     const headers = this.getAuthHeaders();
+    const url = `${this.API_URL}/functions/${funcionId}`;
     
-    return this.http.delete<any>(`${this.API_URL}/functions/${funcionId}`, { headers }).pipe(
+    console.log(`🗑️ Eliminando función ${funcionId} en:`, url);
+    
+    return this.http.delete<any>(url, { headers }).pipe(
       map(response => {
-        if (response.success) {
+        console.log('✅ Respuesta de eliminación de función:', response);
+        
+        if (response && response.success) {
           console.log('✅ Función eliminada:', funcionId);
           return true;
+        } else if (response && !response.hasOwnProperty('success')) {
+          // Si no hay campo 'success', asumir que fue exitosa
+          console.log('✅ Función eliminada (formato alternativo):', funcionId);
+          return true;
         }
+        
         return false;
       }),
       catchError(error => {
         console.error('❌ Error al eliminar función:', error);
+        console.error('❌ URL que falló:', url);
+        return of(false);
+      })
+    );
+  }
+
+  // ==================== MÉTODOS DE ASIENTOS CORREGIDOS ====================
+
+  /**
+   * 🔧 CORREGIDO: Obtener asientos de una función
+   */
+  getSeatsForFunction(funcionId: string): Observable<any> {
+    const url = `${this.API_URL}/functions/${funcionId}/seats`;
+    
+    console.log(`🪑 Obteniendo asientos para función ${funcionId} desde:`, url);
+    
+    return this.http.get<any>(url).pipe(
+      map(response => {
+        console.log('✅ Respuesta de asientos:', response);
+        
+        if (response && response.success) {
+          console.log(`🪑 ${response.data?.length || 0} asientos obtenidos para función ${funcionId}`);
+          return response;
+        } else if (Array.isArray(response)) {
+          // Si la respuesta es directamente un array de asientos
+          console.log(`🪑 ${response.length} asientos obtenidos (formato directo)`);
+          return { success: true, data: response };
+        } else if (response) {
+          // Si hay datos pero sin estructura success
+          return { success: true, data: response.data || response };
+        }
+        
+        return { success: false, data: [] };
+      }),
+      catchError(error => {
+        console.error('❌ Error al obtener asientos:', error);
+        console.error('❌ URL que falló:', url);
+        return of({ success: false, data: [] });
+      })
+    );
+  }
+
+  /**
+   * 🔧 CORREGIDO: Reservar asientos (usuario autenticado)
+   */
+  reserveSeats(funcionId: string, seatIds: number[]): Observable<boolean> {
+    const headers = this.getAuthHeaders();
+    const url = `${this.API_URL}/functions/${funcionId}/seats/reserve`;
+    const body = { seatIds };
+    
+    console.log(`🎫 Reservando asientos para función ${funcionId}:`, seatIds);
+    
+    return this.http.post<any>(url, body, { headers }).pipe(
+      map(response => {
+        console.log('✅ Respuesta de reserva de asientos:', response);
+        
+        if (response && response.success) {
+          console.log('✅ Asientos reservados:', response.data?.asientosReservados?.length || seatIds.length);
+          return true;
+        } else if (response && !response.hasOwnProperty('success')) {
+          // Si no hay campo 'success', asumir que fue exitosa
+          console.log('✅ Asientos reservados (formato alternativo)');
+          return true;
+        }
+        
+        return false;
+      }),
+      catchError(error => {
+        console.error('❌ Error al reservar asientos:', error);
+        console.error('❌ URL que falló:', url);
+        return of(false);
+      })
+    );
+  }
+
+  /**
+   * 🔧 CORREGIDO: Liberar asientos (usuario autenticado)
+   */
+  releaseSeats(funcionId: string, seatIds: number[]): Observable<boolean> {
+    const headers = this.getAuthHeaders();
+    const url = `${this.API_URL}/functions/${funcionId}/seats/release`;
+    const body = { seatIds };
+    
+    console.log(`🔓 Liberando asientos para función ${funcionId}:`, seatIds);
+    
+    return this.http.post<any>(url, body, { headers }).pipe(
+      map(response => {
+        console.log('✅ Respuesta de liberación de asientos:', response);
+        
+        if (response && response.success) {
+          console.log('✅ Asientos liberados:', response.data?.asientos_liberados?.length || seatIds.length);
+          return true;
+        } else if (response && !response.hasOwnProperty('success')) {
+          // Si no hay campo 'success', asumir que fue exitosa
+          console.log('✅ Asientos liberados (formato alternativo)');
+          return true;
+        }
+        
+        return false;
+      }),
+      catchError(error => {
+        console.error('❌ Error al liberar asientos:', error);
+        console.error('❌ URL que falló:', url);
         return of(false);
       })
     );
@@ -162,14 +402,16 @@ export class FunctionService {
   // ==================== MÉTODOS AUXILIARES ====================
 
   /**
-   * Obtener headers con token de autenticación
+   * 🔧 MEJORADO: Obtener headers con token de autenticación
    */
   private getAuthHeaders(): HttpHeaders {
     const token = localStorage.getItem('auth_token');
     
     if (!token) {
-      console.warn('⚠️ No hay token de autenticación');
-      return new HttpHeaders();
+      console.warn('⚠️ No hay token de autenticación para FunctionService');
+      return new HttpHeaders({
+        'Content-Type': 'application/json'
+      });
     }
 
     return new HttpHeaders({
@@ -277,68 +519,6 @@ export class FunctionService {
    */
   formatTimeForDisplay(hora: string): string {
     return hora; // Ya está en formato HH:mm
-  }
-
-  getSeatsForFunction(funcionId: string): Observable<any> {
-    return this.http.get<any>(`${this.API_URL}/functions/${funcionId}/seats`).pipe(
-      map(response => {
-        if (response.success) {
-          console.log(`🪑 ${response.data?.length || 0} asientos obtenidos para función ${funcionId}`);
-          return response;
-        }
-        return { success: false, data: [] };
-      }),
-      catchError(error => {
-        console.error('❌ Error al obtener asientos:', error);
-        return of({ success: false, data: [] });
-      })
-    );
-  }
-
-  /**
-   * Reservar asientos (usuario autenticado)
-   */
-  reserveSeats(funcionId: string, seatIds: number[]): Observable<boolean> {
-    const headers = this.getAuthHeaders();
-    
-    const body = { seatIds };
-    
-    return this.http.post<any>(`${this.API_URL}/functions/${funcionId}/seats/reserve`, body, { headers }).pipe(
-      map(response => {
-        if (response.success) {
-          console.log('✅ Asientos reservados:', response.data.asientosReservados?.length || 0);
-          return true;
-        }
-        return false;
-      }),
-      catchError(error => {
-        console.error('❌ Error al reservar asientos:', error);
-        return of(false);
-      })
-    );
-  }
-
-  /**
-   * Liberar asientos (usuario autenticado)
-   */
-  releaseSeats(funcionId: string, seatIds: number[]): Observable<boolean> {
-    const headers = this.getAuthHeaders();
-    
-    const body = { seatIds };
-    
-    return this.http.post<any>(`${this.API_URL}/functions/${funcionId}/seats/release`, body, { headers }).pipe(
-      map(response => {
-        if (response.success) {
-          console.log('✅ Asientos liberados:', response.data.asientos_liberados?.length || 0);
-          return true;
-        }
-        return false;
-      }),
-      catchError(error => {
-        console.error('❌ Error al liberar asientos:', error);
-        return of(false);
-      })
-    );
   }
 }
 
