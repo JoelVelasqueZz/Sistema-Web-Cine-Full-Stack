@@ -1,11 +1,9 @@
-// backend/src/controllers/functions/seatController.js
+// backend/src/controllers/functions/seatController.js - VERSIÓN FINAL CORREGIDA
 const { query } = require('../../config/database');
 
-// Generar asientos para una función
-const generateSeatsForFunction = async (req, res) => {
+// 🔧 FUNCIÓN PURA para generar asientos (sin req/res) - LA QUE FALTABA
+const generateSeatsData = async (funcionId) => {
   try {
-    const { funcionId } = req.params;
-    
     console.log(`📡 Generando asientos para función: ${funcionId}`);
     
     // Verificar que la función existe
@@ -15,10 +13,7 @@ const generateSeatsForFunction = async (req, res) => {
     );
     
     if (funcionResult.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'Función no encontrada'
-      });
+      throw new Error('Función no encontrada');
     }
     
     const funcion = funcionResult.rows[0];
@@ -30,13 +25,10 @@ const generateSeatsForFunction = async (req, res) => {
     );
     
     if (parseInt(existingSeats.rows[0].count) > 0) {
-      return res.status(409).json({
-        success: false,
-        error: 'Esta función ya tiene asientos generados'
-      });
+      throw new Error('Esta función ya tiene asientos generados');
     }
     
-    // 🆕 MEJORAR: Generar matriz completa y marcar extras como no disponibles
+    // Generar matriz completa
     const salaConfig = getSalaConfiguration(funcion.sala, funcion.asientos_disponibles);
     
     const asientosGenerados = [];
@@ -55,10 +47,10 @@ const generateSeatsForFunction = async (req, res) => {
         const esVip = salaConfig.filasVip.includes(fila);
         const precio = esVip ? funcion.precio * 1.5 : funcion.precio;
         
-        // 🆕 LÓGICA MEJORADA: Marcar como no disponible si excede el límite
+        // Lógica: Marcar como no disponible si excede el límite
         const estaDisponible = asientoCount < funcion.asientos_disponibles;
-        const estaOcupado = false; // Los asientos nuevos no están ocupados
-        const estaDeshabilitado = !estaDisponible; // Si no está disponible, está deshabilitado
+        const estaOcupado = false;
+        const estaDeshabilitado = !estaDisponible;
         
         const insertSql = `
           INSERT INTO asientos (funcion_id, fila, numero, es_vip, precio, esta_ocupado, esta_deshabilitado)
@@ -73,7 +65,7 @@ const generateSeatsForFunction = async (req, res) => {
           esVip, 
           precio, 
           estaOcupado,
-          estaDeshabilitado  // 🆕 NUEVO CAMPO
+          estaDeshabilitado
         ]);
         
         asientosGenerados.push(result.rows[0]);
@@ -88,35 +80,62 @@ const generateSeatsForFunction = async (req, res) => {
     const asientosDeshabilitados = asientosGenerados.filter(a => a.esta_deshabilitado).length;
     const asientosVip = asientosGenerados.filter(a => a.es_vip && !a.esta_deshabilitado).length;
     
-    console.log(`✅ Matriz generada:`, {
+    const resultado = {
+      funcionId: funcionId,
       totalAsientos: asientosGenerados.length,
-      disponibles: asientosDisponibles,
-      deshabilitados: asientosDeshabilitados,
-      vip: asientosVip,
-      filas: salaConfig.filas,
-      asientosPorFila: salaConfig.asientosPorFila
-    });
+      asientosDisponibles: asientosDisponibles,
+      asientosDeshabilitados: asientosDeshabilitados,
+      asientosVip: asientosVip,
+      asientosNormales: asientosDisponibles - asientosVip,
+      configuracion: {
+        filas: salaConfig.filas,
+        asientosPorFila: salaConfig.asientosPorFila,
+        filasVip: salaConfig.filasVip
+      },
+      asientos: asientosGenerados
+    };
+    
+    console.log(`✅ Matriz generada:`, resultado);
+    
+    return resultado;
+
+  } catch (error) {
+    console.error('❌ Error al generar asientos:', error);
+    throw error;
+  }
+};
+
+// Generar asientos para una función (ENDPOINT)
+const generateSeatsForFunction = async (req, res) => {
+  try {
+    const { funcionId } = req.params;
+    
+    // Usar la función pura
+    const resultado = await generateSeatsData(funcionId);
     
     res.status(201).json({
       success: true,
-      message: `${asientosGenerados.length} asientos generados exitosamente`,
-      data: {
-        funcionId: funcionId,
-        totalAsientos: asientosGenerados.length,
-        asientosDisponibles: asientosDisponibles,
-        asientosDeshabilitados: asientosDeshabilitados,
-        asientosVip: asientosVip,
-        asientosNormales: asientosDisponibles - asientosVip,
-        configuracion: {
-          filas: salaConfig.filas,
-          asientosPorFila: salaConfig.asientosPorFila,
-          filasVip: salaConfig.filasVip
-        }
-      }
+      message: `${resultado.totalAsientos} asientos generados exitosamente`,
+      data: resultado
     });
 
   } catch (error) {
     console.error('❌ Error al generar asientos:', error);
+    
+    if (error.message === 'Función no encontrada') {
+      return res.status(404).json({
+        success: false,
+        error: 'Función no encontrada'
+      });
+    }
+    
+    if (error.message === 'Esta función ya tiene asientos generados') {
+      return res.status(409).json({
+        success: false,
+        error: 'Esta función ya tiene asientos generados'
+      });
+    }
+    
     res.status(500).json({
       success: false,
       error: 'Error interno del servidor'
@@ -131,6 +150,44 @@ const getSeatsForFunction = async (req, res) => {
     
     console.log(`📡 Obteniendo asientos de función: ${funcionId}`);
     
+    // Verificar si la función existe
+    const funcionExists = await query(
+      'SELECT id, sala, asientos_disponibles FROM funciones_cine WHERE id = $1 AND activo = true',
+      [funcionId]
+    );
+    
+    if (funcionExists.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Función no encontrada'
+      });
+    }
+    
+    // Verificar si tiene asientos, si no, generarlos automáticamente
+    const existingSeats = await query(
+      'SELECT COUNT(*) as count FROM asientos WHERE funcion_id = $1',
+      [funcionId]
+    );
+    
+    console.log(`🪑 Asientos existentes: ${existingSeats.rows[0].count}`);
+    
+    if (parseInt(existingSeats.rows[0].count) === 0) {
+      console.log('🪑 No hay asientos, generando automáticamente...');
+      
+      try {
+        // 🔧 USAR LA FUNCIÓN PURA QUE AHORA SÍ EXISTE
+        await generateSeatsData(funcionId);
+        console.log('✅ Asientos generados automáticamente');
+      } catch (error) {
+        console.error('❌ Error generando asientos automáticamente:', error);
+        return res.status(500).json({
+          success: false,
+          error: 'Error al generar asientos para esta función'
+        });
+      }
+    }
+    
+    // Obtener los asientos
     const sql = `
       SELECT 
         a.id,
@@ -273,8 +330,8 @@ const releaseSeats = async (req, res) => {
   }
 };
 
+// Configuración de salas
 function getSalaConfiguration(nombreSala, totalAsientos) {
-
   const configuracionesSala = {
     'Sala VIP': { 
       baseFilas: 6, 
@@ -315,7 +372,7 @@ function getSalaConfiguration(nombreSala, totalAsientos) {
     filasVip: ['E', 'F']
   };
   
-  // 🆕 ALGORITMO MEJORADO: Encontrar la mejor matriz que acomode los asientos
+  // Algoritmo para encontrar la mejor matriz
   let mejorConfig = null;
   let menorDiferencia = Infinity;
   
@@ -328,7 +385,7 @@ function getSalaConfiguration(nombreSala, totalAsientos) {
       if (totalMatriz >= totalAsientos) {
         const diferencia = totalMatriz - totalAsientos;
         const factor = Math.abs(filas - configBase.baseFilas) + Math.abs(asientosPorFila - configBase.baseAsientosPorFila);
-        const puntuacion = diferencia + (factor * 2); // Penalizar desviaciones de la configuración base
+        const puntuacion = diferencia + (factor * 2);
         
         if (puntuacion < menorDiferencia) {
           menorDiferencia = puntuacion;
@@ -347,7 +404,7 @@ function getSalaConfiguration(nombreSala, totalAsientos) {
   
   // Ajustar filas VIP según el número total de filas
   const letrasFilas = Array.from({ length: mejorConfig.filas }, (_, i) => String.fromCharCode(65 + i));
-  const filasVip = letrasFilas.slice(-Math.min(3, Math.ceil(mejorConfig.filas / 3))); // Últimas filas como VIP
+  const filasVip = letrasFilas.slice(-Math.min(3, Math.ceil(mejorConfig.filas / 3)));
   
   console.log(`🎭 Configuración calculada para ${nombreSala}:`, {
     filas: mejorConfig.filas,
@@ -366,8 +423,10 @@ function getSalaConfiguration(nombreSala, totalAsientos) {
   };
 }
 
+// 🔧 EXPORTAR TAMBIÉN LA FUNCIÓN PURA
 module.exports = {
   generateSeatsForFunction,
+  generateSeatsData, // 🆕 LA FUNCIÓN QUE FALTABA
   getSeatsForFunction,
   reserveSeats,
   releaseSeats
