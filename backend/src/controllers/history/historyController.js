@@ -156,17 +156,18 @@ const addToHistory = async (req, res) => {
     
     if (existingRecent.rows.length > 0) {
       const ultimaActividad = new Date(existingRecent.rows[0].fecha_vista);
-      const minutosPasados = Math.floor((Date.now() - ultimaActividad.getTime()) / (1000 * 60));
+      const segundosPasados = Math.floor((Date.now() - ultimaActividad.getTime()) / 1000);
       
-      // Solo bloquear si ha pasado menos de 5 minutos (para evitar clicks accidentales)
-      if (minutosPasados < 5) {
-        console.log(`⚠️ Actividad reciente bloqueada: ${minutosPasados} minutos desde la última`);
+      // 🔧 CAMBIO: Solo bloquear primeros 30 segundos
+      if (segundosPasados < 30) {
+        console.log(`⚠️ Anti-spam activado: ${segundosPasados} segundos desde la última actividad`);
         return res.status(409).json({
           success: false,
-          error: `Esta actividad fue registrada hace ${minutosPasados} minuto(s). Espera un poco antes de registrarla nuevamente.`
+          error: 'Actividad registrada recientemente',
+          waitTime: 30 - segundosPasados
         });
       } else {
-        console.log(`✅ Permitiendo nueva actividad: ${minutosPasados} minutos desde la última`);
+        console.log(`✅ Permitiendo nueva actividad: ${segundosPasados} segundos desde la última`);
       }
     }
     

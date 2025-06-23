@@ -379,10 +379,16 @@ getUserHistory(options?: HistoryOptions): Observable<HistorialItem[]> {
         return false;
       }),
       catchError(error => {
-        console.error(`❌ Error al agregar al historial para usuario ${userId}:`, error);
-        // Fallback a localStorage si falla la API
-        return of(this.addToHistoryLocal(userId, historialItem));
-      })
+  // 🔧 NUEVO MANEJO
+      if (error.status === 409) {
+        console.log(`ℹ️ Actividad reciente para ${historialItem.titulo} (anti-spam de 30s activo)`);
+        return of(true); // ✅ Silencioso
+      }
+      
+      // Para otros errores, mantener tu fallback
+      console.error(`❌ Error al agregar al historial para usuario ${userId}:`, error);
+      return of(this.addToHistoryLocal(userId, historialItem));
+    })
     );
   }
 
