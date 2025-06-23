@@ -258,19 +258,54 @@ export class AdminBarComponent implements OnInit, OnDestroy {
         this.subscriptions.add(sub);
         
       } else {
-        // Actualizar producto existente
-        console.log('✏️ Actualizando producto existente...');
-        const resultado = this.barService.updateProducto(this.productoEditandoId, productoParaEnviar);
-        
-        if (resultado) {
-          this.toastService.showSuccess('Producto actualizado exitosamente');
-          this.cargarProductos();
-          this.vistaActual = 'lista';
-        } else {
-          this.toastService.showError('Error al actualizar el producto');
-        }
-        this.procesando = false;
+  // Actualizar producto existente
+  console.log('✏️ Actualizando producto existente...');
+  
+  const sub = this.barService.updateProducto(this.productoEditandoId, productoParaEnviar).subscribe({
+    next: (resultado) => {
+      console.log('✅ Producto actualizado exitosamente:', resultado);
+      if (resultado) {
+        this.toastService.showSuccess('Producto actualizado exitosamente');
+        this.cargarProductos(); // Recargar datos
+        this.vistaActual = 'lista';
+        this.router.navigate(['/admin/bar']);
+      } else {
+        this.toastService.showError('Error al actualizar el producto');
       }
+      this.procesando = false;
+    },
+    error: (error) => {
+      console.error('❌ Error completo al actualizar producto:', error);
+      
+      let mensajeError = 'Error al actualizar el producto';
+      
+      if (error.status === 400) {
+        if (error.error && error.error.errors) {
+          if (Array.isArray(error.error.errors)) {
+            this.erroresValidacion = error.error.errors.map((err: any) => err.msg || err.message || err);
+          } else {
+            this.erroresValidacion = [error.error.errors];
+          }
+          mensajeError = 'Datos del formulario inválidos';
+        } else if (error.error && error.error.message) {
+          mensajeError = error.error.message;
+        }
+      } else if (error.status === 401) {
+        mensajeError = 'No tienes permisos para realizar esta acción';
+      } else if (error.status === 404) {
+        mensajeError = 'El producto que intentas actualizar no existe';
+      } else if (error.status === 500) {
+        mensajeError = 'Error interno del servidor';
+      } else if (error.status === 0) {
+        mensajeError = 'No se puede conectar con el servidor';
+      }
+      
+      this.toastService.showError(mensajeError);
+      this.procesando = false;
+    }
+  });
+  this.subscriptions.add(sub);
+}
       
     } catch (error) {
       console.error('❌ Error inesperado:', error);

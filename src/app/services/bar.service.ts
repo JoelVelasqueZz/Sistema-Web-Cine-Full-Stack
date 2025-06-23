@@ -509,10 +509,67 @@ private limpiarDuplicadosCorrectamente<T extends { id?: number; nombre?: string;
   }
 
   // Métodos adicionales requeridos por los componentes
-  updateProducto(id: number, producto: Partial<ProductoCreateRequest>): boolean {
-    // Implementación similar a toggleDisponibilidad pero para actualización completa
-    return true; // Por ahora retorna true
+  updateProducto(id: number, producto: Partial<ProductoCreateRequest>): Observable<boolean> {
+  if (!this.authService.isAdmin()) {
+    return throwError(() => new Error('No tienes permisos de administrador'));
   }
+
+  const productoLimpio = this.limpiarDatosParaBackend(producto as ProductoCreateRequest);
+  const headers = this.getAuthHeaders();
+  const url = `${this.API_URL}/${id}`;
+
+  console.log(`📝 Actualizando producto ${id} en:`, url);
+  console.log('📝 Datos de actualización:', productoLimpio);
+
+  return this.http.put<APIResponse<ProductoBar>>(url, productoLimpio, { headers }).pipe(
+    map(response => {
+      console.log('✅ Respuesta de actualización de producto:', response);
+      
+      if (response && response.success && response.data) {
+        // Actualizar el producto en el cache local
+        const index = this.productosCache.findIndex(p => p.id === id);
+        if (index !== -1) {
+          this.productosCache[index] = this.adaptarProductoDesdeAPI(response.data);
+          this.productosSubject.next(this.productosCache);
+        }
+        
+        console.log('✅ Producto actualizado exitosamente:', response.data.nombre);
+        this.toastService.showSuccess(`Producto "${response.data.nombre}" actualizado exitosamente`);
+        return true;
+      } else if (response && !response.hasOwnProperty('success')) {
+        // Si no hay campo 'success' pero hay datos, asumir que fue exitosa
+        console.log('✅ Producto actualizado (formato alternativo)');
+        
+        // Recargar productos para asegurar consistencia
+        this.cargarProductosDesdeAPI();
+        this.toastService.showSuccess('Producto actualizado exitosamente');
+        return true;
+      }
+      
+      throw new Error(response?.message || 'Error al actualizar producto');
+    }),
+    catchError(error => {
+      console.error('❌ Error completo al actualizar producto:', error);
+      console.error('❌ URL que falló:', url);
+      console.error('❌ Datos que se enviaron:', productoLimpio);
+      
+      // Log de diagnóstico detallado
+      if (error.status === 0) {
+        console.error('🚫 CONEXIÓN RECHAZADA - Verificar backend y CORS');
+      } else if (error.status === 400) {
+        console.error('🚫 BAD REQUEST - Verificar datos del formulario');
+      } else if (error.status === 401) {
+        console.error('🚫 NO AUTORIZADO - Verificar token de auth');
+      } else if (error.status === 404) {
+        console.error('🚫 NO ENCONTRADO - Verificar que el producto existe');
+      } else if (error.status === 500) {
+        console.error('🚫 ERROR INTERNO - Verificar logs del backend');
+      }
+      
+      return this.handleError('Error al actualizar producto')(error);
+    })
+  );
+}
 
   getProductosPorCategoria(categoria: string): ProductoBar[] {
     if (categoria === 'Todas') {
