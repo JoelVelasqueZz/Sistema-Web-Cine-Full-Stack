@@ -1,4 +1,4 @@
-// src/app/services/logs.service.ts
+// src/app/services/logs.service.ts - VERSIÓN CORREGIDA
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -62,42 +62,101 @@ export class LogsService {
     console.log('📋 LogsService conectado a API:', this.apiUrl);
   }
 
-  // Método para obtener headers con autenticación
+  // 🔧 MÉTODO CORREGIDO: Obtener headers con autenticación
   private getAuthHeaders(): HttpHeaders {
-    const token = localStorage.getItem('token');
+    // 🔧 FIX: Usar la misma clave que otros servicios
+    const token = localStorage.getItem('auth_token');
+    
+    console.log('🔐 Token para logs:', token ? 'Token presente' : 'Token NO encontrado');
+    
+    if (!token) {
+      console.warn('⚠️ No hay token de autenticación para LogsService');
+      return new HttpHeaders({
+        'Content-Type': 'application/json'
+      });
+    }
+
     return new HttpHeaders({
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
     });
   }
 
-  // Obtener actividad reciente
+  // 🔧 MEJORADO: Obtener actividad reciente con mejor manejo de errores
   getRecentActivity(limit: number = 50, offset: number = 0): Observable<any> {
     const headers = this.getAuthHeaders();
-    return this.http.get(`${this.apiUrl}/activity?limit=${limit}&offset=${offset}`, { headers });
+    const url = `${this.apiUrl}/activity?limit=${limit}&offset=${offset}`;
+    
+    console.log('📡 Solicitando actividad reciente desde:', url);
+    console.log('🔐 Headers enviados:', headers.get('Authorization') ? 'Authorization presente' : 'Sin Authorization');
+    
+    return this.http.get(url, { headers });
   }
 
-  // Obtener logs de órdenes
+  // 🔧 MEJORADO: Obtener logs de órdenes
   getOrderLogs(limit: number = 20): Observable<any> {
     const headers = this.getAuthHeaders();
-    return this.http.get(`${this.apiUrl}/orders?limit=${limit}`, { headers });
+    const url = `${this.apiUrl}/orders?limit=${limit}`;
+    
+    console.log('📡 Solicitando logs de órdenes desde:', url);
+    
+    return this.http.get(url, { headers });
   }
 
-  // Obtener logs de usuarios
+  // 🔧 MEJORADO: Obtener logs de usuarios
   getUserLogs(limit: number = 20): Observable<any> {
     const headers = this.getAuthHeaders();
-    return this.http.get(`${this.apiUrl}/users?limit=${limit}`, { headers });
+    const url = `${this.apiUrl}/users?limit=${limit}`;
+    
+    console.log('📡 Solicitando logs de usuarios desde:', url);
+    
+    return this.http.get(url, { headers });
   }
 
-  // Obtener logs de errores
+  // 🔧 MEJORADO: Obtener logs de errores
   getErrorLogs(): Observable<any> {
     const headers = this.getAuthHeaders();
-    return this.http.get(`${this.apiUrl}/errors`, { headers });
+    const url = `${this.apiUrl}/errors`;
+    
+    console.log('📡 Solicitando logs de errores desde:', url);
+    
+    return this.http.get(url, { headers });
   }
 
-  // Obtener estadísticas del sistema
+  // 🔧 MEJORADO: Obtener estadísticas del sistema
   getSystemStats(): Observable<any> {
     const headers = this.getAuthHeaders();
-    return this.http.get(`${this.apiUrl}/stats`, { headers });
+    const url = `${this.apiUrl}/stats`;
+    
+    console.log('📡 Solicitando estadísticas del sistema desde:', url);
+    
+    return this.http.get(url, { headers });
+  }
+
+  // 🆕 MÉTODO ADICIONAL: Verificar si el usuario está autenticado
+  isAuthenticated(): boolean {
+    const token = localStorage.getItem('auth_token');
+    return !!token;
+  }
+
+  // 🆕 MÉTODO ADICIONAL: Obtener información del token
+  getTokenInfo(): any {
+    const token = localStorage.getItem('auth_token');
+    if (!token) return null;
+
+    try {
+      // Decodificar payload del JWT (solo para debug - no validar aquí)
+      const payload = token.split('.')[1];
+      const decoded = JSON.parse(atob(payload));
+      return {
+        userId: decoded.userId,
+        role: decoded.role,
+        exp: decoded.exp,
+        isExpired: decoded.exp * 1000 < Date.now()
+      };
+    } catch (error) {
+      console.error('Error decodificando token:', error);
+      return null;
+    }
   }
 }

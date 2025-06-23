@@ -1,13 +1,14 @@
-// backend/src/controllers/admin/logsController.js
-const pool = require('../../config/database');
+// backend/src/controllers/admin/logsController.js - VERSIÓN CORREGIDA
+const { query } = require('../../config/database'); // 🔧 FIX: Usar la función query consistente
 
 const logsController = {
   // Obtener actividad reciente usando la vista
   async getRecentActivity(req, res) {
     try {
+      console.log('📡 Obteniendo actividad reciente...');
       const { limit = 50, offset = 0 } = req.query;
       
-      const query = `
+      const queryText = `
         SELECT 
           tipo,
           descripcion,
@@ -19,7 +20,13 @@ const logsController = {
         LIMIT $1 OFFSET $2
       `;
       
-      const result = await pool.query(query, [limit, offset]);
+      console.log('🔍 Query SQL:', queryText);
+      console.log('🔍 Parámetros:', [limit, offset]);
+      
+      // 🔧 FIX: Usar la función query importada en lugar de pool.query
+      const result = await query(queryText, [limit, offset]);
+      
+      console.log(`✅ ${result.rows.length} registros de actividad encontrados`);
       
       res.json({
         success: true,
@@ -32,7 +39,7 @@ const logsController = {
       });
       
     } catch (error) {
-      console.error('Error al obtener actividad reciente:', error);
+      console.error('❌ Error al obtener actividad reciente:', error);
       res.status(500).json({
         success: false,
         message: 'Error al obtener los logs del sistema',
@@ -44,9 +51,10 @@ const logsController = {
   // Obtener logs de órdenes específicas
   async getOrderLogs(req, res) {
     try {
+      console.log('📡 Obteniendo logs de órdenes...');
       const { limit = 20 } = req.query;
       
-      const query = `
+      const queryText = `
         SELECT 
           o.id,
           o.total,
@@ -67,7 +75,10 @@ const logsController = {
         LIMIT $1
       `;
       
-      const result = await pool.query(query, [limit]);
+      // 🔧 FIX: Usar la función query importada
+      const result = await query(queryText, [limit]);
+      
+      console.log(`✅ ${result.rows.length} logs de órdenes encontrados`);
       
       res.json({
         success: true,
@@ -76,7 +87,7 @@ const logsController = {
       });
       
     } catch (error) {
-      console.error('Error al obtener logs de órdenes:', error);
+      console.error('❌ Error al obtener logs de órdenes:', error);
       res.status(500).json({
         success: false,
         message: 'Error al obtener logs de órdenes',
@@ -88,9 +99,10 @@ const logsController = {
   // Obtener logs de usuarios (registros recientes)
   async getUserLogs(req, res) {
     try {
+      console.log('📡 Obteniendo logs de usuarios...');
       const { limit = 20 } = req.query;
       
-      const query = `
+      const queryText = `
         SELECT 
           u.id,
           u.nombre,
@@ -107,7 +119,10 @@ const logsController = {
         LIMIT $1
       `;
       
-      const result = await pool.query(query, [limit]);
+      // 🔧 FIX: Usar la función query importada
+      const result = await query(queryText, [limit]);
+      
+      console.log(`✅ ${result.rows.length} logs de usuarios encontrados`);
       
       res.json({
         success: true,
@@ -116,7 +131,7 @@ const logsController = {
       });
       
     } catch (error) {
-      console.error('Error al obtener logs de usuarios:', error);
+      console.error('❌ Error al obtener logs de usuarios:', error);
       res.status(500).json({
         success: false,
         message: 'Error al obtener logs de usuarios',
@@ -128,6 +143,8 @@ const logsController = {
   // Obtener estadísticas generales del sistema
   async getSystemStats(req, res) {
     try {
+      console.log('📡 Obteniendo estadísticas del sistema...');
+      
       const statsQuery = `
         SELECT 
           (SELECT COUNT(*) FROM usuarios WHERE is_active = true) as usuarios_activos,
@@ -138,23 +155,26 @@ const logsController = {
           (SELECT COUNT(*) FROM funciones_cine WHERE activo = true AND fecha >= CURRENT_DATE) as funciones_activas
       `;
       
-      const result = await pool.query(statsQuery);
+      // 🔧 FIX: Usar la función query importada
+      const result = await query(statsQuery);
       const stats = result.rows[0];
+
+      console.log('✅ Estadísticas del sistema obtenidas:', stats);
 
       res.json({
         success: true,
         data: {
-          usuarios_activos: parseInt(stats.usuarios_activos),
-          ordenes_hoy: parseInt(stats.ordenes_hoy),
-          ordenes_pendientes: parseInt(stats.ordenes_pendientes),
-          ingresos_hoy: parseFloat(stats.ingresos_hoy),
-          peliculas_activas: parseInt(stats.peliculas_activas),
-          funciones_activas: parseInt(stats.funciones_activas)
+          usuarios_activos: parseInt(stats.usuarios_activos || 0),
+          ordenes_hoy: parseInt(stats.ordenes_hoy || 0),
+          ordenes_pendientes: parseInt(stats.ordenes_pendientes || 0),
+          ingresos_hoy: parseFloat(stats.ingresos_hoy || 0),
+          peliculas_activas: parseInt(stats.peliculas_activas || 0),
+          funciones_activas: parseInt(stats.funciones_activas || 0)
         }
       });
       
     } catch (error) {
-      console.error('Error al obtener estadísticas del sistema:', error);
+      console.error('❌ Error al obtener estadísticas del sistema:', error);
       res.status(500).json({
         success: false,
         message: 'Error al obtener estadísticas del sistema',
@@ -166,6 +186,8 @@ const logsController = {
   // Obtener logs de errores (simulado - en producción vendría de archivos de log)
   async getErrorLogs(req, res) {
     try {
+      console.log('📡 Obteniendo logs de errores...');
+      
       // Por ahora, vamos a simular algunos logs de errores
       // En producción, esto leería de archivos de log reales
       const errorLogs = [
@@ -195,6 +217,8 @@ const logsController = {
         }
       ];
 
+      console.log(`✅ ${errorLogs.length} logs de errores simulados`);
+
       res.json({
         success: true,
         data: errorLogs,
@@ -202,7 +226,7 @@ const logsController = {
       });
       
     } catch (error) {
-      console.error('Error al obtener logs de errores:', error);
+      console.error('❌ Error al obtener logs de errores:', error);
       res.status(500).json({
         success: false,
         message: 'Error al obtener logs de errores',
