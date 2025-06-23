@@ -1,4 +1,4 @@
-// backend/src/controllers/history/historyController.js
+// backend/src/controllers/history/historyController.js - VERSIÓN CORREGIDA
 const { query } = require('../../config/database');
 
 // ==================== MÉTODOS PARA USUARIO ACTUAL ====================
@@ -106,7 +106,7 @@ const getUserHistory = async (req, res) => {
   }
 };
 
-// Agregar item al historial del usuario actual
+// 🔧 MÉTODO CORREGIDO: Agregar item al historial
 const addToHistory = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -142,19 +142,32 @@ const addToHistory = async (req, res) => {
       });
     }
     
-    // Verificar si ya existe el mismo item el mismo día
-    const hoy = new Date().toISOString().split('T')[0];
-    const existingItem = await query(`
-      SELECT id FROM historial 
-      WHERE usuario_id = $1 AND pelicula_id = $2 AND tipo_accion = $3 
-      AND DATE(fecha_vista) = $4
-    `, [userId, peliculaId, tipoAccion, hoy]);
+    // 🔧 LÓGICA CORREGIDA: Solo evitar duplicados muy recientes (última hora)
+    const unaHoraAtras = new Date();
+    unaHoraAtras.setHours(unaHoraAtras.getHours() - 1);
     
-    if (existingItem.rows.length > 0) {
-      return res.status(409).json({
-        success: false,
-        error: 'Esta actividad ya fue registrada hoy'
-      });
+    const existingRecent = await query(`
+      SELECT id, fecha_vista FROM historial 
+      WHERE usuario_id = $1 AND pelicula_id = $2 AND tipo_accion = $3 
+      AND fecha_vista > $4
+      ORDER BY fecha_vista DESC
+      LIMIT 1
+    `, [userId, peliculaId, tipoAccion, unaHoraAtras.toISOString()]);
+    
+    if (existingRecent.rows.length > 0) {
+      const ultimaActividad = new Date(existingRecent.rows[0].fecha_vista);
+      const minutosPasados = Math.floor((Date.now() - ultimaActividad.getTime()) / (1000 * 60));
+      
+      // Solo bloquear si ha pasado menos de 5 minutos (para evitar clicks accidentales)
+      if (minutosPasados < 5) {
+        console.log(`⚠️ Actividad reciente bloqueada: ${minutosPasados} minutos desde la última`);
+        return res.status(409).json({
+          success: false,
+          error: `Esta actividad fue registrada hace ${minutosPasados} minuto(s). Espera un poco antes de registrarla nuevamente.`
+        });
+      } else {
+        console.log(`✅ Permitiendo nueva actividad: ${minutosPasados} minutos desde la última`);
+      }
     }
     
     // Agregar al historial
@@ -166,7 +179,7 @@ const addToHistory = async (req, res) => {
     
     const result = await query(insertSql, [userId, peliculaId, tipoAccion]);
     
-    console.log(`✅ Item agregado al historial: ID ${result.rows[0].id}`);
+    console.log(`✅ Item agregado al historial: ID ${result.rows[0].id} (${tipoAccion})`);
     
     res.status(201).json({
       success: true,
@@ -182,6 +195,15 @@ const addToHistory = async (req, res) => {
 
   } catch (error) {
     console.error('❌ Error al agregar al historial:', error);
+    
+    // 🔧 MANEJO ESPECÍFICO DE ERRORES DE CONSTRAINT
+    if (error.code === '23505') { // Unique violation en PostgreSQL
+      return res.status(409).json({
+        success: false,
+        error: 'Esta actividad ya fue registrada recientemente'
+      });
+    }
+    
     res.status(500).json({
       success: false,
       error: 'Error interno del servidor'
@@ -189,15 +211,13 @@ const addToHistory = async (req, res) => {
   }
 };
 
-// ✅ CORREGIDO: Limpiar historial del usuario actual
+// Limpiar historial del usuario actual
 const clearUserHistory = async (req, res) => {
   try {
     const userId = req.user.id;
     
     console.log(`📡 Limpiando historial del usuario ${userId}`);
-    console.log('Parámetros:', [userId]);
     
-    // ✅ SOLUCIÓN: Query simple sin RETURNING COUNT()
     const deleteSql = `
       DELETE FROM historial 
       WHERE usuario_id = $1
@@ -369,7 +389,7 @@ const getUserHistoryById = async (req, res) => {
   }
 };
 
-// ✅ CORREGIDO: Limpiar historial de usuario específico (solo admin)
+// Limpiar historial de usuario específico (solo admin)
 const clearUserHistoryById = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -384,7 +404,6 @@ const clearUserHistoryById = async (req, res) => {
     
     console.log(`📡 [ADMIN] Limpiando historial del usuario ${userId}`);
     
-    // ✅ SOLUCIÓN: Query simple sin RETURNING COUNT()
     const deleteSql = `
       DELETE FROM historial 
       WHERE usuario_id = $1

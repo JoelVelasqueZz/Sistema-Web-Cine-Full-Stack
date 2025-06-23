@@ -3,13 +3,14 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ReportsService {
 
-  private readonly API_URL = 'http://localhost:3000/api/reports';
+  private readonly API_URL = `${environment.apiUrl}/reports`;
 
   constructor(private http: HttpClient) {
     console.log('📊 ReportsService conectado a:', this.API_URL);

@@ -6,7 +6,7 @@ const corsConfig = {
     const allowedOrigins = [
       process.env.CORS_ORIGIN, // http://localhost:4200 (Angular)
       'http://localhost:3000', // Por si quieres probar desde otro puerto
-      'http://127.0.0.1:4200',
+      'http://127.0.0.1:4200', 
       'http://127.0.0.1:3000'
     ];
 

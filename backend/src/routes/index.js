@@ -75,7 +75,7 @@ router.get('/health', (req, res) => {
 // Rutas de autenticación
 router.use('/auth', require('./auth'));
 
-// Rutas de usuarios
+// Rutas de usuarios 
 router.use('/users', require('./users'));
 
 // Rutas de películas
