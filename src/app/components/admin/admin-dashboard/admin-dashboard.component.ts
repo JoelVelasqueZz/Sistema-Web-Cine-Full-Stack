@@ -7,6 +7,9 @@ import { ReportsService } from '../../../services/reports.service';
 import { HttpClient } from '@angular/common/http';
 import { forkJoin } from 'rxjs';
 import { environment } from '../../../../environments/environment';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
+
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -659,56 +662,352 @@ private downloadReportPDF(tipoReporte: string, nombreReporte: string): void {
   }
 
   systemBackup(): void {
-    const confirmBackup = confirm(
-      '¿Realizar backup del sistema?\n\n' +
-      `Estado actual:\n` +
-      `• Películas: ${this.stats.totalPeliculas}\n` +
-      `• Usuarios: ${this.stats.totalUsuarios}\n` +
-      `• Ventas: ${this.stats.totalVentas}\n` +
-      `• Productos Bar: ${this.getBarStats().totalProductos}\n` +
-      `• Fuente: ${this.datosRealesDisponibles ? 'Datos disponibles' : 'Sistema vacío'}`
-    );
+  const confirmBackup = confirm(
+    '¿Realizar backup del sistema en PDF?\n\n' +
+    `Estado actual:\n` +
+    `• Películas: ${this.stats.totalPeliculas}\n` +
+    `• Usuarios: ${this.stats.totalUsuarios}\n` +
+    `• Ventas: ${this.stats.totalVentas}\n` +
+    `• Productos Bar: ${this.getBarStats().totalProductos}\n` +
+    `• Fuente: ${this.datosRealesDisponibles ? 'Datos disponibles' : 'Sistema vacío'}`
+  );
+  
+  if (confirmBackup) {
+    this.toastService.showInfo('💾 Generando backup del sistema en PDF...');
     
-    if (confirmBackup) {
-      this.toastService.showInfo('💾 Iniciando backup del sistema...');
-      
-      setTimeout(() => {
-        const backupData = {
-          timestamp: new Date().toISOString(),
-          version: '2.1.0',
-          estado: {
-            datosReales: this.datosRealesDisponibles,
-            usoFallback: this.usoFallback,
-            errorCarga: this.errorCargaDatos,
-            mensaje: this.mensajeEstado
-          },
-          database: {
-            peliculas: this.stats.totalPeliculas,
-            usuarios: this.stats.totalUsuarios,
-            ventas: this.stats.totalVentas,
-            productosBar: this.getBarStats().totalProductos,
-            ingresos: this.stats.ingresosMes
-          },
-          estadisticas: this.stats,
-          barStats: this.getBarStats(),
-          status: 'completed'
-        };
-        
-        // Descargar backup
-        const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `backup-sistema-${new Date().toISOString().split('T')[0]}.json`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
-        
-        this.toastService.showSuccess('✅ Backup completado y descargado');
-      }, 1500);
-    }
+    setTimeout(() => {
+      try {
+        this.generateSystemBackupPDF();
+        this.toastService.showSuccess('✅ Backup completado y descargado en PDF');
+      } catch (error) {
+        console.error('Error generando backup PDF:', error);
+        this.toastService.showError('❌ Error al generar backup PDF');
+      }
+    }, 1000);
   }
+}
+private generateSystemBackupPDF(): void {
+  const doc = new jsPDF();
+  const fechaBackup = new Date().toLocaleDateString('es-ES');
+  const horaBackup = new Date().toLocaleTimeString('es-ES');
+  
+  let yPosition = 20;
+  const pageWidth = doc.internal.pageSize.width;
+  const margin = 20;
+
+  // ==================== HEADER ====================
+  // Fondo del header
+  doc.setFillColor(52, 73, 94);
+  doc.rect(0, 0, pageWidth, 50, 'F');
+  
+  // Título principal
+  doc.setFontSize(24);
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.text('BACKUP DEL SISTEMA PARKYFILMS', pageWidth / 2, 25, { align: 'center' });
+  
+  // Subtítulo
+  doc.setFontSize(14);
+  doc.text('Copia de Seguridad Completa del Sistema', pageWidth / 2, 35, { align: 'center' });
+  
+  // Información de fecha y hora
+  doc.setFontSize(12);
+  doc.text(`Generado el: ${fechaBackup} a las ${horaBackup}`, pageWidth / 2, 45, { align: 'center' });
+  
+  yPosition = 65;
+
+  // ==================== INFORMACIÓN GENERAL ====================
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('INFORMACIÓN GENERAL DEL SISTEMA', margin, yPosition);
+  yPosition += 15;
+
+  // Tabla de información general
+  const infoGeneral = [
+    ['Fecha del Backup', `${fechaBackup} ${horaBackup}`],
+    ['Versión del Sistema', '2.1.0'],
+    ['Estado de Datos', this.datosRealesDisponibles ? 'Datos Reales Disponibles' : 'Datos Locales'],
+    ['Modo de Operación', this.usoFallback ? 'Modo Fallback' : 'Modo Normal'],
+    ['Estado de Conexión', this.errorCargaDatos ? 'Error de Conexión' : 'Conexión OK'],
+    ['Última Actualización', this.ultimaActualizacion || 'No disponible'],
+    ['Usuario Admin', this.authService.getCurrentUser()?.nombre || 'Administrador'],
+    ['Mensaje de Estado', this.mensajeEstado || 'Sistema normal']
+  ];
+
+  autoTable(doc, {
+    head: [['Parámetro', 'Valor']],
+    body: infoGeneral,
+    startY: yPosition,
+    theme: 'striped',
+    headStyles: { 
+      fillColor: [52, 73, 94],
+      textColor: [255, 255, 255],
+      fontSize: 12,
+      fontStyle: 'bold'
+    },
+    styles: { 
+      fontSize: 10,
+      cellPadding: { top: 4, right: 6, bottom: 4, left: 6 }
+    },
+    columnStyles: {
+      0: { cellWidth: 60, fontStyle: 'bold' },
+      1: { cellWidth: 110 }
+    }
+  });
+
+  yPosition = (doc as any).lastAutoTable.finalY + 20;
+
+  // ==================== ESTADÍSTICAS PRINCIPALES ====================
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('ESTADÍSTICAS PRINCIPALES', margin, yPosition);
+  yPosition += 15;
+
+  const estadisticasPrincipales = [
+    ['Total de Películas', this.stats.totalPeliculas.toString()],
+    ['Total de Usuarios', this.stats.totalUsuarios.toString()],
+    ['Usuarios Activos', this.stats.usuariosActivos.toString()],
+    ['Total de Ventas', this.stats.totalVentas.toString()],
+    ['Ingresos del Mes', `$${this.stats.ingresosMes.toFixed(2)}`],
+    ['Ticket Promedio', `$${(this.stats.ticketPromedio || 0).toFixed(2)}`],
+    ['Órdenes Completadas', (this.stats.ordenesCompletadas || 0).toString()]
+  ];
+
+  autoTable(doc, {
+    head: [['Métrica', 'Valor']],
+    body: estadisticasPrincipales,
+    startY: yPosition,
+    theme: 'grid',
+    headStyles: { 
+      fillColor: [46, 125, 50],
+      textColor: [255, 255, 255],
+      fontSize: 12,
+      fontStyle: 'bold'
+    },
+    styles: { 
+      fontSize: 10,
+      cellPadding: { top: 4, right: 6, bottom: 4, left: 6 }
+    },
+    columnStyles: {
+      0: { cellWidth: 80, fontStyle: 'bold' },
+      1: { cellWidth: 90, halign: 'center' }
+    }
+  });
+
+  yPosition = (doc as any).lastAutoTable.finalY + 20;
+
+  // ==================== ESTADÍSTICAS DEL BAR ====================
+  if (yPosition > 200) {
+    doc.addPage();
+    yPosition = 20;
+  }
+
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('ESTADÍSTICAS DEL BAR', margin, yPosition);
+  yPosition += 15;
+
+  const barStats = this.getBarStats();
+  const estadisticasBar = [
+    ['Total Productos', barStats.totalProductos.toString()],
+    ['Productos Disponibles', barStats.productosDisponibles.toString()],
+    ['Combos Especiales', barStats.combosEspeciales.toString()],
+    ['Categorías', barStats.categorias.toString()],
+    ['Precio Promedio', `$${barStats.precioPromedio.toFixed(2)}`],
+    ['Producto Más Popular', barStats.productoMasPopular],
+    ['Ventas Simuladas', barStats.ventasSimuladas.toString()],
+    ['Ingreso Simulado', `$${barStats.ingresoSimulado.toFixed(2)}`],
+    ['Estado de Datos', barStats.datosReales ? 'Datos Reales' : 'Sin Productos']
+  ];
+
+  autoTable(doc, {
+    head: [['Métrica del Bar', 'Valor']],
+    body: estadisticasBar,
+    startY: yPosition,
+    theme: 'striped',
+    headStyles: { 
+      fillColor: [255, 193, 7],
+      textColor: [0, 0, 0],
+      fontSize: 12,
+      fontStyle: 'bold'
+    },
+    styles: { 
+      fontSize: 10,
+      cellPadding: { top: 4, right: 6, bottom: 4, left: 6 }
+    },
+    columnStyles: {
+      0: { cellWidth: 80, fontStyle: 'bold' },
+      1: { cellWidth: 90 }
+    }
+  });
+
+  yPosition = (doc as any).lastAutoTable.finalY + 20;
+
+  // ==================== PELÍCULAS POPULARES ====================
+  if (this.stats.peliculasPopulares && this.stats.peliculasPopulares.length > 0) {
+    if (yPosition > 200) {
+      doc.addPage();
+      yPosition = 20;
+    }
+
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('PELÍCULAS MÁS POPULARES', margin, yPosition);
+    yPosition += 15;
+
+    const peliculasData = this.stats.peliculasPopulares.slice(0, 10).map((pelicula, index) => [
+      (index + 1).toString(),
+      pelicula.titulo.length > 30 ? pelicula.titulo.substring(0, 30) + '...' : pelicula.titulo,
+      pelicula.genero,
+      pelicula.rating.toFixed(1),
+      pelicula.vistas.toString()
+    ]);
+
+    autoTable(doc, {
+      head: [['#', 'Título', 'Género', 'Rating', 'Vistas']],
+      body: peliculasData,
+      startY: yPosition,
+      theme: 'grid',
+      headStyles: { 
+        fillColor: [33, 150, 243],
+        textColor: [255, 255, 255],
+        fontSize: 10,
+        fontStyle: 'bold'
+      },
+      styles: { 
+        fontSize: 9,
+        cellPadding: { top: 3, right: 4, bottom: 3, left: 4 }
+      },
+      columnStyles: {
+        0: { cellWidth: 15, halign: 'center' },
+        1: { cellWidth: 70 },
+        2: { cellWidth: 35 },
+        3: { cellWidth: 25, halign: 'center' },
+        4: { cellWidth: 25, halign: 'center' }
+      }
+    });
+
+    yPosition = (doc as any).lastAutoTable.finalY + 20;
+  }
+
+  // ==================== GÉNEROS MÁS POPULARES ====================
+  if (this.stats.generosMasPopulares && this.stats.generosMasPopulares.length > 0) {
+    if (yPosition > 220) {
+      doc.addPage();
+      yPosition = 20;
+    }
+
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('DISTRIBUCIÓN POR GÉNEROS', margin, yPosition);
+    yPosition += 15;
+
+    const generosData = this.stats.generosMasPopulares.map((genero, index) => [
+      (index + 1).toString(),
+      genero.genero,
+      genero.cantidad.toString(),
+      `${genero.porcentaje.toFixed(1)}%`
+    ]);
+
+    autoTable(doc, {
+      head: [['#', 'Género', 'Cantidad', 'Porcentaje']],
+      body: generosData,
+      startY: yPosition,
+      theme: 'striped',
+      headStyles: { 
+        fillColor: [156, 39, 176],
+        textColor: [255, 255, 255],
+        fontSize: 10,
+        fontStyle: 'bold'
+      },
+      styles: { 
+        fontSize: 9,
+        cellPadding: { top: 3, right: 4, bottom: 3, left: 4 }
+      },
+      columnStyles: {
+        0: { cellWidth: 15, halign: 'center' },
+        1: { cellWidth: 60 },
+        2: { cellWidth: 30, halign: 'center' },
+        3: { cellWidth: 30, halign: 'center' }
+      }
+    });
+
+    yPosition = (doc as any).lastAutoTable.finalY + 20;
+  }
+
+  // ==================== ACTIVIDAD RECIENTE ====================
+  const actividadReciente = this.getActividadRecienteCombinada().filter(act => act.tipo !== 'sin_actividad');
+  
+  if (actividadReciente.length > 0) {
+    if (yPosition > 180) {
+      doc.addPage();
+      yPosition = 20;
+    }
+
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('ACTIVIDAD RECIENTE DEL SISTEMA', margin, yPosition);
+    yPosition += 15;
+
+    const actividadData = actividadReciente.slice(0, 8).map(actividad => [
+      actividad.tipo.replace('_', ' ').toUpperCase(),
+      actividad.descripcion.length > 50 ? actividad.descripcion.substring(0, 50) + '...' : actividad.descripcion,
+      this.formatActivityDate(actividad.fecha),
+      actividad.monto ? `$${actividad.monto.toFixed(2)}` : 'N/A'
+    ]);
+
+    autoTable(doc, {
+      head: [['Tipo', 'Descripción', 'Fecha', 'Monto']],
+      body: actividadData,
+      startY: yPosition,
+      theme: 'grid',
+      headStyles: { 
+        fillColor: [76, 175, 80],
+        textColor: [255, 255, 255],
+        fontSize: 10,
+        fontStyle: 'bold'
+      },
+      styles: { 
+        fontSize: 8,
+        cellPadding: { top: 3, right: 3, bottom: 3, left: 3 }
+      },
+      columnStyles: {
+        0: { cellWidth: 35 },
+        1: { cellWidth: 80 },
+        2: { cellWidth: 40 },
+        3: { cellWidth: 25, halign: 'center' }
+      }
+    });
+  }
+
+  // ==================== FOOTER ====================
+  const totalPages = (doc as any).internal.getNumberOfPages();
+
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    
+    // Línea del footer
+    doc.setDrawColor(52, 73, 94);
+    doc.setLineWidth(1);
+    doc.line(margin, doc.internal.pageSize.height - 20, pageWidth - margin, doc.internal.pageSize.height - 20);
+    
+    // Información del footer
+    doc.setFontSize(8);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`ParkyFilms - Backup del Sistema`, margin, doc.internal.pageSize.height - 12);
+    doc.text('Documento Confidencial - Solo uso interno', margin, doc.internal.pageSize.height - 8);
+    
+    // Número de página
+    doc.setTextColor(52, 73, 94);
+    doc.text(`Página ${i} de ${totalPages}`, pageWidth - margin - 30, doc.internal.pageSize.height - 12);
+    doc.text(`${fechaBackup} ${horaBackup}`, pageWidth - margin - 30, doc.internal.pageSize.height - 8);
+  }
+
+  // ==================== GUARDAR PDF ====================
+  const fileName = `backup-sistema-parkyfilms-${new Date().toISOString().split('T')[0]}-${new Date().toTimeString().split(' ')[0].replace(/:/g, '')}.pdf`;
+  doc.save(fileName);
+}
 
   refreshAllStats(): void {
     this.toastService.showInfo('🔄 Actualizando todas las estadísticas...');

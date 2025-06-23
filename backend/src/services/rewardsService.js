@@ -3,7 +3,7 @@ const Reward = require('../models/Reward');
 const Redemption = require('../models/Redemption');
 const Points = require('../models/Points');
 
-class RewardsService {
+class RewardsService { 
   constructor() {
     this.pointsModel = new Points();
   }
