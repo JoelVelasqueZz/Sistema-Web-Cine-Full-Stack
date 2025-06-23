@@ -278,6 +278,7 @@ const updateFunction = async (req, res) => {
     const { fecha, hora, sala, precio, formato, asientosDisponibles, activo } = req.body;
     
     console.log(`📡 Actualizando función ID: ${funcionId}`);
+    console.log('📝 Datos recibidos:', req.body);
     
     // Verificar que la función existe
     const funcionExists = await query(
@@ -307,7 +308,7 @@ const updateFunction = async (req, res) => {
       }
     }
     
-    // Construir query de actualización dinámicamente
+    // 🔧 CONSTRUIR QUERY DE ACTUALIZACIÓN DINÁMICAMENTE (CORREGIDO)
     const updates = [];
     const values = [];
     let paramCount = 1;
@@ -321,23 +322,23 @@ const updateFunction = async (req, res) => {
       values.push(hora);
     }
     if (sala !== undefined) {
-      updates.push(`sala = ${paramCount++}`);
+      updates.push(`sala = $${paramCount++}`); // 🔧 CORREGIDO: era `sala = ${paramCount++}`
       values.push(sala);
     }
     if (precio !== undefined) {
-      updates.push(`precio = ${paramCount++}`);
+      updates.push(`precio = $${paramCount++}`); // 🔧 CORREGIDO: era `precio = ${paramCount++}`
       values.push(precio);
     }
     if (formato !== undefined) {
-      updates.push(`formato = ${paramCount++}`);
+      updates.push(`formato = $${paramCount++}`); // 🔧 CORREGIDO: era `formato = ${paramCount++}`
       values.push(formato);
     }
     if (asientosDisponibles !== undefined) {
-      updates.push(`asientos_disponibles = ${paramCount++}`);
+      updates.push(`asientos_disponibles = $${paramCount++}`); // 🔧 CORREGIDO: era `asientos_disponibles = ${paramCount++}`
       values.push(asientosDisponibles);
     }
     if (activo !== undefined) {
-      updates.push(`activo = ${paramCount++}`);
+      updates.push(`activo = $${paramCount++}`); // 🔧 CORREGIDO: era `activo = ${paramCount++}`
       values.push(activo);
     }
     
@@ -350,12 +351,16 @@ const updateFunction = async (req, res) => {
     
     values.push(funcionId);
     
+    // 🔧 QUERY SQL CORREGIDO
     const updateSql = `
       UPDATE funciones_cine 
       SET ${updates.join(', ')}
-      WHERE id = ${paramCount}
+      WHERE id = $${paramCount}
       RETURNING id, pelicula_id, fecha, hora, sala, precio, formato, asientos_disponibles, activo
     `;
+    
+    console.log('🔧 Query SQL construido:', updateSql);
+    console.log('🔧 Valores:', values);
     
     const result = await query(updateSql, values);
     
@@ -368,6 +373,7 @@ const updateFunction = async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Error al actualizar función:', error);
+    console.error('❌ Stack trace:', error.stack);
     res.status(500).json({
       success: false,
       error: 'Error interno del servidor'
