@@ -1,0 +1,571 @@
+/* navbar.component.css - TEMA PARKY FILMS UNIFICADO */
+
+/* ======================================
+   🎬 NAVBAR BASE - Estilo Parky Films
+   ====================================== */
+
+.navbar {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #343a40 100%) !important;
+  border-bottom: 3px solid transparent;
+  border-image: linear-gradient(90deg, #0d6efd 0%, #ffc107 50%, #0d6efd 100%) 1;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+.navbar.scrolled {
+  background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%) !important;
+  box-shadow: 0 6px 30px rgba(0, 0, 0, 0.5);
+}
+
+/* ======================================
+   🎭 NAVBAR BRAND - Logo Parky Films
+   ====================================== */
+
+.navbar-brand {
+  font-size: 1.8rem !important;
+  font-weight: 900 !important;
+  color: white !important;
+  text-decoration: none !important;
+  transition: all 0.3s ease;
+  text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+}
+
+.navbar-brand:hover {
+  color: #ffc107 !important;
+  transform: scale(1.05);
+  text-shadow: 0 0 20px rgba(255, 193, 7, 0.5);
+}
+
+.navbar-brand i {
+  color: #ffc107;
+  margin-right: 0.5rem;
+  transition: all 0.3s ease;
+}
+
+.navbar-brand:hover i {
+  color: #ff8f00;
+  transform: rotate(15deg) scale(1.2);
+}
+
+/* ======================================
+   🔗 NAVBAR LINKS - Navegación
+   ====================================== */
+
+.navbar-nav .nav-link {
+  color: rgba(255, 255, 255, 0.9) !important;
+  font-weight: 600;
+  padding: 0.75rem 1rem !important;
+  border-radius: 25px;
+  transition: all 0.3s ease;
+  margin: 0 0.25rem;
+  position: relative;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 0.9rem;
+}
+
+.navbar-nav .nav-link::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #0d6efd, #ffc107);
+  transition: all 0.3s ease;
+  transform: translateX(-50%);
+  border-radius: 2px;
+}
+
+.navbar-nav .nav-link:hover {
+  color: #ffc107 !important;
+  background: rgba(255, 193, 7, 0.1);
+  transform: translateY(-2px);
+  text-shadow: 0 0 10px rgba(255, 193, 7, 0.3);
+}
+
+.navbar-nav .nav-link:hover::before {
+  width: 80%;
+}
+
+.navbar-nav .nav-link.active {
+  color: #ffc107 !important;
+  background: linear-gradient(45deg, rgba(13, 110, 253, 0.2), rgba(255, 193, 7, 0.2));
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  box-shadow: 0 4px 15px rgba(255, 193, 7, 0.2);
+}
+
+.navbar-nav .nav-link.active::before {
+  width: 100%;
+}
+
+.navbar-nav .nav-link i {
+  margin-right: 0.5rem;
+  transition: all 0.3s ease;
+}
+
+.navbar-nav .nav-link:hover i {
+  transform: scale(1.2);
+  color: #ff8f00;
+}
+
+/* ======================================
+   🛒 CARRITO Y PUNTOS - Botones especiales
+   ====================================== */
+
+.btn-outline-success,
+.btn-outline-warning {
+  border-width: 2px;
+  font-weight: 600;
+  border-radius: 25px;
+  padding: 0.5rem 1rem;
+  transition: all 0.3s ease;
+  position: relative;
+  backdrop-filter: blur(10px);
+}
+
+.btn-outline-success {
+  border-color: rgba(25, 135, 84, 0.8);
+  color: #20c997;
+  background: rgba(25, 135, 84, 0.1);
+}
+
+.btn-outline-success:hover,
+.btn-success {
+  background: linear-gradient(45deg, #198754, #20c997);
+  border-color: #20c997;
+  color: white;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(32, 201, 151, 0.3);
+}
+
+.btn-outline-warning {
+  border-color: rgba(255, 193, 7, 0.8);
+  color: #ffc107;
+  background: rgba(255, 193, 7, 0.1);
+}
+
+.btn-outline-warning:hover {
+  background: linear-gradient(45deg, #ffc107, #ff8f00);
+  border-color: #ffc107;
+  color: #333;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(255, 193, 7, 0.4);
+}
+
+/* Badges en botones */
+.badge {
+  border-radius: 50%;
+  font-size: 0.7rem;
+  font-weight: 700;
+  min-width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+/* ======================================
+   🔍 BARRA DE BÚSQUEDA - Estilo Parky Films
+   ====================================== */
+
+.search-container {
+  min-width: 280px;
+}
+
+.search-container .form-control {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(15px);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  border-radius: 25px 0 0 25px;
+  padding: 0.6rem 1rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.search-container .form-control::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+  font-style: italic;
+}
+
+.search-container .form-control:focus {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: #ffc107;
+  box-shadow: 0 0 20px rgba(255, 193, 7, 0.3);
+  color: white;
+}
+
+.search-container .btn-outline-success {
+  border-radius: 0 25px 25px 0;
+  border-left: none;
+  padding: 0.6rem 1.2rem;
+}
+
+/* Dropdown de sugerencias */
+.suggestions-dropdown .card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(13, 110, 253, 0.2);
+  border-radius: 15px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+}
+
+.suggestions-dropdown .list-group-item {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  transition: all 0.3s ease;
+  padding: 0.75rem 1rem;
+}
+
+.suggestions-dropdown .list-group-item:hover,
+.suggestions-dropdown .list-group-item.active {
+  background: linear-gradient(45deg, rgba(13, 110, 253, 0.1), rgba(255, 193, 7, 0.1));
+  color: #0d6efd;
+  transform: translateX(5px);
+}
+
+.suggestions-dropdown img {
+  border: 2px solid rgba(13, 110, 253, 0.2);
+  transition: all 0.3s ease;
+}
+
+.suggestions-dropdown .list-group-item:hover img {
+  border-color: #ffc107;
+  transform: scale(1.05);
+}
+
+/* ======================================
+   👤 DROPDOWN DE USUARIO - Estilo Parky Films
+   ====================================== */
+
+.btn-outline-light {
+  border-color: rgba(255, 255, 255, 0.6);
+  color: white;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 25px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  padding: 0.5rem 1rem;
+}
+
+.btn-outline-light:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: #ffc107;
+  color: #ffc107;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(255, 193, 7, 0.2);
+}
+
+.btn-primary {
+  background: linear-gradient(45deg, #0d6efd, #6610f2);
+  border: none;
+  border-radius: 25px;
+  font-weight: 600;
+  padding: 0.5rem 1.5rem;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(45deg, #6610f2, #0d6efd);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(13, 110, 253, 0.4);
+}
+
+/* Avatar en dropdown */
+.dropdown-toggle img {
+  border: 2px solid rgba(255, 193, 7, 0.5);
+  transition: all 0.3s ease;
+}
+
+.dropdown-toggle:hover img {
+  border-color: #ffc107;
+  transform: scale(1.1);
+}
+
+/* Dropdown menu */
+.dropdown-menu {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(13, 110, 253, 0.2);
+  border-radius: 15px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+  padding: 0.5rem;
+  min-width: 250px;
+}
+
+.dropdown-header {
+  color: #0d6efd !important;
+  font-weight: 700;
+  border-bottom: 2px solid rgba(13, 110, 253, 0.2);
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.dropdown-item {
+  color: #495057;
+  font-weight: 500;
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  margin: 0.15rem 0;
+  transition: all 0.3s ease;
+  border-left: 3px solid transparent;
+}
+
+.dropdown-item:hover {
+  background: linear-gradient(45deg, rgba(13, 110, 253, 0.1), rgba(255, 193, 7, 0.1));
+  color: #0d6efd;
+  transform: translateX(5px);
+  border-left-color: #ffc107;
+}
+
+.dropdown-item.text-danger:hover {
+  background: linear-gradient(45deg, rgba(220, 53, 69, 0.1), rgba(220, 53, 69, 0.2));
+  color: #dc3545;
+  border-left-color: #dc3545;
+}
+
+.dropdown-item i {
+  width: 20px;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.dropdown-item:hover i {
+  transform: scale(1.2);
+}
+
+.dropdown-divider {
+  border-color: rgba(13, 110, 253, 0.2);
+  margin: 0.5rem 0;
+}
+
+/* ======================================
+   📱 RESPONSIVE DESIGN
+   ====================================== */
+
+@media (max-width: 992px) {
+  .search-container {
+    min-width: 200px;
+    margin-bottom: 1rem;
+  }
+  
+  .navbar-brand {
+    font-size: 1.5rem !important;
+  }
+  
+  .navbar-nav .nav-link {
+    margin: 0.25rem 0;
+    text-align: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .search-container {
+    min-width: 100%;
+    margin: 1rem 0;
+  }
+  
+  .navbar-collapse {
+    background: rgba(26, 26, 26, 0.95);
+    backdrop-filter: blur(20px);
+    border-radius: 15px;
+    padding: 1rem;
+    margin-top: 1rem;
+    border: 1px solid rgba(255, 193, 7, 0.2);
+  }
+  
+  .navbar-nav {
+    text-align: center;
+  }
+  
+  .navbar-nav .nav-link {
+    display: block;
+    margin: 0.25rem auto;
+    max-width: 200px;
+  }
+  
+  .btn-outline-light,
+  .btn-primary,
+  .btn-outline-success,
+  .btn-outline-warning {
+    width: 100%;
+    margin: 0.5rem 0;
+  }
+  
+  .dropdown-menu {
+    position: static !important;
+    transform: none !important;
+    width: 100%;
+    margin-top: 1rem;
+    box-shadow: none;
+    border: 1px solid rgba(13, 110, 253, 0.3);
+  }
+}
+
+@media (max-width: 576px) {
+  .navbar-brand {
+    font-size: 1.3rem !important;
+  }
+  
+  .search-container .form-control {
+    font-size: 0.9rem;
+  }
+  
+  .badge {
+    font-size: 0.6rem;
+    min-width: 18px;
+    height: 18px;
+  }
+}
+
+/* ======================================
+   🎪 NAVBAR TOGGLER - Botón hamburguesa
+   ====================================== */
+
+.navbar-toggler {
+  border: 2px solid rgba(255, 193, 7, 0.5);
+  border-radius: 8px;
+  padding: 0.4rem 0.6rem;
+  background: rgba(255, 193, 7, 0.1);
+  transition: all 0.3s ease;
+}
+
+.navbar-toggler:hover {
+  border-color: #ffc107;
+  background: rgba(255, 193, 7, 0.2);
+  transform: scale(1.05);
+}
+
+.navbar-toggler:focus {
+  box-shadow: 0 0 15px rgba(255, 193, 7, 0.3);
+}
+
+.navbar-toggler-icon {
+  background-image: url("data:image/svg+xml;charset=utf8,%3Csvg viewBox='0 0 32 32' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath stroke='%23ffc107' stroke-width='2' stroke-linecap='round' stroke-miterlimit='10' d='M4 8h24M4 16h24M4 24h24'/%3E%3C/svg%3E");
+  transition: all 0.3s ease;
+}
+
+.navbar-toggler:hover .navbar-toggler-icon {
+  transform: rotate(90deg);
+}
+
+/* ======================================
+   ✨ EFECTOS ESPECIALES Y ANIMACIONES
+   ====================================== */
+
+/* Efecto de aparición del navbar */
+.navbar {
+  animation: slideDown 0.5s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Efecto de glow en elementos activos */
+.nav-link.active,
+.btn-outline-warning:hover,
+.btn-outline-success.btn-success {
+  animation: glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes glow {
+  from {
+    box-shadow: 0 0 5px rgba(255, 193, 7, 0.2);
+  }
+  to {
+    box-shadow: 0 0 20px rgba(255, 193, 7, 0.4);
+  }
+}
+
+/* Loader para actualizaciones */
+.fa-spin {
+  animation: fa-spin 1s infinite linear;
+}
+
+@keyframes fa-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ======================================
+   🎯 ESTADOS ESPECIALES
+   ====================================== */
+
+/* Estado VIP */
+.badge.bg-success {
+  background: linear-gradient(45deg, #198754, #20c997) !important;
+  box-shadow: 0 0 10px rgba(32, 201, 151, 0.5);
+  animation: pulse 2s infinite;
+}
+
+/* Estado de carga en botones */
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Overlay para cerrar sugerencias */
+.search-overlay {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+/* ======================================
+   🎨 MEJORAS DE ACCESIBILIDAD
+   ====================================== */
+
+.nav-link:focus,
+.btn:focus,
+.form-control:focus,
+.dropdown-item:focus {
+  outline: 2px solid #ffc107;
+  outline-offset: 2px;
+}
+
+/* Modo de alto contraste */
+@media (prefers-contrast: high) {
+  .navbar {
+    background: #000000 !important;
+    border-bottom-color: #ffffff;
+  }
+  
+  .nav-link {
+    color: #ffffff !important;
+  }
+  
+  .nav-link:hover {
+    color: #ffff00 !important;
+  }
+}
+
+/* Modo sin animaciones */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
