@@ -601,4 +601,19 @@
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+  
+}
+.admin-coming-soon .card.border-primary .card-header.bg-primary {
+  background: linear-gradient(135deg, #6610f2 0%, #6f42c1 100%) !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 12px 12px 0 0 !important;
+  box-shadow: 0 4px 15px rgba(102, 16, 242, 0.3) !important;
+}
+
+.admin-coming-soon .card.border-primary .card-header.bg-primary h5,
+.admin-coming-soon .card.border-primary .card-header.bg-primary .mb-0,
+.admin-coming-soon .card.border-primary .card-header.bg-primary i {
+  color: #ffffff !important;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.3);
 }

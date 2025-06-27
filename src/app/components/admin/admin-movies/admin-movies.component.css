@@ -588,4 +588,22 @@
   background: rgba(255, 255, 255, 0.2) !important;
   border-color: white !important;
 }
+.admin-movies .card.border-primary .card-header.bg-primary,
+.card.border-primary .card-header.bg-primary.text-white {
+  background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%) !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 12px 12px 0 0 !important;
+  box-shadow: 0 4px 15px rgba(13, 110, 253, 0.3) !important;
+}
+
+.admin-movies .card.border-primary .card-header.bg-primary h5,
+.admin-movies .card.border-primary .card-header.bg-primary .mb-0,
+.admin-movies .card.border-primary .card-header.bg-primary i,
+.card.border-primary .card-header.bg-primary.text-white h5,
+.card.border-primary .card-header.bg-primary.text-white .mb-0,
+.card.border-primary .card-header.bg-primary.text-white i {
+  color: #ffffff !important;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
 }
