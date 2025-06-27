@@ -204,31 +204,53 @@ export class BarService {
    * Crear nuevo producto (solo admin)
    */
   addProducto(producto: ProductoCreateRequest): Observable<boolean> {
-    if (!this.authService.isAdmin()) {
-      return throwError(() => new Error('No tienes permisos de administrador'));
-    }
-
-    const productoLimpio = this.limpiarDatosParaBackend(producto);
-    const headers = this.getAuthHeaders();
-
-    return this.http.post<APIResponse<ProductoBar>>(this.API_URL, productoLimpio, { headers }).pipe(
-      map(response => {
-        if (response && response.success && response.data) {
-          const nuevoProducto = this.adaptarProductoDesdeAPI(response.data);
-          this.productosCache.push(nuevoProducto);
-          this.productosSubject.next(this.productosCache);
-          
-          this.toastService.showSuccess(`Producto "${nuevoProducto.nombre}" creado exitosamente`);
-          return true;
-        }
-        throw new Error(response?.message || 'Error al crear producto');
-      }),
-      catchError(error => {
-        console.error('❌ Error completo al crear producto:', error);
-        return this.handleError('Error al crear producto')(error);
-      })
-    );
+  if (!this.authService.isAdmin()) {
+    return throwError(() => new Error('No tienes permisos de administrador'));
   }
+
+  console.log('📝 Creando producto - datos originales:', JSON.stringify(producto, null, 2));
+  
+  // 🔧 FIX: Crear objeto limpio manualmente SIN usar limpiarDatosParaBackend
+  const productoParaEnviar: any = {
+    nombre: producto.nombre,
+    descripcion: producto.descripcion,
+    precio: producto.precio,
+    categoria: producto.categoria,
+    disponible: producto.disponible !== false,
+    es_combo: Boolean(producto.es_combo)
+  };
+  
+  // Campos opcionales
+  if (producto.imagen) productoParaEnviar.imagen = producto.imagen;
+  if (producto.descuento !== undefined) productoParaEnviar.descuento = producto.descuento;
+  
+  // 🔧 FIX: Arrays - siempre incluir
+  productoParaEnviar.tamanos = producto.tamanos || [];
+  productoParaEnviar.extras = producto.extras || [];
+  productoParaEnviar.combo_items = producto.combo_items || [];
+  
+  console.log('📝 Datos finales para crear:', JSON.stringify(productoParaEnviar, null, 2));
+  
+  const headers = this.getAuthHeaders();
+
+  return this.http.post<APIResponse<ProductoBar>>(this.API_URL, productoParaEnviar, { headers }).pipe(
+    map(response => {
+      if (response && response.success && response.data) {
+        const nuevoProducto = this.adaptarProductoDesdeAPI(response.data);
+        this.productosCache.push(nuevoProducto);
+        this.productosSubject.next(this.productosCache);
+        
+        this.toastService.showSuccess(`Producto "${nuevoProducto.nombre}" creado exitosamente`);
+        return true;
+      }
+      throw new Error(response?.message || 'Error al crear producto');
+    }),
+    catchError(error => {
+      console.error('❌ Error completo al crear producto:', error);
+      return this.handleError('Error al crear producto')(error);
+    })
+  );
+}
 
   /**
    * Toggle disponibilidad del producto
@@ -514,14 +536,45 @@ private limpiarDuplicadosCorrectamente<T extends { id?: number; nombre?: string;
     return throwError(() => new Error('No tienes permisos de administrador'));
   }
 
-  const productoLimpio = this.limpiarDatosParaBackend(producto as ProductoCreateRequest);
+  // 🔧 FIX: NO usar limpiarDatosParaBackend aquí, enviar datos directamente
   const headers = this.getAuthHeaders();
   const url = `${this.API_URL}/${id}`;
 
   console.log(`📝 Actualizando producto ${id} en:`, url);
-  console.log('📝 Datos de actualización:', productoLimpio);
+  console.log('📝 Datos ORIGINALES antes de procesar:', JSON.stringify(producto, null, 2));
+  
+  // 🔧 FIX: Crear objeto limpio manualmente SIN usar limpiarDatosParaBackend
+  const productoParaEnviar: any = {};
+  
+  // Campos básicos
+  if (producto.nombre !== undefined) productoParaEnviar.nombre = producto.nombre;
+  if (producto.descripcion !== undefined) productoParaEnviar.descripcion = producto.descripcion;
+  if (producto.precio !== undefined) productoParaEnviar.precio = producto.precio;
+  if (producto.categoria !== undefined) productoParaEnviar.categoria = producto.categoria;
+  if (producto.imagen !== undefined) productoParaEnviar.imagen = producto.imagen;
+  if (producto.disponible !== undefined) productoParaEnviar.disponible = producto.disponible;
+  if (producto.es_combo !== undefined) productoParaEnviar.es_combo = producto.es_combo;
+  if (producto.descuento !== undefined) productoParaEnviar.descuento = producto.descuento;
+  
+  // 🔧 FIX: Arrays - siempre incluir si están definidos
+  if (producto.tamanos !== undefined) {
+    productoParaEnviar.tamanos = producto.tamanos;
+    console.log('📝 Tamaños incluidos:', producto.tamanos);
+  }
+  
+  if (producto.extras !== undefined) {
+    productoParaEnviar.extras = producto.extras;
+    console.log('📝 Extras incluidos:', producto.extras);
+  }
+  
+  if (producto.combo_items !== undefined) {
+    productoParaEnviar.combo_items = producto.combo_items;
+    console.log('📝 Combo items incluidos:', producto.combo_items);
+  }
 
-  return this.http.put<APIResponse<ProductoBar>>(url, productoLimpio, { headers }).pipe(
+  console.log('📝 Datos FINALES que se enviarán:', JSON.stringify(productoParaEnviar, null, 2));
+
+  return this.http.put<APIResponse<ProductoBar>>(url, productoParaEnviar, { headers }).pipe(
     map(response => {
       console.log('✅ Respuesta de actualización de producto:', response);
       
@@ -551,7 +604,7 @@ private limpiarDuplicadosCorrectamente<T extends { id?: number; nombre?: string;
     catchError(error => {
       console.error('❌ Error completo al actualizar producto:', error);
       console.error('❌ URL que falló:', url);
-      console.error('❌ Datos que se enviaron:', productoLimpio);
+      console.error('❌ Datos que se enviaron:', productoParaEnviar);
       
       // Log de diagnóstico detallado
       if (error.status === 0) {
