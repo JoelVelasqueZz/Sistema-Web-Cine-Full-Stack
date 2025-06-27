@@ -508,4 +508,84 @@
   .table {
     font-size: 12px;
   }
+  .card-header.bg-primary {
+  background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%) !important;
+  color: white !important;
+  border: none !important;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(13, 110, 253, 0.3) !important;
+}
+
+.card-header.bg-primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, transparent 100%);
+  pointer-events: none;
+}
+
+.card-header.bg-primary h5,
+.card-header.bg-primary .mb-0,
+.card-header.bg-primary i,
+.card-header.bg-primary .btn-outline-light {
+  color: white !important;
+  position: relative;
+  z-index: 2;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.card-header.bg-primary .btn-outline-light {
+  border-color: rgba(255, 255, 255, 0.5) !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.card-header.bg-primary .btn-outline-light:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border-color: white !important;
+}
+
+/* PARA admin-coming-soon.component.css - AGREGAR ESTAS REGLAS */
+.card-header.bg-primary {
+  background: linear-gradient(135deg, #6610f2 0%, #6f42c1 100%) !important;
+  color: white !important;
+  border: none !important;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(102, 16, 242, 0.3) !important;
+}
+
+.card-header.bg-primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, transparent 100%);
+  pointer-events: none;
+}
+
+.card-header.bg-primary h5,
+.card-header.bg-primary .mb-0,
+.card-header.bg-primary i,
+.card-header.bg-primary .btn-outline-light {
+  color: white !important;
+  position: relative;
+  z-index: 2;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.card-header.bg-primary .btn-outline-light {
+  border-color: rgba(255, 255, 255, 0.5) !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.card-header.bg-primary .btn-outline-light:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border-color: white !important;
+}
 }
