@@ -174,10 +174,15 @@ class BarProduct {
 
   static async update(id, productData) {
   try {
-    console.log('🔧 Iniciando actualización del producto:', id);
-    console.log('🔧 Datos recibidos:', JSON.stringify(productData, null, 2));
+    console.log('🔧 [DEBUG] Iniciando actualización del producto:', id);
+    console.log('🔧 [DEBUG] Datos recibidos COMPLETOS:', JSON.stringify(productData, null, 2));
     
-    // Actualizar producto principal
+    // ============ VERIFICAR CONEXIÓN A BD ============
+    console.log('🔧 [DEBUG] Verificando conexión a base de datos...');
+    const testQuery = await query('SELECT NOW() as current_time');
+    console.log('✅ [DEBUG] Conexión BD OK:', testQuery.rows[0]);
+    
+    // ============ ACTUALIZAR PRODUCTO PRINCIPAL ============
     const productQuery = `
       UPDATE productos_bar SET
         nombre = COALESCE($1, nombre),
@@ -210,17 +215,99 @@ class BarProduct {
       throw new Error('Producto no encontrado o ya eliminado');
     }
     
-    console.log('✅ Producto principal actualizado');
+    console.log('✅ [DEBUG] Producto principal actualizado');
     
-    // 🔧 CORECCIÓN: Actualizar tamaños si se proporcionan
+    // ============ VERIFICAR SI DEBE PROCESAR EXTRAS ============
+    console.log('🔧 [DEBUG] ===== PROCESANDO EXTRAS =====');
+    console.log('🔧 [DEBUG] productData.extras existe?', productData.hasOwnProperty('extras'));
+    console.log('🔧 [DEBUG] productData.extras valor:', productData.extras);
+    console.log('🔧 [DEBUG] productData.extras es array?', Array.isArray(productData.extras));
+    console.log('🔧 [DEBUG] productData.extras length:', productData.extras ? productData.extras.length : 'N/A');
+    
+    if (productData.extras !== undefined) {
+      console.log('🔧 [DEBUG] Entrando a procesamiento de extras...');
+      
+      // ============ ELIMINAR EXTRAS EXISTENTES ============
+      console.log('🔧 [DEBUG] Eliminando extras existentes...');
+      
+      // Primero verificar si existen extras para este producto
+      const existingExtrasCheck = await query(
+        'SELECT COUNT(*) as count FROM producto_extras WHERE producto_id = $1', 
+        [id]
+      );
+      console.log('🔧 [DEBUG] Extras existentes ANTES de eliminar:', existingExtrasCheck.rows[0].count);
+      
+      const deleteResult = await query('DELETE FROM producto_extras WHERE producto_id = $1 RETURNING *', [id]);
+      console.log('✅ [DEBUG] Extras eliminados - cantidad:', deleteResult.rows.length);
+      console.log('✅ [DEBUG] Extras eliminados - detalles:', deleteResult.rows);
+      
+      // ============ INSERTAR NUEVOS EXTRAS ============
+      if (Array.isArray(productData.extras) && productData.extras.length > 0) {
+        console.log('🔧 [DEBUG] Iniciando inserción de nuevos extras...');
+        console.log('🔧 [DEBUG] Extras a insertar:', JSON.stringify(productData.extras, null, 2));
+        
+        for (let i = 0; i < productData.extras.length; i++) {
+          const extra = productData.extras[i];
+          console.log(`🔧 [DEBUG] Procesando extra ${i + 1}/${productData.extras.length}:`, extra);
+          
+          if (extra && extra.nombre && extra.precio !== undefined) {
+            console.log(`🔧 [DEBUG] Extra ${i + 1} VÁLIDO - insertando...`);
+            console.log(`🔧 [DEBUG] - producto_id: ${id}`);
+            console.log(`🔧 [DEBUG] - nombre: "${extra.nombre}"`);
+            console.log(`🔧 [DEBUG] - precio: ${extra.precio}`);
+            
+            try {
+              const insertQuery = 'INSERT INTO producto_extras (producto_id, nombre, precio) VALUES ($1, $2, $3) RETURNING *';
+              const insertValues = [id, extra.nombre, extra.precio];
+              
+              console.log(`🔧 [DEBUG] Ejecutando query:`, insertQuery);
+              console.log(`🔧 [DEBUG] Con valores:`, insertValues);
+              
+              const insertResult = await query(insertQuery, insertValues);
+              
+              console.log(`✅ [DEBUG] Extra ${i + 1} insertado exitosamente:`, insertResult.rows[0]);
+              
+            } catch (insertError) {
+              console.error(`❌ [DEBUG] Error al insertar extra ${i + 1}:`, insertError);
+              console.error(`❌ [DEBUG] Error stack:`, insertError.stack);
+              console.error(`❌ [DEBUG] Error code:`, insertError.code);
+              console.error(`❌ [DEBUG] Error detail:`, insertError.detail);
+              throw insertError;
+            }
+            
+          } else {
+            console.warn(`⚠️ [DEBUG] Extra ${i + 1} INVÁLIDO - ignorado:`, extra);
+            console.warn(`⚠️ [DEBUG] - tiene nombre?`, !!extra?.nombre);
+            console.warn(`⚠️ [DEBUG] - tiene precio?`, extra?.precio !== undefined);
+            console.warn(`⚠️ [DEBUG] - precio >= 0?`, extra?.precio >= 0);
+          }
+        }
+        
+        // ============ VERIFICAR INSERCIÓN ============
+        const finalExtrasCheck = await query(
+          'SELECT * FROM producto_extras WHERE producto_id = $1', 
+          [id]
+        );
+        console.log('🔧 [DEBUG] Extras DESPUÉS de insertar:', finalExtrasCheck.rows);
+        console.log('🔧 [DEBUG] Total extras insertados:', finalExtrasCheck.rows.length);
+        
+      } else {
+        console.log('ℹ️ [DEBUG] No hay extras para insertar o array vacío/inválido');
+        console.log('ℹ️ [DEBUG] - es array?', Array.isArray(productData.extras));
+        console.log('ℹ️ [DEBUG] - length:', productData.extras ? productData.extras.length : 'N/A');
+      }
+    } else {
+      console.log('ℹ️ [DEBUG] productData.extras es undefined - no se procesarán extras');
+    }
+    
+    // ============ PROCESAR TAMAÑOS (para comparar) ============
+    console.log('🔧 [DEBUG] ===== PROCESANDO TAMAÑOS =====');
     if (productData.tamanos !== undefined) {
-      console.log('🔧 Procesando tamaños:', productData.tamanos);
+      console.log('🔧 [DEBUG] Procesando tamaños:', productData.tamanos);
       
-      // Eliminar tamaños existentes
       await query('DELETE FROM producto_tamanos WHERE producto_id = $1', [id]);
-      console.log('✅ Tamaños existentes eliminados');
+      console.log('✅ [DEBUG] Tamaños existentes eliminados');
       
-      // Insertar nuevos tamaños
       if (Array.isArray(productData.tamanos) && productData.tamanos.length > 0) {
         for (const tamano of productData.tamanos) {
           if (tamano && tamano.nombre && tamano.precio !== undefined) {
@@ -228,73 +315,22 @@ class BarProduct {
               'INSERT INTO producto_tamanos (producto_id, nombre, precio) VALUES ($1, $2, $3)',
               [id, tamano.nombre, tamano.precio]
             );
-            console.log(`✅ Tamaño insertado: ${tamano.nombre} - $${tamano.precio}`);
+            console.log(`✅ [DEBUG] Tamaño insertado: ${tamano.nombre} - $${tamano.precio}`);
           }
         }
       }
     }
     
-    // 🔧 CORECCIÓN: Actualizar extras si se proporcionan
-    if (productData.extras !== undefined) {
-      console.log('🔧 Procesando extras:', productData.extras);
-      
-      // Eliminar extras existentes
-      await query('DELETE FROM producto_extras WHERE producto_id = $1', [id]);
-      console.log('✅ Extras existentes eliminados');
-      
-      // Insertar nuevos extras
-      if (Array.isArray(productData.extras) && productData.extras.length > 0) {
-        for (const extra of productData.extras) {
-          if (extra && extra.nombre && extra.precio !== undefined) {
-            console.log(`🔧 Insertando extra: ${extra.nombre} - $${extra.precio}`);
-            
-            const insertResult = await query(
-              'INSERT INTO producto_extras (producto_id, nombre, precio) VALUES ($1, $2, $3) RETURNING *',
-              [id, extra.nombre, extra.precio]
-            );
-            
-            console.log('✅ Extra insertado exitosamente:', insertResult.rows[0]);
-          } else {
-            console.warn('⚠️ Extra inválido ignorado:', extra);
-          }
-        }
-      } else {
-        console.log('ℹ️ No hay extras para insertar o array vacío');
-      }
-    }
-    
-    // 🔧 CORECCIÓN: Actualizar items del combo si se proporcionan
-    if (productData.combo_items !== undefined) {
-      console.log('🔧 Procesando combo items:', productData.combo_items);
-      
-      // Eliminar items existentes
-      await query('DELETE FROM combo_items WHERE producto_id = $1', [id]);
-      console.log('✅ Combo items existentes eliminados');
-      
-      // Insertar nuevos items
-      if (productData.es_combo && Array.isArray(productData.combo_items) && productData.combo_items.length > 0) {
-        for (const item of productData.combo_items) {
-          if (item && item.item_nombre) {
-            await query(
-              'INSERT INTO combo_items (producto_id, item_nombre) VALUES ($1, $2)',
-              [id, item.item_nombre]
-            );
-            console.log(`✅ Combo item insertado: ${item.item_nombre}`);
-          }
-        }
-      }
-    }
-    
-    // Obtener el producto actualizado con todas las relaciones
-    console.log('🔧 Obteniendo producto actualizado...');
+    // ============ OBTENER PRODUCTO FINAL ============
+    console.log('🔧 [DEBUG] Obteniendo producto actualizado...');
     const updatedProduct = await this.getById(id);
-    console.log('✅ Producto completamente actualizado:', updatedProduct);
+    console.log('✅ [DEBUG] Producto completamente actualizado:', updatedProduct);
     
     return updatedProduct;
     
   } catch (error) {
-    console.error('❌ Error completo en update:', error);
-    console.error('❌ Stack trace:', error.stack);
+    console.error('❌ [DEBUG] Error completo en update:', error);
+    console.error('❌ [DEBUG] Stack trace:', error.stack);
     throw new Error(`Error al actualizar producto: ${error.message}`);
   }
 }
