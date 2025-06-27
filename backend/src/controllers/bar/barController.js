@@ -82,43 +82,66 @@ class BarController {
 
   // Actualizar producto
   static updateProduct = asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    
-    if (!id || isNaN(id)) {
-      return res.status(400).json({
-        success: false,
-        message: 'ID de producto inválido'
-      });
-    }
-
-    // Validar errores de express-validator
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Datos de entrada inválidos',
-        errors: errors.array()
-      });
-    }
-
-    const productData = req.body;
-    
-    // Validaciones adicionales
-    if (productData.precio && productData.precio <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'El precio debe ser mayor a 0'
-      });
-    }
-
-    const updatedProduct = await BarProduct.update(parseInt(id), productData);
-
-    res.status(200).json({
-      success: true,
-      message: 'Producto actualizado exitosamente',
-      data: updatedProduct
+  const { id } = req.params;
+  
+  if (!id || isNaN(id)) {
+    return res.status(400).json({
+      success: false,
+      message: 'ID de producto inválido'
     });
+  }
+
+  // Validar errores de express-validator
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: 'Datos de entrada inválidos',
+      errors: errors.array()
+    });
+  }
+
+  const productData = req.body;
+  
+  console.log('🔧 Controller - Datos recibidos para actualizar:', JSON.stringify(productData, null, 2));
+  
+  // Validaciones adicionales
+  if (productData.precio && productData.precio <= 0) {
+    return res.status(400).json({
+      success: false,
+      message: 'El precio debe ser mayor a 0'
+    });
+  }
+
+  // 🔧 NUEVA VALIDACIÓN: Verificar que los arrays estén bien formateados
+  if (productData.tamanos && !Array.isArray(productData.tamanos)) {
+    console.warn('⚠️ tamanos no es un array:', productData.tamanos);
+    productData.tamanos = [];
+  }
+
+  if (productData.extras && !Array.isArray(productData.extras)) {
+    console.warn('⚠️ extras no es un array:', productData.extras);
+    productData.extras = [];
+  }
+
+  if (productData.combo_items && !Array.isArray(productData.combo_items)) {
+    console.warn('⚠️ combo_items no es un array:', productData.combo_items);
+    productData.combo_items = [];
+  }
+
+  // 🔧 LOGGING DETALLADO
+  console.log('🔧 Tamaños a procesar:', productData.tamanos);
+  console.log('🔧 Extras a procesar:', productData.extras);
+  console.log('🔧 Combo items a procesar:', productData.combo_items);
+
+  const updatedProduct = await BarProduct.update(parseInt(id), productData);
+
+  res.status(200).json({
+    success: true,
+    message: 'Producto actualizado exitosamente',
+    data: updatedProduct
   });
+});
 
   // Cambiar disponibilidad del producto
   static toggleDisponibilidad = asyncHandler(async (req, res) => {

@@ -173,95 +173,131 @@ class BarProduct {
   }
 
   static async update(id, productData) {
-    try {
-      // Actualizar producto principal
-      const productQuery = `
-        UPDATE productos_bar SET
-          nombre = COALESCE($1, nombre),
-          descripcion = COALESCE($2, descripcion),
-          precio = COALESCE($3, precio),
-          categoria = COALESCE($4, categoria),
-          imagen = COALESCE($5, imagen),
-          disponible = COALESCE($6, disponible),
-          es_combo = COALESCE($7, es_combo),
-          descuento = COALESCE($8, descuento),
-          fecha_actualizacion = CURRENT_TIMESTAMP
-        WHERE id = $9 AND eliminado = false
-        RETURNING *
-      `;
+  try {
+    console.log('🔧 Iniciando actualización del producto:', id);
+    console.log('🔧 Datos recibidos:', JSON.stringify(productData, null, 2));
+    
+    // Actualizar producto principal
+    const productQuery = `
+      UPDATE productos_bar SET
+        nombre = COALESCE($1, nombre),
+        descripcion = COALESCE($2, descripcion),
+        precio = COALESCE($3, precio),
+        categoria = COALESCE($4, categoria),
+        imagen = COALESCE($5, imagen),
+        disponible = COALESCE($6, disponible),
+        es_combo = COALESCE($7, es_combo),
+        descuento = COALESCE($8, descuento),
+        fecha_actualizacion = CURRENT_TIMESTAMP
+      WHERE id = $9 AND eliminado = false
+      RETURNING *
+    `;
+    
+    const productValues = [
+      productData.nombre || null,
+      productData.descripcion || null,
+      productData.precio || null,
+      productData.categoria || null,
+      productData.imagen || null,
+      productData.disponible !== undefined ? productData.disponible : null,
+      productData.es_combo !== undefined ? productData.es_combo : null,
+      productData.descuento !== undefined ? productData.descuento : null,
+      id
+    ];
+    
+    const productResult = await query(productQuery, productValues);
+    if (productResult.rows.length === 0) {
+      throw new Error('Producto no encontrado o ya eliminado');
+    }
+    
+    console.log('✅ Producto principal actualizado');
+    
+    // 🔧 CORECCIÓN: Actualizar tamaños si se proporcionan
+    if (productData.tamanos !== undefined) {
+      console.log('🔧 Procesando tamaños:', productData.tamanos);
       
-      const productValues = [
-        productData.nombre || null,
-        productData.descripcion || null,
-        productData.precio || null,
-        productData.categoria || null,
-        productData.imagen || null,
-        productData.disponible !== undefined ? productData.disponible : null,
-        productData.es_combo !== undefined ? productData.es_combo : null,
-        productData.descuento !== undefined ? productData.descuento : null,
-        id
-      ];
+      // Eliminar tamaños existentes
+      await query('DELETE FROM producto_tamanos WHERE producto_id = $1', [id]);
+      console.log('✅ Tamaños existentes eliminados');
       
-      const productResult = await query(productQuery, productValues);
-      if (productResult.rows.length === 0) {
-        throw new Error('Producto no encontrado o ya eliminado');
-      }
-      
-      // Actualizar tamaños si se proporcionan
-      if (productData.tamanos !== undefined) {
-        // Eliminar tamaños existentes
-        await query('DELETE FROM producto_tamanos WHERE producto_id = $1', [id]);
-        
-        // Insertar nuevos tamaños
-        if (productData.tamanos.length > 0) {
-          for (const tamano of productData.tamanos) {
+      // Insertar nuevos tamaños
+      if (Array.isArray(productData.tamanos) && productData.tamanos.length > 0) {
+        for (const tamano of productData.tamanos) {
+          if (tamano && tamano.nombre && tamano.precio !== undefined) {
             await query(
               'INSERT INTO producto_tamanos (producto_id, nombre, precio) VALUES ($1, $2, $3)',
               [id, tamano.nombre, tamano.precio]
             );
+            console.log(`✅ Tamaño insertado: ${tamano.nombre} - $${tamano.precio}`);
           }
         }
       }
+    }
+    
+    // 🔧 CORECCIÓN: Actualizar extras si se proporcionan
+    if (productData.extras !== undefined) {
+      console.log('🔧 Procesando extras:', productData.extras);
       
-      // Actualizar extras si se proporcionan
-      if (productData.extras !== undefined) {
-        // Eliminar extras existentes
-        await query('DELETE FROM producto_extras WHERE producto_id = $1', [id]);
-        
-        // Insertar nuevos extras
-        if (productData.extras.length > 0) {
-          for (const extra of productData.extras) {
-            await query(
-              'INSERT INTO producto_extras (producto_id, nombre, precio) VALUES ($1, $2, $3)',
+      // Eliminar extras existentes
+      await query('DELETE FROM producto_extras WHERE producto_id = $1', [id]);
+      console.log('✅ Extras existentes eliminados');
+      
+      // Insertar nuevos extras
+      if (Array.isArray(productData.extras) && productData.extras.length > 0) {
+        for (const extra of productData.extras) {
+          if (extra && extra.nombre && extra.precio !== undefined) {
+            console.log(`🔧 Insertando extra: ${extra.nombre} - $${extra.precio}`);
+            
+            const insertResult = await query(
+              'INSERT INTO producto_extras (producto_id, nombre, precio) VALUES ($1, $2, $3) RETURNING *',
               [id, extra.nombre, extra.precio]
             );
+            
+            console.log('✅ Extra insertado exitosamente:', insertResult.rows[0]);
+          } else {
+            console.warn('⚠️ Extra inválido ignorado:', extra);
           }
         }
+      } else {
+        console.log('ℹ️ No hay extras para insertar o array vacío');
       }
+    }
+    
+    // 🔧 CORECCIÓN: Actualizar items del combo si se proporcionan
+    if (productData.combo_items !== undefined) {
+      console.log('🔧 Procesando combo items:', productData.combo_items);
       
-      // Actualizar items del combo si se proporcionan
-      if (productData.combo_items !== undefined) {
-        // Eliminar items existentes
-        await query('DELETE FROM combo_items WHERE producto_id = $1', [id]);
-        
-        // Insertar nuevos items
-        if (productData.es_combo && productData.combo_items.length > 0) {
-          for (const item of productData.combo_items) {
+      // Eliminar items existentes
+      await query('DELETE FROM combo_items WHERE producto_id = $1', [id]);
+      console.log('✅ Combo items existentes eliminados');
+      
+      // Insertar nuevos items
+      if (productData.es_combo && Array.isArray(productData.combo_items) && productData.combo_items.length > 0) {
+        for (const item of productData.combo_items) {
+          if (item && item.item_nombre) {
             await query(
               'INSERT INTO combo_items (producto_id, item_nombre) VALUES ($1, $2)',
               [id, item.item_nombre]
             );
+            console.log(`✅ Combo item insertado: ${item.item_nombre}`);
           }
         }
       }
-      
-      // Obtener el producto actualizado con todas las relaciones
-      return await this.getById(id);
-      
-    } catch (error) {
-      throw new Error(`Error al actualizar producto: ${error.message}`);
     }
+    
+    // Obtener el producto actualizado con todas las relaciones
+    console.log('🔧 Obteniendo producto actualizado...');
+    const updatedProduct = await this.getById(id);
+    console.log('✅ Producto completamente actualizado:', updatedProduct);
+    
+    return updatedProduct;
+    
+  } catch (error) {
+    console.error('❌ Error completo en update:', error);
+    console.error('❌ Stack trace:', error.stack);
+    throw new Error(`Error al actualizar producto: ${error.message}`);
   }
+}
 
   // Cambiar disponibilidad (para activar/desactivar producto)
   static async toggleDisponibilidad(id) {
