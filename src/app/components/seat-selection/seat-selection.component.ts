@@ -1,3 +1,5 @@
+// seat-selection.component.ts - CORRECCIÓN DE PRECIOS VIP
+
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MovieService, Pelicula } from '../../services/movie.service';
@@ -7,20 +9,20 @@ import { ToastService } from '../../services/toast.service';
 import { AuthService } from '../../services/auth.service';
 import { UserService } from '../../services/user.service';
 
-// 🆕 Interface actualizada para asientos (coincide con la BD)
+// Interface actualizada para asientos (coincide con la BD)
 interface Seat {
-  id: number;                // ID de la BD
-  fila: string;              // row -> fila
-  numero: number;            // number sigue igual
-  es_vip: boolean;           // isVip -> es_vip
-  esta_ocupado: boolean;     // isOccupied -> esta_ocupado
-  esta_deshabilitado: boolean; // 🆕 NUEVO: Campo para asientos no disponibles
-  precio: string;            // price -> precio (viene como string de la BD)
-  seat_id: string;           // Código del asiento (ej: "A1")
+  id: number;
+  fila: string;
+  numero: number;
+  es_vip: boolean;
+  esta_ocupado: boolean;
+  esta_deshabilitado: boolean;
+  precio: string; // Viene como string de la BD
+  seat_id: string;
   
   // Propiedades para el frontend
   isSelected?: boolean;
-  isDisabled?: boolean;      // Se calcula basado en esta_deshabilitado
+  isDisabled?: boolean;
 }
 
 @Component({
@@ -58,7 +60,6 @@ export class SeatSelectionComponent implements OnInit {
     this.cargarDatos();
   }
 
-  // 🔧 MÉTODO ACTUALIZADO: Usar APIs reales
   cargarDatos(): void {
     this.cargando = true;
     this.errorConexion = false;
@@ -86,8 +87,6 @@ export class SeatSelectionComponent implements OnInit {
         if (pelicula) {
           this.pelicula = pelicula;
           console.log('✅ Película cargada:', pelicula.titulo);
-          
-          // Cargar función desde API
           this.cargarFuncion();
         } else {
           console.error('Película no encontrada');
@@ -104,15 +103,12 @@ export class SeatSelectionComponent implements OnInit {
     });
   }
 
-  // 🔧 MÉTODO ACTUALIZADO: Cargar función y asientos reales
   private cargarFuncion(): void {
     this.functionService.getFunctionById(this.funcionId).subscribe({
       next: (funcion) => {
         if (funcion) {
           this.funcion = funcion;
           console.log('✅ Función cargada:', funcion);
-          
-          // 🆕 CAMBIO: Cargar asientos reales en lugar de generarlos
           this.cargarAsientosReales();
         } else {
           console.error('Función no encontrada');
@@ -129,7 +125,6 @@ export class SeatSelectionComponent implements OnInit {
     });
   }
 
-  // 🆕 MÉTODO NUEVO: Cargar asientos reales de la BD
   private cargarAsientosReales(): void {
     console.log('🪑 Cargando asientos reales para función:', this.funcionId);
     
@@ -140,10 +135,16 @@ export class SeatSelectionComponent implements OnInit {
           this.seats = response.data.map((seat: any) => ({
             ...seat,
             isSelected: false,
-            isDisabled: seat.esta_deshabilitado || false // Podrías agregar lógica para deshabilitar ciertos asientos
+            isDisabled: seat.esta_deshabilitado || false
           }));
           
           console.log(`✅ ${this.seats.length} asientos cargados desde la BD`);
+          console.log('💰 Precios de asientos:', this.seats.map(s => ({ 
+            seat: s.seat_id, 
+            precio: s.precio, 
+            es_vip: s.es_vip 
+          })));
+          
           this.cargando = false;
         } else {
           console.error('❌ No se pudieron cargar los asientos');
@@ -184,7 +185,11 @@ export class SeatSelectionComponent implements OnInit {
       this.selectedSeats.push(seat);
     }
     
-    console.log('🪑 Asientos seleccionados:', this.selectedSeats.map(s => s.seat_id));
+    console.log('🪑 Asientos seleccionados:', this.selectedSeats.map(s => ({
+      seat_id: s.seat_id,
+      precio: s.precio,
+      es_vip: s.es_vip
+    })));
   }
 
   // ==================== UTILIDADES DE ASIENTOS ====================
@@ -212,8 +217,9 @@ export class SeatSelectionComponent implements OnInit {
     return this.functionService.formatPrice(parseFloat(seat.precio));
   }
 
-  // ==================== CÁLCULOS DE PRECIOS ====================
+  // ==================== CÁLCULOS DE PRECIOS CORREGIDOS ====================
   
+  // 🔧 CORREGIDO: Usar precio real de cada asiento
   getTotalPrice(): number {
     return this.selectedSeats.reduce((total, seat) => total + parseFloat(seat.precio), 0);
   }
@@ -230,14 +236,17 @@ export class SeatSelectionComponent implements OnInit {
     return this.selectedSeats.filter(seat => seat.es_vip);
   }
 
+  // 🔧 CORREGIDO: Calcular precio real de asientos normales
   getNormalPrice(): number {
     return this.getNormalSeats().reduce((total, seat) => total + parseFloat(seat.precio), 0);
   }
 
+  // 🔧 CORREGIDO: Precio VIP base (función x 1.5) - solo para mostrar
   getVipPrice(): number {
     return this.funcion ? this.funcion.precio * 1.5 : 0;
   }
 
+  // 🔧 CORREGIDO: Calcular precio real de asientos VIP seleccionados
   getVipTotalPrice(): number {
     return this.getVipSeats().reduce((total, seat) => total + parseFloat(seat.precio), 0);
   }
@@ -254,61 +263,85 @@ export class SeatSelectionComponent implements OnInit {
     this.router.navigate(['/ticket-purchase', this.peliculaId]);
   }
 
- confirmarSeleccion(): void {
-  if (this.selectedSeats.length === 0) {
-    this.toastService.showWarning('Debes seleccionar al menos un asiento');
-    return;
-  }
-
-  if (this.selectedSeats.length !== this.cantidad) {
-    this.toastService.showWarning(`Debes seleccionar exactamente ${this.cantidad} asiento(s)`);
-    return;
-  }
-
-  if (!this.pelicula || !this.funcion) {
-    this.toastService.showError('Error: Información de película o función no disponible');
-    return;
-  }
-
-  // 🆕 AGREGAR AL HISTORIAL
-  this.agregarAlHistorial();
-
-  // 🔧 CREAR ITEM CON ESTRUCTURA CORRECTA (igual que ticket-purchase)
-  const itemParaCarrito = {
-    tipo: 'pelicula',
-    pelicula: this.pelicula,
-    funcion: {
-      ...this.funcion,
-      // 🔧 NO agregar campos extra que confunden al CartService
-    },
-    cantidad: this.selectedSeats.length,
-    // 🆕 AGREGAR asientos_seleccionados al nivel correcto
-    asientos_seleccionados: this.selectedSeats.map(s => s.seat_id)
-  };
-
-  console.log('🛒 Agregando al carrito desde seat-selection:', itemParaCarrito);
-
-  // 🔧 USAR EL MISMO MÉTODO QUE ticket-purchase
-  this.cartService.addToCart(itemParaCarrito).subscribe({
-    next: (exito) => {
-      if (exito) {
-        this.toastService.showSuccess(`¡${this.selectedSeats.length} asiento(s) agregado(s) al carrito!`);
-        
-        // Log para debugging
-        console.log('✅ Item agregado correctamente al carrito');
-        console.log('🛒 Carrito actual:', this.cartService.getCartItems());
-        
-        this.router.navigate(['/cart']);
-      } else {
-        this.toastService.showError('No se pudo agregar al carrito');
-      }
-    },
-    error: (error) => {
-      console.error('❌ Error agregando al carrito:', error);
-      this.toastService.showError('Error al agregar al carrito');
+  // 🔧 CORREGIDO: Enviar precios correctos al carrito
+  confirmarSeleccion(): void {
+    if (this.selectedSeats.length === 0) {
+      this.toastService.showWarning('Debes seleccionar al menos un asiento');
+      return;
     }
-  });
-}
+
+    if (this.selectedSeats.length !== this.cantidad) {
+      this.toastService.showWarning(`Debes seleccionar exactamente ${this.cantidad} asiento(s)`);
+      return;
+    }
+
+    if (!this.pelicula || !this.funcion) {
+      this.toastService.showError('Error: Información de película o función no disponible');
+      return;
+    }
+
+    // Agregar al historial
+    this.agregarAlHistorial();
+
+    // 🔧 CORRECCIÓN CRÍTICA: Calcular precio promedio correcto
+    const totalPrecio = this.getTotalPrice();
+    const precioPromedio = totalPrecio / this.selectedSeats.length;
+
+    console.log('💰 Cálculo de precios:', {
+      totalPrecio: totalPrecio,
+      cantidad: this.selectedSeats.length,
+      precioPromedio: precioPromedio,
+      asientos: this.selectedSeats.map(s => ({
+        seat_id: s.seat_id,
+        precio: parseFloat(s.precio),
+        es_vip: s.es_vip
+      }))
+    });
+
+    // 🔧 CREAR ITEM CON PRECIOS CORRECTOS
+    const itemParaCarrito = {
+      tipo: 'pelicula',
+      pelicula: this.pelicula,
+      funcion: {
+        ...this.funcion,
+        // 🔧 USAR PRECIO PROMEDIO REAL CALCULADO DESDE LOS ASIENTOS
+        precio: precioPromedio
+      },
+      cantidad: this.selectedSeats.length,
+      // 🆕 INFORMACIÓN DETALLADA DE ASIENTOS
+      asientos_seleccionados: this.selectedSeats.map(s => s.seat_id),
+      asientos_info: this.selectedSeats.map(s => ({
+        id: s.id,
+        seat_id: s.seat_id,
+        precio: parseFloat(s.precio),
+        es_vip: s.es_vip
+      })),
+      // 🔧 PRECIO TOTAL REAL
+      precio_total_real: totalPrecio
+    };
+
+    console.log('🛒 Agregando al carrito desde seat-selection:', itemParaCarrito);
+
+    this.cartService.addToCart(itemParaCarrito).subscribe({
+      next: (exito) => {
+        if (exito) {
+          this.toastService.showSuccess(`¡${this.selectedSeats.length} asiento(s) agregado(s) al carrito!`);
+          
+          console.log('✅ Item agregado correctamente al carrito');
+          console.log('🛒 Carrito actual:', this.cartService.getCartItems());
+          
+          this.router.navigate(['/cart']);
+        } else {
+          this.toastService.showError('No se pudo agregar al carrito');
+        }
+      },
+      error: (error) => {
+        console.error('❌ Error agregando al carrito:', error);
+        this.toastService.showError('Error al agregar al carrito');
+      }
+    });
+  }
+
   private agregarAlHistorial(): void {
     const currentUser = this.authService.getCurrentUser();
     if (currentUser && this.pelicula) {
@@ -324,18 +357,16 @@ export class SeatSelectionComponent implements OnInit {
     }
   }
 
-  // 🔧 USAR FORMATEO DEL FunctionService
+  // Métodos auxiliares
   formatearFecha(fecha: string): string {
     return this.functionService.formatDateForDisplay(fecha);
   }
 
-  // 🆕 MÉTODO PARA REINTENTAR
   reintentarConexion(): void {
     this.toastService.showInfo('Reintentando conexión...');
     this.cargarDatos();
   }
 
-  // 🆕 MÉTODO PARA TRACK
   trackSeat(index: number, seat: Seat): string {
     return seat.id.toString();
   }

@@ -1,6 +1,8 @@
+// orderController.js - CORRECCIÓN DE PRECIOS VIP EN BACKEND
+
 const Order = require('../../models/Order');
 const Points = require('../../models/Points');
-const User = require('../../models/User'); // 🔧 AGREGADO: Importar modelo User
+const User = require('../../models/User');
 
 class OrderController {
   constructor() {
@@ -23,9 +25,9 @@ class OrderController {
       console.log('📦 Creando nueva orden...');
       console.log('Datos recibidos:', JSON.stringify(req.body, null, 2));
       
-      const userId = req.user?.id; // Del middleware de autenticación
+      const userId = req.user?.id;
       
-      // 🔧 CORRECCIÓN: Buscar datos reales del usuario en la BD
+      // Buscar datos reales del usuario en la BD
       const userData = await User.findById(userId);
       if (!userData) {
         return res.status(404).json({
@@ -40,22 +42,22 @@ class OrderController {
         email: userData.email
       });
       
-      // 🔧 CORRECCIÓN: Usar datos reales del usuario, no del req.body
-      const orderData = {
+      // 🔧 VALIDAR Y PROCESAR ITEMS CON PRECIOS VIP CORRECTOS
+      const orderData = await this.processOrderDataWithVipPricing({
         ...req.body,
         usuario_id: userId,
-        // ✅ USAR DATOS REALES DE LA BASE DE DATOS
         email_cliente: userData.email,
         nombre_cliente: userData.nombre,
-        // Mantener teléfono del req.body si lo proporciona, sino null
         telefono_cliente: req.body.telefono_cliente || null
-      };
+      });
 
-      console.log('📋 Datos de orden corregidos:', {
+      console.log('📋 Datos de orden con precios corregidos:', {
         usuario_id: orderData.usuario_id,
         email_cliente: orderData.email_cliente,
         nombre_cliente: orderData.nombre_cliente,
-        total: orderData.total
+        total: orderData.total,
+        items_peliculas: orderData.items_peliculas?.length || 0,
+        items_bar: orderData.items_bar?.length || 0
       });
 
       // Validar datos de la orden
@@ -90,8 +92,8 @@ class OrderController {
             subtotal: orderData.subtotal,
             estado: orderData.estado || 'pendiente',
             metodo_pago: orderData.metodo_pago,
-            email_cliente: userData.email, // ✅ Email real
-            nombre_cliente: userData.nombre, // ✅ Nombre real
+            email_cliente: userData.email,
+            nombre_cliente: userData.nombre,
             fecha_creacion: result.fechaCreacion
           }
         });
@@ -118,7 +120,7 @@ class OrderController {
       const userId = req.user?.id;
       const purchaseData = req.body;
       
-      // 🔧 CORRECCIÓN: Buscar datos reales del usuario
+      // Buscar datos reales del usuario
       const userData = await User.findById(userId);
       if (!userData) {
         return res.status(404).json({
@@ -133,16 +135,15 @@ class OrderController {
         email: userData.email
       });
       
-      // 1. Crear la orden con datos reales del usuario
-      const orderData = {
+      // 🔧 PROCESAR DATOS CON PRECIOS VIP CORRECTOS
+      const orderData = await this.processOrderDataWithVipPricing({
         usuario_id: userId,
         total: purchaseData.total,
         subtotal: purchaseData.subtotal,
         impuestos: purchaseData.impuestos || 0,
         cargo_servicio: purchaseData.cargo_servicio || 0,
         metodo_pago: purchaseData.metodo_pago,
-        estado: 'completada', // Directamente completada si el pago es exitoso
-        // ✅ USAR DATOS REALES DE LA BASE DE DATOS
+        estado: 'completada',
         email_cliente: userData.email,
         nombre_cliente: userData.nombre,
         telefono_cliente: purchaseData.telefono_cliente || null,
@@ -151,17 +152,20 @@ class OrderController {
         paypal_status: purchaseData.paypal_status,
         items_peliculas: purchaseData.items_peliculas || [],
         items_bar: purchaseData.items_bar || []
-      };
+      });
       
-      console.log('💰 Datos de compra con usuario real:', {
+      console.log('💰 Datos de compra con precios VIP corregidos:', {
         usuario_id: orderData.usuario_id,
         email_cliente: orderData.email_cliente,
         nombre_cliente: orderData.nombre_cliente,
         total: orderData.total,
-        metodo_pago: orderData.metodo_pago
+        subtotal: orderData.subtotal,
+        metodo_pago: orderData.metodo_pago,
+        items_peliculas: orderData.items_peliculas?.length || 0,
+        items_bar: orderData.items_bar?.length || 0
       });
       
-      // 2. Validar y crear orden
+      // Validar y crear orden
       const validation = await this.orderModel.validateOrderData(orderData);
       if (!validation.valid) {
         return res.status(400).json({
@@ -179,23 +183,23 @@ class OrderController {
       
       console.log(`✅ Compra procesada exitosamente para ${userData.nombre}: Orden ${orderResult.orderId}`);
       
-      // 3. Procesar puntos por la compra
+      // Procesar puntos por la compra
       let pointsResult = null;
       try {
         pointsResult = await this.pointsModel.processPointsForPurchase(
           userId, 
-          purchaseData.total,
+          orderData.total, // 🔧 USAR TOTAL CORREGIDO
           {
             order_id: orderResult.orderId,
-            items_count: (purchaseData.items_peliculas?.length || 0) + (purchaseData.items_bar?.length || 0),
-            payment_method: purchaseData.metodo_pago
+            items_count: (orderData.items_peliculas?.length || 0) + (orderData.items_bar?.length || 0),
+            payment_method: orderData.metodo_pago
           }
         );
       } catch (pointsError) {
         console.error('⚠️ Error procesando puntos (no crítico):', pointsError);
       }
       
-      // 4. Responder con éxito
+      // Responder con éxito
       res.status(201).json({
         success: true,
         message: 'Compra procesada exitosamente',
@@ -203,7 +207,7 @@ class OrderController {
           order: {
             id: orderResult.orderId,
             fecha_creacion: orderResult.fechaCreacion,
-            total: purchaseData.total,
+            total: orderData.total, // 🔧 TOTAL CORREGIDO
             estado: 'completada',
             usuario: {
               id: userData.id,
@@ -225,6 +229,143 @@ class OrderController {
         message: 'Error al procesar la compra',
         error: process.env.NODE_ENV === 'development' ? error.message : 'Error interno del servidor'
       });
+    }
+  }
+
+  // ==================== NUEVO MÉTODO: PROCESAR PRECIOS VIP ====================
+
+  async processOrderDataWithVipPricing(rawOrderData) {
+    try {
+      console.log('🔧 Procesando precios VIP en orden...');
+      
+      const orderData = { ...rawOrderData };
+      
+      // Procesar items de películas con precios VIP correctos
+      if (orderData.items_peliculas && Array.isArray(orderData.items_peliculas)) {
+        console.log(`🎬 Procesando ${orderData.items_peliculas.length} items de películas...`);
+        
+        for (let i = 0; i < orderData.items_peliculas.length; i++) {
+          const item = orderData.items_peliculas[i];
+          
+          console.log(`🎬 Item ${i + 1}:`, {
+            funcion_id: item.funcion_id,
+            cantidad: item.cantidad,
+            precio_unitario_original: item.precio_unitario,
+            asientos_seleccionados: item.asientos_seleccionados,
+            asientos_info: item.asientos_info
+          });
+          
+          // 🔧 RECALCULAR PRECIO BASADO EN ASIENTOS REALES
+          if (item.asientos_info && Array.isArray(item.asientos_info) && item.asientos_info.length > 0) {
+            // Usar precios reales de los asientos seleccionados
+            const totalPrecioReal = item.asientos_info.reduce((sum, asiento) => sum + parseFloat(asiento.precio || 0), 0);
+            const precioUnitarioReal = totalPrecioReal / item.cantidad;
+            
+            console.log(`💰 Recalculando precios con asientos reales:`, {
+              asientos_info: item.asientos_info.map(a => ({ seat_id: a.seat_id, precio: a.precio, es_vip: a.es_vip })),
+              totalPrecioReal: totalPrecioReal,
+              precioUnitarioReal: precioUnitarioReal,
+              cantidad: item.cantidad
+            });
+            
+            // Actualizar precios en el item
+            orderData.items_peliculas[i].precio_unitario = precioUnitarioReal;
+            orderData.items_peliculas[i].subtotal = totalPrecioReal;
+            
+            // Marcar tipo de asiento para la BD
+            const tieneAsientosVip = item.asientos_info.some(a => a.es_vip);
+            orderData.items_peliculas[i].tipo_asiento = tieneAsientosVip ? 'vip' : 'estandar';
+            
+          } else if (item.tipo_asiento === 'vip' || item.tiene_asientos_vip) {
+            // 🔧 FALLBACK: Si no hay asientos_info pero se indica que es VIP
+            console.log('💰 Aplicando precio VIP (fallback)...');
+            
+            // Obtener precio base de la función y aplicar multiplicador VIP
+            const precioBase = parseFloat(item.precio_unitario);
+            const precioVip = precioBase * 1.5;
+            
+            orderData.items_peliculas[i].precio_unitario = precioVip;
+            orderData.items_peliculas[i].subtotal = precioVip * item.cantidad;
+            orderData.items_peliculas[i].tipo_asiento = 'vip';
+          } else {
+            // 🔧 ASIENTOS ESTÁNDAR
+            orderData.items_peliculas[i].tipo_asiento = 'estandar';
+            // El precio ya está correcto, no cambiar
+          }
+          
+          console.log(`✅ Item ${i + 1} procesado:`, {
+            precio_unitario_final: orderData.items_peliculas[i].precio_unitario,
+            subtotal_final: orderData.items_peliculas[i].subtotal,
+            tipo_asiento: orderData.items_peliculas[i].tipo_asiento
+          });
+        }
+      }
+      
+      // Procesar items del bar (sin cambios)
+      if (orderData.items_bar && Array.isArray(orderData.items_bar)) {
+        console.log(`🍿 Procesando ${orderData.items_bar.length} items del bar...`);
+        // Los items del bar no necesitan procesamiento especial de precios VIP
+        orderData.items_bar.forEach((item, index) => {
+          console.log(`🍿 Item bar ${index + 1}:`, {
+            producto_id: item.producto_id,
+            cantidad: item.cantidad,
+            precio_unitario: item.precio_unitario,
+            subtotal: item.subtotal
+          });
+        });
+      }
+      
+      // 🔧 RECALCULAR TOTALES CON PRECIOS CORREGIDOS
+      const nuevosCalculos = this.recalculateTotals(orderData);
+      
+      console.log('💰 Totales recalculados:', nuevosCalculos);
+      
+      return {
+        ...orderData,
+        ...nuevosCalculos
+      };
+      
+    } catch (error) {
+      console.error('❌ Error procesando precios VIP:', error);
+      throw error;
+    }
+  }
+
+  // ==================== RECALCULAR TOTALES CON PRECIOS CORREGIDOS ====================
+
+  recalculateTotals(orderData) {
+    try {
+      let subtotal = 0;
+      
+      // Sumar subtotales de películas
+      if (orderData.items_peliculas && Array.isArray(orderData.items_peliculas)) {
+        subtotal += orderData.items_peliculas.reduce((sum, item) => sum + parseFloat(item.subtotal || 0), 0);
+      }
+      
+      // Sumar subtotales del bar
+      if (orderData.items_bar && Array.isArray(orderData.items_bar)) {
+        subtotal += orderData.items_bar.reduce((sum, item) => sum + parseFloat(item.subtotal || 0), 0);
+      }
+      
+      // Calcular cargos e impuestos
+      const cargo_servicio = subtotal * 0.05; // 5%
+      const impuestos = (subtotal + cargo_servicio) * 0.08; // 8%
+      const total = subtotal + cargo_servicio + impuestos;
+      
+      const totales = {
+        subtotal: Math.round(subtotal * 100) / 100,
+        cargo_servicio: Math.round(cargo_servicio * 100) / 100,
+        impuestos: Math.round(impuestos * 100) / 100,
+        total: Math.round(total * 100) / 100
+      };
+      
+      console.log('💰 Totales calculados:', totales);
+      
+      return totales;
+      
+    } catch (error) {
+      console.error('❌ Error recalculando totales:', error);
+      throw error;
     }
   }
 
@@ -433,7 +574,7 @@ class OrderController {
 
   async processPointsForOrder(userId, total, orderId) {
     try {
-      console.log(`💰 Procesando puntos para orden ${orderId}, total: $${total}`);
+      console.log(`💰 Procesando puntos para orden ${orderId}, total: ${total}`);
       
       const result = await this.pointsModel.processPointsForPurchase(
         userId, 
@@ -491,6 +632,77 @@ class OrderController {
       taxes: Math.round(taxes * 100) / 100,
       total: Math.round(total * 100) / 100
     };
+  }
+
+  // ==================== NUEVO MÉTODO: VALIDAR PRECIOS VIP ====================
+
+  async validateVipPricing(items_peliculas) {
+    try {
+      console.log('🔍 Validando precios VIP...');
+      
+      if (!items_peliculas || !Array.isArray(items_peliculas)) {
+        return { valid: true, corrected_items: [] };
+      }
+      
+      const corrected_items = [];
+      
+      for (const item of items_peliculas) {
+        const corrected_item = { ...item };
+        
+        // Si tiene información de asientos, validar precios
+        if (item.asientos_info && Array.isArray(item.asientos_info)) {
+          const tieneAsientosVip = item.asientos_info.some(a => a.es_vip);
+          const totalPrecioReal = item.asientos_info.reduce((sum, asiento) => sum + parseFloat(asiento.precio || 0), 0);
+          
+          if (tieneAsientosVip) {
+            console.log(`🎭 Item con asientos VIP detectado:`, {
+              funcion_id: item.funcion_id,
+              precio_original: item.precio_unitario,
+              precio_calculado: totalPrecioReal / item.cantidad,
+              asientos_vip: item.asientos_info.filter(a => a.es_vip).length
+            });
+            
+            corrected_item.precio_unitario = totalPrecioReal / item.cantidad;
+            corrected_item.subtotal = totalPrecioReal;
+            corrected_item.tipo_asiento = 'vip';
+          }
+        }
+        
+        corrected_items.push(corrected_item);
+      }
+      
+      return { valid: true, corrected_items };
+      
+    } catch (error) {
+      console.error('❌ Error validando precios VIP:', error);
+      return { valid: false, error: error.message };
+    }
+  }
+
+  // ==================== DEBUGGING Y LOGGING ====================
+
+  logOrderData(orderData, stage = 'unknown') {
+    console.log(`📋 [${stage.toUpperCase()}] Datos de orden:`, {
+      usuario_id: orderData.usuario_id,
+      total: orderData.total,
+      subtotal: orderData.subtotal,
+      items_peliculas: orderData.items_peliculas?.length || 0,
+      items_bar: orderData.items_bar?.length || 0,
+      metodo_pago: orderData.metodo_pago,
+      estado: orderData.estado
+    });
+    
+    if (orderData.items_peliculas && orderData.items_peliculas.length > 0) {
+      console.log(`🎬 Items de películas en ${stage}:`, orderData.items_peliculas.map((item, index) => ({
+        item: index + 1,
+        funcion_id: item.funcion_id,
+        cantidad: item.cantidad,
+        precio_unitario: item.precio_unitario,
+        subtotal: item.subtotal,
+        tipo_asiento: item.tipo_asiento,
+        tiene_asientos_vip: item.asientos_info?.some(a => a.es_vip) || false
+      })));
+    }
   }
 }
 

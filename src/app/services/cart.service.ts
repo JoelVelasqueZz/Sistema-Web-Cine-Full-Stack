@@ -1,3 +1,5 @@
+// cart.service.ts - CORRECCIÓN DE PRECIOS VIP
+
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, of } from 'rxjs';
@@ -5,7 +7,6 @@ import { catchError, map } from 'rxjs/operators';
 import { Pelicula, FuncionCine } from './movie.service';
 import { ProductoBar, TamañoProducto, ExtraProducto } from './bar.service';
 import { environment } from '../../environments/environment';
-
 
 @Injectable({
   providedIn: 'root'
@@ -20,7 +21,7 @@ export class CartService {
   public total$ = this.totalSubject.asObservable();
 
   constructor(private http: HttpClient) { 
-    console.log('🆕 CartService actualizado con integración API');
+    console.log('🆕 CartService actualizado con corrección de precios VIP');
     this.loadCartFromStorage();
   }
 
@@ -30,98 +31,128 @@ export class CartService {
     return this.cartItems;
   }
 
-  // 🆕 MÉTODO MEJORADO: Agregar al carrito con validación
+  // 🔧 MÉTODO CORREGIDO: Manejar precios VIP correctamente
   addToCart(item: any): Observable<boolean> {
-  try {
-    console.log('🛒 CartService.addToCart recibió:', item);
-    
-    if (item.tipo === 'pelicula' || (item.pelicula && item.funcion)) {
-      // 🆕 EXTRAER asientos_seleccionados del item
-      const asientosSeleccionados = item.asientos_seleccionados || [];
-      return this.addMovieToCartValidated(
-        item.pelicula, 
-        item.funcion, 
-        item.cantidad || 1, 
-        asientosSeleccionados
-      );
-    } else if (item.tipo === 'bar' || item.producto) {
-      return this.addBarProductToCartValidated(item);
-    } else {
-      console.error('Tipo de item no reconocido:', item);
+    try {
+      console.log('🛒 CartService.addToCart recibió:', item);
+      
+      if (item.tipo === 'pelicula' || (item.pelicula && item.funcion)) {
+        const asientosSeleccionados = item.asientos_seleccionados || [];
+        const asientosInfo = item.asientos_info || [];
+        const precioTotalReal = item.precio_total_real;
+        
+        return this.addMovieToCartValidated(
+          item.pelicula, 
+          item.funcion, 
+          item.cantidad || 1, 
+          asientosSeleccionados,
+          asientosInfo,
+          precioTotalReal
+        );
+      } else if (item.tipo === 'bar' || item.producto) {
+        return this.addBarProductToCartValidated(item);
+      } else {
+        console.error('Tipo de item no reconocido:', item);
+        return of(false);
+      }
+    } catch (error) {
+      console.error('Error al agregar al carrito:', error);
       return of(false);
     }
-  } catch (error) {
-    console.error('Error al agregar al carrito:', error);
-    return of(false);
   }
-}
 
-  // 🆕 AGREGAR PELÍCULA CON VALIDACIÓN API
-  private addMovieToCartValidated(pelicula: Pelicula, funcion: FuncionCine, cantidad: number = 1, asientosSeleccionados?: string[]): Observable<boolean> {
-  return new Observable(observer => {
-    // Validar disponibilidad (simulado por ahora, se puede conectar a API real)
-    if (funcion.asientosDisponibles < cantidad) {
-      observer.next(false);
-      observer.complete();
-      return;
-    }
-
-    // Verificar si ya existe el item
-    const existingItem = this.cartItems.find(item => 
-      item.tipo === 'pelicula' &&
-      item.pelicula?.id === pelicula.id && 
-      item.funcion?.id === funcion.id
-    );
-
-    if (existingItem) {
-      // Si existe, aumentar cantidad
-      const nuevaCantidad = existingItem.cantidad + cantidad;
-      if (nuevaCantidad <= funcion.asientosDisponibles) {
-        existingItem.cantidad = nuevaCantidad;
-        existingItem.subtotal = existingItem.precio * existingItem.cantidad;
-        
-        // 🆕 ACTUALIZAR asientos si se proporcionan
-        if (asientosSeleccionados && asientosSeleccionados.length > 0) {
-          existingItem.asientos_seleccionados = [
-            ...(existingItem.asientos_seleccionados || []),
-            ...asientosSeleccionados
-          ];
-        }
-      } else {
+  // 🔧 AGREGAR PELÍCULA CON PRECIOS VIP CORREGIDOS
+  private addMovieToCartValidated(
+    pelicula: Pelicula, 
+    funcion: FuncionCine, 
+    cantidad: number = 1, 
+    asientosSeleccionados?: string[],
+    asientosInfo?: any[],
+    precioTotalReal?: number
+  ): Observable<boolean> {
+    return new Observable(observer => {
+      // Validar disponibilidad
+      if (funcion.asientosDisponibles < cantidad) {
+        console.error('❌ No hay suficientes asientos disponibles');
         observer.next(false);
         observer.complete();
         return;
       }
-    } else {
-      // Si no existe, crear nuevo item
+
+      // Verificar si ya existe el item exacto
+      const existingItem = this.cartItems.find(item => 
+        item.tipo === 'pelicula' &&
+        item.pelicula?.id === pelicula.id && 
+        item.funcion?.id === funcion.id &&
+        JSON.stringify(item.asientos_seleccionados) === JSON.stringify(asientosSeleccionados)
+      );
+
+      if (existingItem) {
+        console.log('⚠️ Ya existe este item exacto en el carrito, no se agrega duplicado');
+        observer.next(false);
+        observer.complete();
+        return;
+      }
+
+      // 🔧 CÁLCULO CORREGIDO DE PRECIOS
+      let precioUnitario: number;
+      let subtotal: number;
+
+      if (precioTotalReal && cantidad > 0) {
+        // 🆕 USAR PRECIO REAL CALCULADO DESDE LOS ASIENTOS SELECCIONADOS
+        subtotal = precioTotalReal;
+        precioUnitario = precioTotalReal / cantidad;
+        
+        console.log('💰 Usando precios reales de asientos:', {
+          precioTotalReal: precioTotalReal,
+          cantidad: cantidad,
+          precioUnitario: precioUnitario,
+          asientosInfo: asientosInfo
+        });
+      } else {
+        // 🔧 FALLBACK: Usar precio de la función
+        precioUnitario = funcion.precio;
+        subtotal = funcion.precio * cantidad;
+        
+        console.log('💰 Usando precio de función (fallback):', {
+          precioFuncion: funcion.precio,
+          cantidad: cantidad,
+          subtotal: subtotal
+        });
+      }
+
+      // Crear nuevo item con precios correctos
       const cartItem: CartItem = {
         id: this.generateId(),
         tipo: 'pelicula',
         pelicula: pelicula,
         funcion: funcion,
         cantidad: cantidad,
-        precio: funcion.precio,
-        subtotal: funcion.precio * cantidad,
-        // 🆕 AGREGAR asientos seleccionados
-        asientos_seleccionados: asientosSeleccionados || []
+        precio: precioUnitario, // 🔧 PRECIO UNITARIO CORRECTO
+        subtotal: subtotal, // 🔧 SUBTOTAL CORRECTO
+        asientos_seleccionados: asientosSeleccionados || [],
+        asientos_info: asientosInfo || [] // 🆕 INFORMACIÓN DETALLADA DE ASIENTOS
       };
+
       this.cartItems.push(cartItem);
-    }
 
-    console.log('✅ Item de película agregado al carrito:', {
-      pelicula: pelicula.titulo,
-      funcion: funcion.id,
-      cantidad: cantidad,
-      asientos: asientosSeleccionados || []
+      console.log('✅ Item de película agregado al carrito:', {
+        pelicula: pelicula.titulo,
+        funcion: funcion.id,
+        cantidad: cantidad,
+        precioUnitario: precioUnitario,
+        subtotal: subtotal,
+        asientos: asientosSeleccionados || [],
+        tieneAsientosVip: asientosInfo?.some(a => a.es_vip) || false
+      });
+
+      this.updateCart();
+      observer.next(true);
+      observer.complete();
     });
+  }
 
-    this.updateCart();
-    observer.next(true);
-    observer.complete();
-  });
-}
-
-  // 🆕 AGREGAR PRODUCTO DEL BAR CON VALIDACIÓN
+  // AGREGAR PRODUCTO DEL BAR (SIN CAMBIOS)
   private addBarProductToCartValidated(item: any): Observable<boolean> {
     return new Observable(observer => {
       const producto = item.producto;
@@ -178,15 +209,6 @@ export class CartService {
     });
   }
 
-  // MÉTODOS LEGACY PARA COMPATIBILIDAD
-  addMovieToCart(pelicula: Pelicula, funcion: FuncionCine, cantidad: number = 1): void {
-    this.addMovieToCartValidated(pelicula, funcion, cantidad).subscribe();
-  }
-
-  addBarProductToCart(item: any): void {
-    this.addBarProductToCartValidated(item).subscribe();
-  }
-
   // ==================== MÉTODOS DE GESTIÓN ====================
 
   removeFromCart(itemId: string): void {
@@ -204,8 +226,20 @@ export class CartService {
         const maxQuantity = item.tipo === 'pelicula' ? 
           (item.funcion?.asientosDisponibles || 20) : 10;
         
+        const cantidadAnterior = item.cantidad;
         item.cantidad = Math.min(nuevaCantidad, maxQuantity);
+        
+        // 🔧 RECALCULAR SUBTOTAL MANTENIENDO PRECIO UNITARIO CORRECTO
         item.subtotal = item.precio * item.cantidad;
+        
+        console.log('🔄 Cantidad actualizada:', {
+          itemId: itemId,
+          cantidadAnterior: cantidadAnterior,
+          nuevaCantidad: item.cantidad,
+          precioUnitario: item.precio,
+          nuevoSubtotal: item.subtotal
+        });
+        
         this.updateCart();
       }
     }
@@ -216,10 +250,21 @@ export class CartService {
     this.updateCart();
   }
 
-  // ==================== MÉTODOS DE CONSULTA ====================
+  // ==================== MÉTODOS DE CONSULTA CORREGIDOS ====================
 
   getTotal(): number {
-    return this.cartItems.reduce((total, item) => total + item.subtotal, 0);
+    const total = this.cartItems.reduce((total, item) => total + item.subtotal, 0);
+    console.log('💰 Total del carrito calculado:', {
+      total: total,
+      items: this.cartItems.map(item => ({
+        tipo: item.tipo,
+        cantidad: item.cantidad,
+        precio: item.precio,
+        subtotal: item.subtotal,
+        esVip: item.asientos_info?.some((a: any) => a.es_vip) || false
+      }))
+    });
+    return total;
   }
 
   getTotalItems(): number {
@@ -272,7 +317,7 @@ export class CartService {
     };
   }
 
-  // ==================== VALIDACIÓN MEJORADA ====================
+  // ==================== VALIDACIÓN Y MÉTODOS DE COMPRA ====================
 
   validateCart(): Observable<CartValidationResult> {
     return new Observable(observer => {
@@ -318,7 +363,6 @@ export class CartService {
     });
   }
 
-  // 🆕 VALIDAR DISPONIBILIDAD CON API
   validateAvailabilityWithAPI(): Observable<boolean> {
     if (this.cartItems.length === 0) {
       return of(true);
@@ -330,19 +374,16 @@ export class CartService {
       map(response => response.success && response.data.available),
       catchError(error => {
         console.error('❌ Error validando disponibilidad:', error);
-        return of(true); // Asumir disponible si falla la API
+        return of(true);
       })
     );
   }
 
-  // ==================== MÉTODOS DE COMPRA ACTUALIZADOS ====================
-
-  // 🆕 PROCESAR COMPRA CON API BACKEND
   processPurchaseWithAPI(paymentData: any): Observable<PurchaseResult> {
     return this.http.post<ApiResponse<any>>(`${this.API_URL}/checkout/process`, paymentData).pipe(
       map(response => {
         if (response.success) {
-          this.clearCart(); // Limpiar carrito después de compra exitosa
+          this.clearCart();
           return {
             success: true,
             orderId: response.data.orderId,
@@ -379,7 +420,6 @@ export class CartService {
   // MÉTODO LEGACY PARA COMPATIBILIDAD
   processPurchase(): Promise<PurchaseResult> {
     return new Promise((resolve) => {
-      // Validar carrito antes de procesar
       this.validateCart().subscribe(validation => {
         if (!validation.valid) {
           resolve({
@@ -445,13 +485,14 @@ export class CartService {
     return nombre;
   }
 
-  // 🆕 FORMATEAR ITEMS PARA API
+  // 🔧 FORMATEAR ITEMS PARA API CON PRECIOS CORRECTOS
   private formatCartItemsForAPI(): any[] {
     return this.cartItems.map(item => {
       const formattedItem: any = {
         tipo: item.tipo,
         cantidad: item.cantidad,
-        precio: item.precio
+        precio: item.precio,
+        subtotal: item.subtotal // 🆕 INCLUIR SUBTOTAL CALCULADO
       };
 
       if (item.tipo === 'pelicula' && item.pelicula && item.funcion) {
@@ -468,6 +509,12 @@ export class CartService {
           precio: item.funcion.precio
         };
         formattedItem.asientos_seleccionados = item.asientos_seleccionados || [];
+        
+        // 🆕 INCLUIR INFORMACIÓN DETALLADA DE ASIENTOS
+        if (item.asientos_info) {
+          formattedItem.asientos_info = item.asientos_info;
+          formattedItem.tiene_asientos_vip = item.asientos_info.some((a: any) => a.es_vip);
+        }
       }
 
       if (item.tipo === 'bar' && item.barProduct) {
@@ -512,6 +559,19 @@ export class CartService {
       try {
         this.cartItems = JSON.parse(savedCart);
         this.updateCart();
+        
+        // 🔧 LOG PARA DEBUGGING DE PRECIOS
+        console.log('🛒 Carrito cargado desde localStorage:', {
+          items: this.cartItems.length,
+          total: this.getTotal(),
+          detalles: this.cartItems.map(item => ({
+            tipo: item.tipo,
+            cantidad: item.cantidad,
+            precio: item.precio,
+            subtotal: item.subtotal,
+            esVip: item.asientos_info?.some((a: any) => a.es_vip) || false
+          }))
+        });
       } catch (error) {
         console.error('Error cargando carrito:', error);
         this.cartItems = [];
@@ -529,9 +589,6 @@ export class CartService {
 
   // 🆕 MÉTODOS ADICIONALES PARA CHECKOUT MEJORADO
 
-  /**
-   * Calcular totales con impuestos y cargos
-   */
   calculateTotalsWithTaxes(): CartTotals {
     const subtotal = this.getTotal();
     const serviceFee = subtotal * 0.05; // 5%
@@ -546,18 +603,13 @@ export class CartService {
     };
   }
 
-  /**
-   * Verificar si hay cambios en la disponibilidad
-   */
   checkForAvailabilityChanges(): Observable<AvailabilityChange[]> {
     return new Observable(observer => {
       const changes: AvailabilityChange[] = [];
       
-      // Simular verificación de cambios
       this.cartItems.forEach(item => {
         if (item.tipo === 'pelicula' && item.funcion) {
-          // Simular verificación de asientos
-          if (Math.random() < 0.1) { // 10% chance de cambio
+          if (Math.random() < 0.1) {
             changes.push({
               itemId: item.id,
               type: 'reduced_availability',
@@ -567,8 +619,7 @@ export class CartService {
         }
         
         if (item.tipo === 'bar' && item.barProduct) {
-          // Simular verificación de stock
-          if (Math.random() < 0.05) { // 5% chance de cambio
+          if (Math.random() < 0.05) {
             changes.push({
               itemId: item.id,
               type: 'out_of_stock',
@@ -583,9 +634,6 @@ export class CartService {
     });
   }
 
-  /**
-   * Obtener resumen para email
-   */
   getEmailSummary(): EmailCartSummary {
     const summary = this.getCartSummary();
     const totals = this.calculateTotalsWithTaxes();
@@ -607,6 +655,24 @@ export class CartService {
       }))
     };
   }
+
+  // 🆕 MÉTODO PARA DEBUGGING DE PRECIOS
+  debugCartPrices(): void {
+    console.log('🔍 DEBUG: Precios del carrito:', {
+      totalItems: this.cartItems.length,
+      totalGeneral: this.getTotal(),
+      items: this.cartItems.map(item => ({
+        id: item.id,
+        tipo: item.tipo,
+        nombre: item.tipo === 'pelicula' ? item.pelicula?.titulo : item.barProduct?.nombre,
+        cantidad: item.cantidad,
+        precioUnitario: item.precio,
+        subtotal: item.subtotal,
+        asientosInfo: item.asientos_info || 'N/A',
+        tieneVip: item.asientos_info?.some((a: any) => a.es_vip) || false
+      }))
+    });
+  }
 }
 
 // ==================== INTERFACES ACTUALIZADAS ====================
@@ -619,6 +685,7 @@ export interface CartItem {
   pelicula?: Pelicula;
   funcion?: FuncionCine;
   asientos_seleccionados?: string[];
+  asientos_info?: any[]; // 🆕 INFORMACIÓN DETALLADA DE ASIENTOS
   
   // Para productos del bar
   barProduct?: ProductoBar;
@@ -632,8 +699,8 @@ export interface CartItem {
   
   // Propiedades comunes
   cantidad: number;
-  precio: number;
-  subtotal: number;
+  precio: number; // 🔧 PRECIO UNITARIO REAL (puede ser promedio para películas)
+  subtotal: number; // 🔧 SUBTOTAL REAL CALCULADO
 }
 
 export interface CartSummary {
