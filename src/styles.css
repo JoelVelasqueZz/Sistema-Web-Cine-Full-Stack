@@ -1,1 +1,305 @@
 /* You can add global styles to this file, and also import other style files */
+/* ======================================
+   🎬 PARKY FILMS - ESTILOS GLOBALES CON Z-INDEX CORREGIDO
+   ====================================== */
+
+/* Importar Bootstrap */
+@import 'bootstrap/dist/css/bootstrap.min.css';
+
+/* ======================================
+   🎯 Z-INDEX GLOBAL HIERARCHY - CRÍTICO
+   ====================================== */
+
+/* SISTEMA DE CAPAS CORREGIDO:
+   1000-1019: Contenido normal y elementos de página
+   1020-1039: Elementos flotantes (tooltips, popovers)
+   1040-1059: Sidebar y elementos sticky
+   1060-1069: Navbar y header
+   1070-1079: Dropdowns y menús
+   1080-1099: Modales y overlays
+   1100+: Toasts y notificaciones críticas
+*/
+
+/* Base del body para scroll suave */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden; /* Evita scroll horizontal */
+}
+
+/* ======================================
+   🧭 NAVBAR - MÁXIMA PRIORIDAD
+   ====================================== */
+
+.navbar {
+  z-index: 1060 !important;
+  position: sticky !important;
+  top: 0 !important;
+}
+
+.navbar .dropdown-menu {
+  z-index: 1070 !important;
+}
+
+.navbar .suggestions-dropdown {
+  z-index: 1070 !important;
+}
+
+.navbar-toggler {
+  z-index: 1061 !important;
+}
+
+.navbar-collapse {
+  z-index: 1060 !important;
+}
+
+/* ======================================
+   🛒 SHOPPING CART SIDEBAR
+   ====================================== */
+
+.shopping-cart .sticky-top {
+  z-index: 1040 !important;
+  top: 90px !important; /* Espacio para navbar */
+}
+
+/* Contenedor principal del carrito */
+.shopping-cart-container {
+  position: relative;
+  z-index: 1010;
+}
+
+/* ======================================
+   📦 CARDS Y CONTENIDO
+   ====================================== */
+
+.card {
+  position: relative;
+  z-index: 1015;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.125);
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  z-index: 1020;
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+/* ======================================
+   🎭 MODALES Y OVERLAYS
+   ====================================== */
+
+.modal {
+  z-index: 1080 !important;
+}
+
+.modal-backdrop {
+  z-index: 1079 !important;
+}
+
+.modal-dialog {
+  z-index: 1081 !important;
+}
+
+/* Overlay de búsqueda */
+.search-overlay {
+  z-index: 1065 !important;
+}
+
+/* ======================================
+   🍞 TOASTS Y NOTIFICACIONES
+   ====================================== */
+
+.toast {
+  z-index: 1100 !important;
+}
+
+.toast-container {
+  z-index: 1100 !important;
+}
+
+/* Notificaciones del sistema */
+.alert {
+  position: relative;
+  z-index: 1025;
+}
+
+/* ======================================
+   🎪 BOOTSTRAP OVERRIDES
+   ====================================== */
+
+/* Tooltips */
+.tooltip {
+  z-index: 1070 !important;
+}
+
+/* Popovers */
+.popover {
+  z-index: 1070 !important;
+}
+
+/* Dropdowns generales */
+.dropdown-menu {
+  z-index: 1070 !important;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Offcanvas */
+.offcanvas {
+  z-index: 1075 !important;
+}
+
+.offcanvas-backdrop {
+  z-index: 1074 !important;
+}
+
+/* ======================================
+   🎨 COMPONENTES ESPECÍFICOS
+   ====================================== */
+
+/* Footer */
+.footer {
+  position: relative;
+  z-index: 1030;
+  margin-top: auto;
+}
+
+/* Header de páginas */
+.page-header {
+  position: relative;
+  z-index: 1020;
+}
+
+/* Sidebar de navegación (si existe) */
+.sidebar {
+  z-index: 1050 !important;
+}
+
+/* ======================================
+   📱 RESPONSIVE Z-INDEX
+   ====================================== */
+
+@media (max-width: 992px) {
+  /* En tablets y móviles, reducir z-index del sidebar */
+  .shopping-cart .sticky-top {
+    position: static !important;
+    z-index: auto !important;
+    top: auto !important;
+  }
+  
+  .navbar-collapse {
+    z-index: 1060 !important;
+    background: rgba(26, 26, 26, 0.98) !important;
+    backdrop-filter: blur(10px);
+  }
+}
+
+@media (max-width: 768px) {
+  .dropdown-menu {
+    position: static !important;
+    z-index: auto !important;
+    box-shadow: none !important;
+  }
+  
+  /* Navbar móvil */
+  .navbar-collapse.show {
+    z-index: 1065 !important;
+  }
+}
+
+/* ======================================
+   🎯 FIXES ESPECÍFICOS PARA PROBLEMAS COMUNES
+   ====================================== */
+
+/* Evitar que elementos sticky se superpongan */
+.container-fluid,
+.container {
+  position: relative;
+  z-index: 1010;
+}
+
+/* Asegurar que el contenido principal no se superponga */
+main {
+  position: relative;
+  z-index: 1010;
+  min-height: calc(100vh - 200px);
+}
+
+/* Router outlet */
+router-outlet + * {
+  position: relative;
+  z-index: 1010;
+}
+
+/* ======================================
+   🚀 PERFORMANCE Y SMOOTHNESS
+   ====================================== */
+
+/* Acelerar transiciones para elementos con z-index alto */
+.navbar,
+.dropdown-menu,
+.modal,
+.toast {
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+/* Smooth scroll para toda la página */
+* {
+  scroll-behavior: smooth;
+}
+
+/* ======================================
+   🛠️ DEBUGGING (Remover en producción)
+   ====================================== */
+
+/* Descomentar para debug de z-index 
+.navbar { outline: 3px solid red !important; }
+.dropdown-menu { outline: 3px solid blue !important; }
+.shopping-cart .sticky-top { outline: 3px solid green !important; }
+.modal { outline: 3px solid purple !important; }
+*/
+
+/* ======================================
+   🎨 ACCESIBILIDAD Y UX
+   ====================================== */
+
+/* Focus visible para navegación por teclado */
+*:focus-visible {
+  outline: 2px solid #ffc107 !important;
+  outline-offset: 2px !important;
+  z-index: 1200 !important; /* Siempre visible cuando tiene focus */
+}
+
+/* Reducir movimiento para usuarios que lo prefieren */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Alto contraste */
+@media (prefers-contrast: high) {
+  .card {
+    border: 2px solid #000000 !important;
+  }
+  
+  .dropdown-menu {
+    border: 2px solid #000000 !important;
+  }
+  
+  .navbar {
+    border-bottom: 3px solid #000000 !important;
+  }
+}

@@ -1,7 +1,7 @@
-/* navbar.component.css - TEMA PARKY FILMS SUTIL Y LIMPIO */
+/* navbar.component.css - TEMA PARKY FILMS SUTIL Y LIMPIO - CORREGIDO Z-INDEX */
 
 /* ======================================
-   🎬 NAVBAR BASE - Estilo sutil
+   🎬 NAVBAR BASE - Estilo sutil CON Z-INDEX CORREGIDO
    ====================================== */
 
 .navbar {
@@ -9,6 +9,14 @@
   border-bottom: 2px solid rgba(255, 193, 7, 0.3);
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
   transition: all 0.3s ease;
+  z-index: 1060 !important; /* CORREGIDO: Z-index más alto que el sidebar */
+}
+
+/* CORREGIDO: Asegurar que el navbar tenga posición relativa */
+.navbar.sticky-top {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 1060 !important;
 }
 
 /* ======================================
@@ -117,11 +125,12 @@
 }
 
 /* ======================================
-   🔍 BARRA DE BÚSQUEDA
+   🔍 BARRA DE BÚSQUEDA - Z-INDEX CORREGIDO
    ====================================== */
 
 .search-container {
   min-width: 280px;
+  position: relative; /* CORREGIDO: Posición relativa para z-index */
 }
 
 .search-container .form-control {
@@ -150,7 +159,11 @@
   padding: 0.6rem 1.2rem;
 }
 
-/* Dropdown de sugerencias */
+/* CORREGIDO: Dropdown de sugerencias con z-index más alto */
+.suggestions-dropdown {
+  z-index: 1070 !important; /* MÁS ALTO que el sidebar */
+}
+
 .suggestions-dropdown .card {
   background: white;
   border: 1px solid rgba(13, 110, 253, 0.2);
@@ -223,8 +236,12 @@
 }
 
 /* ======================================
-   📋 DROPDOWN MENU - Con scroll interno
+   📋 DROPDOWN MENU - Z-INDEX CORREGIDO
    ====================================== */
+
+.dropdown {
+  position: relative; /* CORREGIDO */
+}
 
 .dropdown-menu {
   background: white;
@@ -236,6 +253,8 @@
   max-height: 70vh;
   overflow-y: auto;
   overflow-x: hidden;
+  z-index: 1070 !important; /* CORREGIDO: Z-index más alto que el sidebar */
+  position: absolute !important; /* CORREGIDO */
 }
 
 /* Estilo de la barra de scroll */
@@ -322,6 +341,7 @@
     padding: 1rem;
     margin-top: 1rem;
     border: 1px solid rgba(255, 193, 7, 0.2);
+    z-index: 1060 !important; /* CORREGIDO */
   }
   
   .navbar-nav {
@@ -347,6 +367,7 @@
     width: 100%;
     margin-top: 1rem;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    z-index: 1070 !important; /* CORREGIDO */
   }
 }
 
@@ -371,7 +392,9 @@
   border-radius: 8px;
   padding: 0.4rem 0.6rem;
   transition: all 0.3s ease;
+  z-index: 1061 !important; /* CORREGIDO */
 }
+
 .badge.bg-success {
   background: linear-gradient(45deg, #198754, #20c997) !important;
 }
@@ -383,9 +406,10 @@
   transform: none !important;
 }
 
-/* Overlay para cerrar sugerencias */
+/* CORREGIDO: Overlay para cerrar sugerencias con z-index correcto */
 .search-overlay {
   background: rgba(0, 0, 0, 0.05);
+  z-index: 1065 !important; /* Entre el sidebar y el dropdown */
 }
 
 /* ======================================
@@ -398,4 +422,22 @@
 .dropdown-item:focus {
   outline: 2px solid #ffc107;
   outline-offset: 2px;
+}
+
+/* ======================================
+   🚨 FIXES ADICIONALES PARA Z-INDEX
+   ====================================== */
+
+/* CORREGIDO: Toast debe estar por encima de todo */
+.toast {
+  z-index: 1080 !important;
+}
+
+/* CORREGIDO: Modal debe estar por encima de todo */
+.modal {
+  z-index: 1075 !important;
+}
+
+.modal-backdrop {
+  z-index: 1074 !important;
 }
