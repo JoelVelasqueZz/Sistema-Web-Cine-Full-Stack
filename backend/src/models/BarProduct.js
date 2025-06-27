@@ -55,9 +55,7 @@ class BarProduct {
   // ✅ Obtener producto por ID (solo si no está eliminado)
   static async getById(id) {
   try {
-    // 🔧 FIX: Consultas separadas para evitar duplicados
-    
-    // 1. Obtener producto principal
+
     const productQuery = `
       SELECT * FROM productos_bar 
       WHERE id = $1 AND eliminado = false
