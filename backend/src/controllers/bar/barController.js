@@ -103,8 +103,6 @@ class BarController {
 
   const productData = req.body;
   
-  console.log('🔧 Controller - Datos recibidos para actualizar:', JSON.stringify(productData, null, 2));
-  
   // Validaciones adicionales
   if (productData.precio && productData.precio <= 0) {
     return res.status(400).json({
@@ -113,26 +111,18 @@ class BarController {
     });
   }
 
-  // 🔧 NUEVA VALIDACIÓN: Verificar que los arrays estén bien formateados
+  // Validar que los arrays estén bien formateados
   if (productData.tamanos && !Array.isArray(productData.tamanos)) {
-    console.warn('⚠️ tamanos no es un array:', productData.tamanos);
     productData.tamanos = [];
   }
 
   if (productData.extras && !Array.isArray(productData.extras)) {
-    console.warn('⚠️ extras no es un array:', productData.extras);
     productData.extras = [];
   }
 
   if (productData.combo_items && !Array.isArray(productData.combo_items)) {
-    console.warn('⚠️ combo_items no es un array:', productData.combo_items);
     productData.combo_items = [];
   }
-
-  // 🔧 LOGGING DETALLADO
-  console.log('🔧 Tamaños a procesar:', productData.tamanos);
-  console.log('🔧 Extras a procesar:', productData.extras);
-  console.log('🔧 Combo items a procesar:', productData.combo_items);
 
   const updatedProduct = await BarProduct.update(parseInt(id), productData);
 
