@@ -124,12 +124,13 @@ export class CheckoutComponent implements OnInit {
   }
 
   private fallbackToLocalCalculation(): void {
-    this.subtotal = this.cartService.getTotal();
-    this.serviceFee = this.subtotal * 0.05;
-    this.taxes = (this.subtotal + this.serviceFee) * 0.08;
-    this.total = this.subtotal + this.serviceFee + this.taxes;
-    this.pointsToEarn = Math.floor(this.total * 1);
-  }
+  this.subtotal = this.cartService.getTotal();
+  this.serviceFee = this.subtotal * 0.05;
+  this.taxes = (this.subtotal + this.serviceFee) * 0.08;
+  this.total = this.subtotal + this.serviceFee + this.taxes;
+  // 🔧 CORREGIDO: Usar 100 puntos por dólar
+  this.pointsToEarn = Math.floor(this.total * 100); // Cambio de 1 a 100
+}
 
   private loadUserData(): void {
     const currentUser = this.authService.getCurrentUser();
@@ -211,13 +212,36 @@ export class CheckoutComponent implements OnInit {
   }
 
   getMaxPointsToUse(): number {
-    return Math.min(this.userPoints, Math.floor(this.total));
-  }
+  // Máximo: el menor entre puntos disponibles y el equivalente al total de la compra
+  // Ejemplo: Si total = $13.65, máximo = 1365 puntos (porque 1365 puntos = $13.65)
+  const maxByTotal = Math.floor(this.total * 100); // $1 = 100 puntos
+  return Math.min(this.userPoints, maxByTotal);
+}
 
   getUserPointsValue(): number {
-    return this.userPoints / 1; // 1 punto = $1
+  return this.userPoints / 100; // 🔧 CORREGIDO: 100 puntos = $1
+}
+calculatePointsDiscount(puntos: number): number {
+  return puntos / 100; // 🔧 CORREGIDO: 100 puntos = $1.00
+}
+onPuntosAUsarChange(): void {
+  const maxAllowed = this.getMaxPointsToUse();
+  
+  if (this.puntosAUsar > maxAllowed) {
+    this.puntosAUsar = maxAllowed;
+    this.toastService.showWarning(`Máximo ${maxAllowed} puntos para esta compra`);
   }
-
+  
+  if (this.puntosAUsar < 0) {
+    this.puntosAUsar = 0;
+  }
+}
+getPointsConversionText(): string {
+  return "100 puntos = $1.00 de descuento";
+}
+getPointsValueText(): string {
+  return `Equivalente a $${this.getUserPointsValue().toFixed(2)}`;
+}
   showPointsUsageInfo(): void {
     const modalElement = document.getElementById('pointsUsageModal');
     if (modalElement) {
