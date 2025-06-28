@@ -3,7 +3,7 @@ const { query } = require('../config/database'); // 🔧 IMPORTAR query CORRECTA
 class Points {
   constructor() {
     // 🔧 CORRECCIÓN PRINCIPAL: Cambiar de 1 a 100 puntos por dólar
-    this.PUNTOS_POR_DOLAR = 100; // ✅ AHORA: 100 puntos = $1.00
+    this.PUNTOS_POR_DOLAR = 1; // ✅ AHORA: 100 puntos = $1.00
     this.PUNTOS_BIENVENIDA = 50;
     this.PUNTOS_REFERIDO = 100;
     this.PUNTOS_NUEVO_USUARIO = 25;
