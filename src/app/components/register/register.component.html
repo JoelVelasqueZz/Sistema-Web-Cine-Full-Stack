@@ -141,23 +141,38 @@
               </div>
             </div>
 
-            <!-- Términos y condiciones -->
-            <div class="mb-3 form-check">
-              <input 
-                type="checkbox" 
-                class="form-check-input" 
-                id="terminos" 
-                [(ngModel)]="aceptarTerminos" 
-                name="terminos"
-                required
-                #terminos="ngModel">
-              <label class="form-check-label" for="terminos">
-                Acepto los <a href="#" class="text-decoration-none">términos y condiciones</a>
-              </label>
-              <div class="text-danger small" *ngIf="terminos.invalid && terminos.touched">
-                Debes aceptar los términos y condiciones
-              </div>
-            </div>
+            <!-- Términos y condiciones - REEMPLAZAR -->
+<div class="card border-success mb-4">
+  <div class="card-body">
+    <div class="d-flex align-items-start">
+      <label class="custom-checkbox me-3">
+        <input 
+          type="checkbox" 
+          [(ngModel)]="aceptarTerminos" 
+          name="terminos"
+          required
+          #terminos="ngModel">
+        <span class="checkmark"></span>
+      </label>
+      <div>
+        <h6 class="mb-2">
+          <i class="fas fa-shield-alt text-success me-2"></i>
+          Términos y Condiciones
+        </h6>
+        <p class="mb-2">
+          Al registrarme, acepto los 
+          <a href="#" class="text-decoration-none fw-bold">términos y condiciones</a> 
+          y la <a href="#" class="text-decoration-none fw-bold">política de privacidad</a> 
+          de ParkyFilms.
+        </p>
+        <small class="text-muted" *ngIf="terminos.invalid && terminos.touched">
+          <i class="fas fa-exclamation-circle me-1 text-danger"></i>
+          <span class="text-danger">Debes aceptar los términos para continuar</span>
+        </small>
+      </div>
+    </div>
+  </div>
+</div>
 
             <!-- Botón de Registro -->
             <div class="d-grid mb-3">

@@ -318,36 +318,36 @@
               Serás redirigido a PayPal para completar el pago de forma segura.
             </div>
             
-            <!-- Términos y condiciones -->
-            <div class="card border-primary mb-4">
-            <div class="card-body">
-                    <div class="d-flex align-items-start">
-                      <label class="custom-checkbox custom-checkbox-success me-3">
-                        <input type="checkbox" 
-                              [(ngModel)]="datosCheckout.aceptaTerminos"
-                              name="aceptaTerminos"
-                              required>
-                        <span class="checkmark"></span>
-                      </label>
-                      <div>
-                        <h6 class="mb-2">
-                          <i class="fas fa-shield-alt text-primary me-2"></i>
-                          Términos y Condiciones
-                        </h6>
-                        <p class="mb-2">
-                          Al continuar, acepto los 
-                          <a href="#" class="text-decoration-none fw-bold">términos y condiciones</a> 
-                          y la <a href="#" class="text-decoration-none fw-bold">política de privacidad</a> 
-                          de ParkyFilms.
-                        </p>
-                        <small class="text-muted">
-                          <i class="fas fa-info-circle me-1"></i>
-                          Esta acción es requerida para procesar tu compra de forma segura.
-                        </small>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+            <!-- Términos y condiciones - REEMPLAZAR en checkout -->
+<div class="card border-primary mb-4">
+  <div class="card-body">
+    <div class="d-flex align-items-start">
+      <label class="custom-checkbox me-3">
+        <input type="checkbox" 
+               [(ngModel)]="datosCheckout.aceptaTerminos"
+               name="aceptaTerminos"
+               required>
+        <span class="checkmark"></span>
+      </label>
+      <div>
+        <h6 class="mb-2">
+          <i class="fas fa-shield-alt text-primary me-2"></i>
+          Términos y Condiciones
+        </h6>
+        <p class="mb-2">
+          Al continuar, acepto los 
+          <a href="#" class="text-decoration-none fw-bold">términos y condiciones</a> 
+          y la <a href="#" class="text-decoration-none fw-bold">política de privacidad</a> 
+          de ParkyFilms.
+        </p>
+        <small class="text-muted">
+          <i class="fas fa-info-circle me-1"></i>
+          Esta acción es requerida para procesar tu compra de forma segura.
+        </small>
+      </div>
+    </div>
+  </div>
+</div>
          
             <!-- Botón de pago -->
             <div class="d-grid">

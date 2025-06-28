@@ -563,3 +563,73 @@
     transition-duration: 0.01ms !important;
   }
 }
+.custom-checkbox {
+  position: relative;
+  padding-left: 35px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  font-size: 16px;
+  user-select: none;
+  line-height: 1.5;
+}
+
+.custom-checkbox input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.custom-checkbox .checkmark {
+  position: absolute;
+  top: 2px;
+  left: 0;
+  height: 24px;
+  width: 24px;
+  background-color: #fff;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+.custom-checkbox:hover input ~ .checkmark {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
+  transform: scale(1.05);
+}
+
+.custom-checkbox input:checked ~ .checkmark {
+  background-color: #28a745;
+  border-color: #28a745;
+  transform: scale(1.1);
+}
+
+.custom-checkbox input:checked ~ .checkmark:after {
+  display: block;
+}
+
+.custom-checkbox .checkmark:after {
+  content: "";
+  position: absolute;
+  display: none;
+  left: 7px;
+  top: 3px;
+  width: 6px;
+  height: 12px;
+  border: solid white;
+  border-width: 0 3px 3px 0;
+  transform: rotate(45deg);
+}
+
+/* Variante para registro (verde) */
+.card.border-success .custom-checkbox input:checked ~ .checkmark {
+  background-color: #198754;
+  border-color: #198754;
+}
+
+/* Variante para checkout (azul) */
+.card.border-primary .custom-checkbox input:checked ~ .checkmark {
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+}
