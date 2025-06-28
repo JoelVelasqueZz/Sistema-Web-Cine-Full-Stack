@@ -16,8 +16,8 @@ const allowedOrigins = [
   process.env.FRONTEND_URL,                                         // Frontend dinámico
   process.env.BACKEND_URL,                                          // Backend dinámico
   process.env.CORS_ORIGIN,                                          // CORS origin específico
-  'https://parky-films-production.up.railway.app',                  // Frontend Railway (backup) ← CAMBIO AQUÍ
-  'https://webcinenew-production.up.railway.app'                    // Backend Railway (backup)
+  'https://parky-films.up.railway.app',                             // Frontend Railway (backup) ← CAMBIO AQUÍ
+  'https://webcinenew-production.up.railway.app'                     // Backend Railway (backup)
 ].filter(Boolean)
 
 const corsOptions = {
