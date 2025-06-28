@@ -83,13 +83,13 @@
             </div>
 
             
-            <div class="mb-3 form-check">
-              <input type="checkbox" class="form-check-input" id="recordar" [(ngModel)]="recordarSesion" name="recordar">
-              <label class="form-check-label" for="recordar">
+            <div class="checkbox-highlighted mb-3">
+              <label class="custom-checkbox">
                 Recordar mi sesión
+                <input type="checkbox" [(ngModel)]="recordarSesion" name="recordar">
+                <span class="checkmark"></span>
               </label>
             </div>
-
             
             <div class="d-grid mb-3">
               <button 
