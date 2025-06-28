@@ -1,4 +1,4 @@
-<!-- checkout.component.html - CON INTEGRACIÓN DE PUNTOS - CORREGIDO -->
+<!-- checkout.component.html - CON INTEGRACIÓN DE PUNTOS - CORREGIDO COMPLETO -->
 <div class="container mt-4">
   
   <!-- Header -->
@@ -38,7 +38,7 @@
     <!-- Formulario de pago -->
     <div class="col-lg-8">
       
-      <!-- NUEVA SECCIÓN: APLICAR PUNTOS -->
+      <!-- 🔧 SECCIÓN DE PUNTOS CORREGIDA -->
       <div class="card shadow-sm mb-4" *ngIf="userPoints > 0">
         <div class="card-header bg-warning text-dark">
           <h5 class="mb-0">
@@ -53,9 +53,10 @@
                 <strong>Puntos disponibles:</strong> 
                 <span class="text-warning fs-5 fw-bold">{{ userPoints }}</span>
               </p>
+              <!-- 🔧 TEXTO CORREGIDO -->
               <p class="text-muted small mb-3">
                 <i class="fas fa-info-circle me-1"></i>
-                Cada punto equivale a $0.01. Máximo {{ getMaxPointsToUse() }} puntos para esta compra.
+                100 puntos = $1.00 de descuento. Máximo {{ getMaxPointsToUse() }} puntos para esta compra.
               </p>
               
               <div class="input-group mb-3" *ngIf="!usandoPuntos">
@@ -67,10 +68,12 @@
                        [(ngModel)]="puntosAUsar"
                        [max]="getMaxPointsToUse()"
                        [min]="0"
+                       step="10"
+                       (input)="onPuntosAUsarChange()"
                        placeholder="Cantidad de puntos a usar">
                 <button class="btn btn-warning" 
                         (click)="aplicarPuntos()"
-                        [disabled]="aplicandoPuntos || puntosAUsar <= 0 || puntosAUsar > userPoints">
+                        [disabled]="aplicandoPuntos || puntosAUsar <= 0 || puntosAUsar > getMaxPointsToUse()">
                   <span *ngIf="!aplicandoPuntos">
                     <i class="fas fa-check me-1"></i>
                     Aplicar
@@ -80,6 +83,14 @@
                     Aplicando...
                   </span>
                 </button>
+              </div>
+              
+              <!-- 🔧 PREVIEW DEL DESCUENTO EN TIEMPO REAL -->
+              <div class="alert alert-info py-2" *ngIf="!usandoPuntos && puntosAUsar > 0">
+                <small>
+                  <i class="fas fa-calculator me-1"></i>
+                  <strong>{{ puntosAUsar }} puntos = ${{ calculatePointsDiscount(puntosAUsar).toFixed(2) }} de descuento</strong>
+                </small>
               </div>
             </div>
             
@@ -318,36 +329,36 @@
               Serás redirigido a PayPal para completar el pago de forma segura.
             </div>
             
-            <!-- Términos y condiciones - REEMPLAZAR en checkout -->
-<div class="card border-primary mb-4">
-  <div class="card-body">
-    <div class="d-flex align-items-start">
-      <label class="custom-checkbox me-3">
-        <input type="checkbox" 
-               [(ngModel)]="datosCheckout.aceptaTerminos"
-               name="aceptaTerminos"
-               required>
-        <span class="checkmark"></span>
-      </label>
-      <div>
-        <h6 class="mb-2">
-          <i class="fas fa-shield-alt text-primary me-2"></i>
-          Términos y Condiciones
-        </h6>
-        <p class="mb-2">
-          Al continuar, acepto los 
-          <a href="#" class="text-decoration-none fw-bold">términos y condiciones</a> 
-          y la <a href="#" class="text-decoration-none fw-bold">política de privacidad</a> 
-          de ParkyFilms.
-        </p>
-        <small class="text-muted">
-          <i class="fas fa-info-circle me-1"></i>
-          Esta acción es requerida para procesar tu compra de forma segura.
-        </small>
-      </div>
-    </div>
-  </div>
-</div>
+            <!-- Términos y condiciones -->
+            <div class="card border-primary mb-4">
+              <div class="card-body">
+                <div class="d-flex align-items-start">
+                  <label class="custom-checkbox me-3">
+                    <input type="checkbox" 
+                           [(ngModel)]="datosCheckout.aceptaTerminos"
+                           name="aceptaTerminos"
+                           required>
+                    <span class="checkmark"></span>
+                  </label>
+                  <div>
+                    <h6 class="mb-2">
+                      <i class="fas fa-shield-alt text-primary me-2"></i>
+                      Términos y Condiciones
+                    </h6>
+                    <p class="mb-2">
+                      Al continuar, acepto los 
+                      <a href="#" class="text-decoration-none fw-bold">términos y condiciones</a> 
+                      y la <a href="#" class="text-decoration-none fw-bold">política de privacidad</a> 
+                      de ParkyFilms.
+                    </p>
+                    <small class="text-muted">
+                      <i class="fas fa-info-circle me-1"></i>
+                      Esta acción es requerida para procesar tu compra de forma segura.
+                    </small>
+                  </div>
+                </div>
+              </div>
+            </div>
          
             <!-- Botón de pago -->
             <div class="d-grid">
@@ -478,7 +489,7 @@
               <span>${{ taxes.toFixed(2) }}</span>
             </div>
             
-            <!-- NUEVO: Mostrar descuento por puntos -->
+            <!-- 🔧 NUEVO: Mostrar descuento por puntos -->
             <div class="d-flex justify-content-between mb-2 text-warning" *ngIf="usandoPuntos">
               <span>
                 <i class="fas fa-coins me-1"></i>
@@ -493,7 +504,7 @@
               <span class="text-success">${{ total.toFixed(2) }}</span>
             </div>
             
-            <!-- NUEVO: Información de puntos a ganar -->
+            <!-- 🔧 NUEVO: Información de puntos a ganar -->
             <div class="alert alert-info mt-3" *ngIf="pointsToEarn > 0">
               <div class="d-flex align-items-center">
                 <i class="fas fa-coins fa-2x text-warning me-3"></i>
@@ -507,7 +518,7 @@
               </div>
             </div>
             
-            <!-- NUEVO: Recordatorio sobre puntos usados -->
+            <!-- 🔧 NUEVO: Recordatorio sobre puntos usados -->
             <div class="alert alert-warning mt-3" *ngIf="usandoPuntos">
               <h6 class="alert-heading mb-1">
                 <i class="fas fa-info-circle me-1"></i>
@@ -523,7 +534,7 @@
         </div>
       </div>
 
-      <!-- NUEVA TARJETA: Información de puntos -->
+      <!-- 🔧 TARJETA DE PUNTOS CORREGIDA -->
       <div class="card shadow-sm mt-3" *ngIf="authService.isLoggedIn()">
         <div class="card-header bg-warning text-dark">
           <h6 class="mb-0">
@@ -537,12 +548,20 @@
               <div class="border rounded p-2">
                 <h5 class="text-warning mb-1">{{ userPoints }}</h5>
                 <small class="text-muted">Disponibles</small>
+                <!-- 🔧 VALOR CORREGIDO -->
+                <div class="mt-1">
+                  <small class="text-muted">${{ getUserPointsValue().toFixed(2) }}</small>
+                </div>
               </div>
             </div>
             <div class="col-6">
               <div class="border rounded p-2">
                 <h5 class="text-success mb-1">+{{ pointsToEarn }}</h5>
                 <small class="text-muted">Ganarás</small>
+                <!-- 🔧 VALOR CORREGIDO -->
+                <div class="mt-1">
+                  <small class="text-muted">${{ (pointsToEarn / 100).toFixed(2) }}</small>
+                </div>
               </div>
             </div>
           </div>
@@ -550,7 +569,8 @@
           <div class="mt-3">
             <small class="text-muted">
               <i class="fas fa-lightbulb me-1"></i>
-              Consejo: Usa tus puntos para obtener descuentos en futuras compras.
+              <!-- 🔧 TEXTO CORREGIDO -->
+              Consejo: 100 puntos = $1.00 de descuento en futuras compras.
             </small>
           </div>
           
@@ -569,7 +589,7 @@
   </div>
 </div>
 
-<!-- NUEVO: Modal de información sobre uso de puntos -->
+<!-- 🔧 MODAL CORREGIDO: Información sobre uso de puntos -->
 <div class="modal fade" id="pointsUsageModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -584,7 +604,8 @@
         <div class="text-center mb-4">
           <i class="fas fa-coins fa-4x text-warning"></i>
           <h4 class="mt-3">Tienes {{ userPoints }} puntos disponibles</h4>
-          <p class="text-muted">Equivalente a ${{ getUserPointsValue().toFixed(2) }}</p>
+          <!-- 🔧 VALOR CORREGIDO -->
+          <p class="text-muted">{{ getPointsValueText() }}</p>
         </div>
         
         <div class="alert alert-info">
@@ -593,14 +614,15 @@
             ¿Cuánto puedes ahorrar?
           </h6>
           <ul class="mb-0">
-            <li>Cada 100 puntos = $1.00 de descuento</li>
+            <!-- 🔧 CONVERSIÓN CORREGIDA -->
+            <li>100 puntos = $1.00 de descuento</li>
             <li>Máximo {{ getMaxPointsToUse() }} puntos para esta compra</li>
             <li>Los puntos se descuentan antes de impuestos</li>
           </ul>
         </div>
         
         <div class="border rounded p-3 bg-light">
-          <h6>Ejemplo de uso:</h6>
+          <h6>Ejemplos de uso:</h6>
           <div class="row">
             <div class="col-6">
               <small class="text-muted">500 puntos →</small>
@@ -615,6 +637,16 @@
             </div>
             <div class="col-6">
               <small class="fw-bold">$10.00 de descuento</small>
+            </div>
+          </div>
+          <!-- 🔧 EJEMPLO ESPECÍFICO PARA LA COMPRA ACTUAL -->
+          <hr class="my-2">
+          <div class="row">
+            <div class="col-6">
+              <small class="text-success">Para esta compra:</small>
+            </div>
+            <div class="col-6">
+              <small class="fw-bold text-success">Máximo {{ getMaxPointsToUse() }} puntos</small>
             </div>
           </div>
         </div>

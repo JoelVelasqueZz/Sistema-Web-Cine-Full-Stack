@@ -151,35 +151,50 @@ export class CheckoutComponent implements OnInit {
   // ==================== GESTIÓN DE PUNTOS ====================
 
   aplicarPuntos(): void {
-    if (this.puntosAUsar <= 0 || this.puntosAUsar > this.userPoints) {
-      this.toastService.showWarning('Cantidad de puntos inválida');
-      return;
-    }
-
-    this.aplicandoPuntos = true;
-
-    this.orderService.applyPointsToCheckout(this.puntosAUsar, this.total).subscribe({
-      next: (response) => {
-        if (response.success) {
-          this.descuentoPuntos = response.descuento;
-          this.total = response.nuevoTotal;
-          this.usandoPuntos = true;
-          
-          this.toastService.showSuccess(
-            `¡${this.puntosAUsar} puntos aplicados! Descuento: ${this.descuentoPuntos.toFixed(2)}`
-          );
-        } else {
-          this.toastService.showError(response.message);
-        }
-        this.aplicandoPuntos = false;
-      },
-      error: (error) => {
-        console.error('❌ Error aplicando puntos:', error);
-        this.toastService.showError('Error al aplicar puntos');
-        this.aplicandoPuntos = false;
-      }
-    });
+  // 🔧 VALIDACIÓN CORREGIDA
+  const maxAllowed = this.getMaxPointsToUse();
+  
+  if (this.puntosAUsar <= 0) {
+    this.toastService.showWarning('Ingresa una cantidad válida de puntos');
+    return;
   }
+  
+  if (this.puntosAUsar > this.userPoints) {
+    this.toastService.showWarning('No tienes suficientes puntos disponibles');
+    return;
+  }
+  
+  // 🔧 NUEVA VALIDACIÓN: Límite máximo por compra
+  if (this.puntosAUsar > maxAllowed) {
+    this.toastService.showWarning(`Máximo ${maxAllowed} puntos para esta compra`);
+    return;
+  }
+
+  this.aplicandoPuntos = true;
+
+  this.orderService.applyPointsToCheckout(this.puntosAUsar, this.total).subscribe({
+    next: (response) => {
+      if (response.success) {
+        this.descuentoPuntos = response.descuento;
+        this.total = response.nuevoTotal;
+        this.usandoPuntos = true;
+        
+        this.toastService.showSuccess(
+          `¡${this.puntosAUsar} puntos aplicados! Descuento: $${this.descuentoPuntos.toFixed(2)}`
+        );
+      } else {
+        this.toastService.showError(response.message);
+      }
+      this.aplicandoPuntos = false;
+    },
+    error: (error) => {
+      console.error('❌ Error aplicando puntos:', error);
+      this.toastService.showError('Error al aplicar puntos');
+      this.aplicandoPuntos = false;
+    }
+  });
+}
+
 
   quitarPuntos(): void {
     this.usandoPuntos = false;

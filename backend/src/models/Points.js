@@ -2,7 +2,8 @@ const { query } = require('../config/database'); // 🔧 IMPORTAR query CORRECTA
 
 class Points {
   constructor() {
-    this.PUNTOS_POR_DOLAR = 1;
+    // 🔧 CORRECCIÓN PRINCIPAL: Cambiar de 1 a 100 puntos por dólar
+    this.PUNTOS_POR_DOLAR = 100; // ✅ AHORA: 100 puntos = $1.00
     this.PUNTOS_BIENVENIDA = 50;
     this.PUNTOS_REFERIDO = 100;
     this.PUNTOS_NUEVO_USUARIO = 25;
@@ -452,7 +453,9 @@ class Points {
   async canUsePoints(userId, puntos) {
     try {
       const userPoints = await this.getUserPoints(userId);
-      return (userPoints.puntos_actuales || 0) >= puntos;
+      const disponibles = userPoints.puntos_actuales || 0;
+      console.log(`🔍 Verificando puntos: Usuario ${userId} tiene ${disponibles}, quiere usar ${puntos}`);
+      return disponibles >= puntos;
     } catch (error) {
       console.error('Error al verificar puntos disponibles:', error);
       return false;
@@ -479,25 +482,66 @@ class Points {
     }
   }
 
-  // ==================== MÉTODOS EXISTENTES ====================
+  // ==================== MÉTODOS CORREGIDOS ====================
 
+  // 🔧 CORREGIDO: Convertir puntos a valor en dólares
   getPointsValue(puntos) {
-    return puntos / this.PUNTOS_POR_DOLAR;
+    if (!puntos || puntos <= 0) {
+      return 0;
+    }
+    
+    // 🔧 CONVERSIÓN CORREGIDA: 100 puntos = $1.00
+    const valorDolares = puntos / 100;
+    
+    console.log(`💰 Conversión: ${puntos} puntos = $${valorDolares.toFixed(2)}`);
+    
+    // Redondear a 2 decimales
+    return Math.round(valorDolares * 100) / 100;
   }
 
   async getSystemConfig() {
-    return {
-      puntos_por_dolar: this.PUNTOS_POR_DOLAR,
-      puntos_bienvenida: this.PUNTOS_BIENVENIDA,
-      puntos_referido: this.PUNTOS_REFERIDO,
-      puntos_nuevo_usuario: this.PUNTOS_NUEVO_USUARIO
-    };
+    try {
+      // 🔧 CONSULTAR BD PARA OBTENER CONFIGURACIÓN ACTUALIZADA
+      const sql = `
+        SELECT clave, valor 
+        FROM configuracion_sistema 
+        WHERE clave IN ('puntos_por_dolar', 'puntos_bienvenida', 'puntos_referido', 'puntos_nuevo_usuario')
+      `;
+      
+      const result = await query(sql, []);
+      
+      // Convertir resultado a objeto
+      const config = {};
+      result.rows.forEach(row => {
+        config[row.clave] = parseInt(row.valor) || 0;
+      });
+      
+      // Usar valores de BD o fallback a constantes de clase
+      return {
+        puntos_por_dolar: config.puntos_por_dolar || this.PUNTOS_POR_DOLAR,
+        puntos_bienvenida: config.puntos_bienvenida || this.PUNTOS_BIENVENIDA,
+        puntos_referido: config.puntos_referido || this.PUNTOS_REFERIDO,
+        puntos_nuevo_usuario: config.puntos_nuevo_usuario || this.PUNTOS_NUEVO_USUARIO
+      };
+    } catch (error) {
+      console.error('Error al obtener configuración, usando valores por defecto:', error);
+      return {
+        puntos_por_dolar: this.PUNTOS_POR_DOLAR,
+        puntos_bienvenida: this.PUNTOS_BIENVENIDA,
+        puntos_referido: this.PUNTOS_REFERIDO,
+        puntos_nuevo_usuario: this.PUNTOS_NUEVO_USUARIO
+      };
+    }
   }
 
-  // 🔧 ARREGLADO: Método processPointsForPurchase implementado correctamente
+  // 🔧 CORREGIDO: Método processPointsForPurchase con conversión correcta
   async processPointsForPurchase(userId, totalCompra, orderDetails = null) {
     try {
-      const puntosGanados = Math.floor(totalCompra * this.PUNTOS_POR_DOLAR);
+      // 🔧 OBTENER CONFIGURACIÓN DESDE BD
+      const config = await this.getSystemConfig();
+      const puntosGanados = Math.floor(totalCompra * config.puntos_por_dolar);
+      
+      console.log(`💰 Cálculo de puntos: $${totalCompra} × ${config.puntos_por_dolar} puntos/dólar = ${puntosGanados} puntos`);
       
       if (puntosGanados > 0) {
         console.log(`💰 Otorgando ${puntosGanados} puntos al usuario ${userId} por compra de $${totalCompra}`);
@@ -506,12 +550,13 @@ class Points {
         const result = await this.addPoints(
           userId, 
           puntosGanados, 
-          `Compra - Orden ${orderDetails?.order_id || 'N/A'}`,
+          `Compra - Orden ${orderDetails?.order_id || 'N/A'} ($${totalCompra.toFixed(2)})`,
           {
             orden_id: orderDetails?.order_id,
             total_compra: totalCompra,
             metodo_pago: orderDetails?.payment_method,
             fecha_compra: new Date().toISOString(),
+            puntos_por_dolar: config.puntos_por_dolar,
             ...orderDetails
           }
         );
@@ -520,7 +565,8 @@ class Points {
           success: true,
           puntos_agregados: puntosGanados,
           puntos_nuevos: result.puntos_nuevos,
-          total_ganados: result.puntos_nuevos // Approximación
+          total_ganados: result.puntos_nuevos,
+          rate: config.puntos_por_dolar
         };
       }
       

@@ -141,52 +141,64 @@ class CheckoutController {
   // ==================== APLICAR PUNTOS ====================
 
   async applyPoints(req, res) {
-    try {
-      console.log('💰 Aplicando puntos al checkout...');
-      
-      const userId = req.user?.id;
-      const { puntosAUsar, total } = req.body;
-      
-      if (!puntosAUsar || puntosAUsar <= 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'Cantidad de puntos inválida'
-        });
-      }
-
-      // Verificar si el usuario tiene suficientes puntos
-      const canUse = await this.pointsModel.canUsePoints(userId, puntosAUsar);
-      if (!canUse) {
-        return res.status(400).json({
-          success: false,
-          message: 'Puntos insuficientes'
-        });
-      }
-
-      // Calcular descuento
-      const descuento = this.pointsModel.getPointsValue(puntosAUsar);
-      const nuevoTotal = Math.max(0, total - descuento);
-      
-      res.json({
-        success: true,
-        data: {
-          puntosAplicados: puntosAUsar,
-          descuento: descuento,
-          totalOriginal: total,
-          nuevoTotal: nuevoTotal,
-          ahorro: descuento
-        }
-      });
-
-    } catch (error) {
-      console.error('❌ Error aplicando puntos:', error);
-      res.status(500).json({
+  try {
+    console.log('💰 Aplicando puntos al checkout...');
+    
+    const userId = req.user?.id;
+    const { puntosAUsar, total } = req.body;
+    
+    // 🔧 VALIDACIONES CORREGIDAS
+    if (!puntosAUsar || puntosAUsar <= 0) {
+      return res.status(400).json({
         success: false,
-        message: 'Error al aplicar puntos',
-        error: process.env.NODE_ENV === 'development' ? error.message : 'Error interno'
+        message: 'Cantidad de puntos inválida'
       });
     }
+
+    // 🔧 NUEVA VALIDACIÓN: Límite máximo por compra
+    const maxPointsAllowed = Math.floor(total * 100); // $1 = 100 puntos
+    if (puntosAUsar > maxPointsAllowed) {
+      return res.status(400).json({
+        success: false,
+        message: `Máximo ${maxPointsAllowed} puntos para esta compra (${total.toFixed(2)})`
+      });
+    }
+
+    // Verificar si el usuario tiene suficientes puntos
+    const canUse = await this.pointsModel.canUsePoints(userId, puntosAUsar);
+    if (!canUse) {
+      return res.status(400).json({
+        success: false,
+        message: 'Puntos insuficientes'
+      });
+    }
+
+    // 🔧 CÁLCULO CORREGIDO: 100 puntos = $1.00
+    const descuento = puntosAUsar / 100; // En lugar de this.pointsModel.getPointsValue(puntosAUsar)
+    const nuevoTotal = Math.max(0, total - descuento);
+    
+    console.log(`🔧 Cálculo corregido: ${puntosAUsar} puntos = $${descuento.toFixed(2)} descuento`);
+    
+    res.json({
+      success: true,
+      data: {
+        puntosAplicados: puntosAUsar,
+        descuento: descuento,
+        totalOriginal: total,
+        nuevoTotal: nuevoTotal,
+        ahorro: descuento
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error aplicando puntos:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al aplicar puntos',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Error interno'
+    });
   }
+}
 
   // ==================== SIMULAR PAGO PAYPAL ====================
 
