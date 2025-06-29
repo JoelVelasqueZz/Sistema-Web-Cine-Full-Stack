@@ -1,15 +1,18 @@
-// backend/src/routes/admin.js - CORREGIDO PARA DATOS REALES
+// backend/src/routes/admin.js - ACTUALIZADO CON SISTEMA DE AUDITORÍA Y ALERTAS
 const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
 const { requireAdmin } = require('../middleware/admin');
-const { pool } = require('../config/database'); // 🔧 CORRECCIÓN: Importar pool correctamente
+const { pool } = require('../config/database');
+
+// 🆕 IMPORTAR EL NUEVO SISTEMA CONTROLLER
+const systemController = require('../controllers/admin/systemController');
 
 // Middleware global: requiere autenticación y admin
 router.use(authenticateToken);
 router.use(requireAdmin);
 
-// ==================== ESTADÍSTICAS GENERALES REALES CORREGIDAS ====================
+// ==================== RUTAS EXISTENTES (MANTENER) ====================
 
 /**
  * @route GET /api/admin/stats
@@ -100,8 +103,6 @@ router.get('/stats', async (req, res) => {
       p.rating DESC
     LIMIT 5
 `);
-
-
 
     // ========== VENTAS RECIENTES REALES CORREGIDA ==========
     const ventasRecientesQuery = await pool.query(`
@@ -271,8 +272,6 @@ router.get('/stats', async (req, res) => {
     });
   }
 });
-
-// ==================== ESTADÍSTICAS DEL BAR REALES CORREGIDAS ====================
 
 /**
  * @route GET /api/admin/bar-stats
@@ -490,8 +489,6 @@ router.get('/bar-stats', async (req, res) => {
   }
 });
 
-// ==================== REPORTES CON DATOS REALES ====================
-
 /**
  * @route GET /api/admin/ventas-report
  * @desc Obtener reporte de ventas por rango de fechas
@@ -545,8 +542,6 @@ router.get('/ventas-report', async (req, res) => {
   }
 });
 
-// ==================== RUTA DE SALUD PARA DIAGNÓSTICO ====================
-
 /**
  * @route GET /api/health
  * @desc Verificar que el servidor esté funcionando
@@ -559,5 +554,55 @@ router.get('/health', (req, res) => {
     database: 'connected'
   });
 });
+
+// ==================== 🆕 NUEVAS RUTAS DEL SISTEMA DE AUDITORÍA Y ALERTAS ====================
+
+/**
+ * @route GET /api/admin/system/metrics
+ * @desc Obtener métricas del dashboard del sistema
+ */
+router.get('/system/metrics', systemController.getDashboardMetrics);
+
+/**
+ * @route GET /api/admin/system/alerts
+ * @desc Obtener alertas del sistema con paginación
+ */
+router.get('/system/alerts', systemController.getSystemAlerts);
+
+/**
+ * @route POST /api/admin/system/alerts/mark-reviewed
+ * @desc Marcar alertas como revisadas
+ */
+router.post('/system/alerts/mark-reviewed', systemController.markAlertsAsReviewed);
+
+/**
+ * @route GET /api/admin/system/alerts/summary
+ * @desc Obtener resumen de alertas por severidad
+ */
+router.get('/system/alerts/summary', systemController.getAlertsSummary);
+
+/**
+ * @route GET /api/admin/system/audit
+ * @desc Obtener logs de auditoría con filtros
+ */
+router.get('/system/audit', systemController.getAuditLog);
+
+/**
+ * @route POST /api/admin/system/cleanup
+ * @desc Ejecutar limpieza del sistema
+ */
+router.post('/system/cleanup', systemController.runSystemCleanup);
+
+/**
+ * @route GET /api/admin/system/stats
+ * @desc Obtener estadísticas avanzadas del sistema
+ */
+router.get('/system/stats', systemController.getSystemStats);
+
+/**
+ * @route GET /api/admin/system/test-triggers
+ * @desc Probar que los triggers del sistema funcionan
+ */
+router.get('/system/test-triggers', systemController.testTriggers);
 
 module.exports = router;

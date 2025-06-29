@@ -1,3 +1,4 @@
+// src/app/app.module.ts - ACTUALIZADO CON SYSTEM SERVICE
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -29,6 +30,8 @@ import { PointsService } from './services/points.service';
 import { RewardsService } from './services/rewards.service';
 import { UserService } from './services/user.service';
 import { ToastService } from './services/toast.service';
+// 🆕 SISTEMA DE AUDITORÍA
+import { SystemService } from './services/system.service';
 
 // Componentes principales
 import { TicketPurchaseComponent } from './components/ticket-purchase/ticket-purchase.component';
@@ -74,8 +77,6 @@ import { ResetPasswordComponent } from './components/reset-password/reset-passwo
 import { AdminConfigComponent } from './components/admin/admin-config/admin-config.component';
 import { AdminLogsComponent } from './components/admin/admin-logs/admin-logs.component';
 
-
-
 @NgModule({
   declarations: [
     // Componente principal
@@ -85,7 +86,6 @@ import { AdminLogsComponent } from './components/admin/admin-logs/admin-logs.com
     NavbarComponent,
     FooterComponent,
     ToastComponent,
-    
     
     // Componentes principales
     HomeComponent,
@@ -107,6 +107,7 @@ import { AdminLogsComponent } from './components/admin/admin-logs/admin-logs.com
     ComingSoonComponent, 
     ComingSoonDetailComponent, 
     AdminLogsComponent,
+    
     // Componentes de usuario
     ProfileComponent, 
     FavoritesComponent, 
@@ -148,7 +149,6 @@ import { AdminLogsComponent } from './components/admin/admin-logs/admin-logs.com
     ReactiveFormsModule,
     FormsModule,
     
-    
     // 🎬 COMPONENTES STANDALONE
     AdminComingSoonComponent
   ],
@@ -174,7 +174,10 @@ import { AdminLogsComponent } from './components/admin/admin-logs/admin-logs.com
     // Servicios de datos
     AdminService,
     BarService,
-    FunctionService
+    FunctionService,
+    
+    // 🆕 NUEVO: SISTEMA DE AUDITORÍA Y ALERTAS
+    SystemService
   ],
   bootstrap: [AppComponent]
 })
