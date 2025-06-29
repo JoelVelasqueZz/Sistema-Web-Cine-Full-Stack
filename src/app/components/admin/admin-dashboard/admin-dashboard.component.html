@@ -190,31 +190,32 @@
     </div>
 
     <!-- Estado del Sistema -->
-    <div class="col-lg-3 col-md-6">
-      <div class="card stat-card h-100 border-0 shadow"
-           [class.bg-success]="triggerTestResult?.success"
-           [class.bg-danger]="triggerTestResult && !triggerTestResult.success"
-           [class.bg-secondary]="!triggerTestResult"
-           class="text-white">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <div class="stat-number">
-                {{ triggerTestResult?.success ? 'OK' : 'ERROR' }}
-              </div>
-              <div class="stat-label">Estado Triggers</div>
-              <small class="stat-change">
-                <i class="fas fa-cogs me-1"></i>
-                {{ triggerTestResult?.data?.funciones_activas || 0 }} funciones
-              </small>
-            </div>
-            <div class="stat-icon">
-              <i class="fas fa-cogs fa-2x"></i>
-            </div>
+   <div class="col-lg-3 col-md-6">
+  <div class="card stat-card h-100 border-0 shadow"
+       [class.bg-success]="triggerTestResult?.success"
+       [class.bg-danger]="triggerTestResult && !triggerTestResult.success"
+       [class.bg-secondary]="!triggerTestResult"
+       class="text-white">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <div class="stat-number">
+            {{ triggerTestResult?.success ? 'ACTIVO' : triggerTestResult ? 'ERROR' : 'CARGANDO' }}
           </div>
+          <div class="stat-label">Sistema de Auditoría</div>
+          <small class="stat-change">
+            <i class="fas fa-shield-alt me-1"></i>
+            {{ triggerTestResult?.data?.triggers_activos || 0 }} triggers, 
+            {{ triggerTestResult?.data?.funciones_activas || 0 }} funciones
+          </small>
+        </div>
+        <div class="stat-icon">
+          <i class="fas fa-shield-alt fa-2x"></i>
         </div>
       </div>
     </div>
+  </div>
+</div>
 
   </div>
 
