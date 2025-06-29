@@ -254,18 +254,106 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
    * 🆕 Ir a vista detallada de alertas
    */
   verTodasLasAlertas(): void {
-    // Si tienes un componente de admin-logs, navegar ahí
-    this.router.navigate(['/admin/logs'], { queryParams: { tab: 'alerts' } });
-  }
+  this.loadingAlerts = true;
+  
+  // Cargar más alertas
+  this.systemService.getSystemAlerts(1, 50).subscribe({
+    next: (response) => {
+      this.systemAlerts = response.data;
+      this.loadingAlerts = false;
+      
+      // Mostrar alertas en una ventana más grande
+      const alertsInfo = response.data.map(alert => 
+        `${alert.severidad.toUpperCase()}: ${alert.tipo.replace('_', ' ')} - ${alert.mensaje}`
+      ).join('\n\n');
+      
+      alert(`🚨 ALERTAS DEL SISTEMA (${response.data.length}):\n\n${alertsInfo}`);
+      
+      console.log('📋 TODAS LAS ALERTAS:', response.data);
+    },
+    error: (error) => {
+      console.error('❌ Error cargando alertas:', error);
+      this.loadingAlerts = false;
+      this.toastService.showError('❌ Error al cargar alertas');
+    }
+  });
+}
 
   /**
    * 🆕 Ir a vista detallada de auditoría
    */
   verLogDeAuditoria(): void {
-    // Si tienes un componente de admin-logs, navegar ahí
-    this.router.navigate(['/admin/logs'], { queryParams: { tab: 'audit' } });
-  }
+  this.systemService.getRecentAuditActivity(20).subscribe({
+    next: (auditLogs) => {
+      console.log('📋 LOGS DE AUDITORÍA RECIENTES:');
+      console.table(auditLogs);
+      
+      const auditInfo = auditLogs.map(log => 
+        `${log.fecha_accion}: ${log.accion} en ${log.tabla_afectada} por ${log.usuario_nombre || 'Sistema'}`
+      ).join('\n');
+      
+      if (auditLogs.length > 0) {
+        alert(`📋 LOGS DE AUDITORÍA (${auditLogs.length}):\n\n${auditInfo}`);
+      } else {
+        alert('📋 No hay logs de auditoría recientes');
+      }
+      
+      this.toastService.showInfo('📋 Logs de auditoría mostrados en consola del navegador');
+    },
+    error: (error) => {
+      console.error('❌ Error obteniendo logs:', error);
+      this.toastService.showError('❌ Error al obtener logs de auditoría');
+    }
+  });
+}
+markSingleAlert(alertId: number): void {
+  this.systemService.markAlertsAsReviewed([alertId]).subscribe({
+    next: (result) => {
+      if (result.updatedCount > 0) {
+        // Remover la alerta de la lista
+        this.systemAlerts = this.systemAlerts.filter(alert => alert.id !== alertId);
+        // Actualizar métricas
+        this.cargarMetricasSistema(true);
+        this.toastService.showSuccess('✅ Alerta marcada como revisada');
+      }
+    },
+    error: (error) => {
+      console.error('❌ Error marcando alerta:', error);
+    }
+  });
+}
 
+/**
+ * 🆕 Crear alertas de prueba
+ */
+crearAlertasDePrueba(): void {
+  const confirmTest = confirm(
+    '¿Crear alertas de prueba?\n\n' +
+    'Esto insertará algunas alertas de ejemplo en la base de datos para probar el sistema.'
+  );
+  
+  if (confirmTest) {
+    this.toastService.showInfo('🧪 Debes ejecutar el SQL en la base de datos para crear alertas de prueba');
+    
+    // Mostrar el SQL que deben ejecutar
+    const sqlQuery = `
+-- Ejecutar en PostgreSQL:
+INSERT INTO alertas_sistema (tipo, mensaje, severidad) VALUES
+('actividad_sospechosa', 'Usuario ha realizado 6 órdenes en 1 hora', 'alta'),
+('orden_grande', 'Orden de $299.50 detectada', 'media'),
+('sistema', 'Sistema funcionando correctamente', 'baja'),
+('seguridad', 'Intento de acceso no autorizado detectado', 'critica');
+    `;
+    
+    console.log('🧪 SQL PARA CREAR ALERTAS DE PRUEBA:');
+    console.log(sqlQuery);
+    
+    setTimeout(() => {
+      this.cargarMetricasSistema();
+      this.toastService.showInfo('🔄 Recargando métricas para ver nuevas alertas...');
+    }, 3000);
+  }
+}
   /**
    * 🆕 Obtener clase CSS para severidad de alerta
    */
@@ -1095,4 +1183,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     this.cargarEstadisticasConDiagnostico();
     this.cargarMetricasSistema();
   }
+
+
+  
 }
