@@ -109,113 +109,124 @@
     </div>
   </div>
 
-  <!-- 🆕 MÉTRICAS DEL SISTEMA DE AUDITORÍA -->
-  <div class="row mb-4">
-    <div class="col-12">
-      <h5 class="mb-3">
-        <i class="fas fa-shield-alt me-2 text-info"></i>
-        Métricas del Sistema de Auditoría
-        <span class="badge bg-info" *ngIf="!loadingSystemMetrics">TIEMPO REAL</span>
-        <span class="badge bg-secondary" *ngIf="loadingSystemMetrics">CARGANDO...</span>
-      </h5>
-    </div>
-  </div>
-
-  <div class="row mb-4 g-3">
-    
-    <!-- Órdenes Hoy -->
-    <div class="col-lg-3 col-md-6">
-      <div class="card stat-card bg-info text-white h-100 border-0 shadow">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <div class="stat-number">{{ systemMetrics.ordenes_hoy }}</div>
-              <div class="stat-label">Órdenes Hoy</div>
-              <small class="stat-change">
-                <i class="fas fa-clock me-1"></i>Tiempo real
-              </small>
-            </div>
-            <div class="stat-icon">
-              <i class="fas fa-shopping-cart fa-2x"></i>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Ingresos Hoy -->
-    <div class="col-lg-3 col-md-6">
-      <div class="card stat-card bg-success text-white h-100 border-0 shadow">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <div class="stat-number">${{ systemMetrics.ingresos_hoy.toFixed(2) }}</div>
-              <div class="stat-label">Ingresos Hoy</div>
-              <small class="stat-change">
-                <i class="fas fa-dollar-sign me-1"></i>En tiempo real
-              </small>
-            </div>
-            <div class="stat-icon">
-              <i class="fas fa-cash-register fa-2x"></i>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Alertas Pendientes -->
-    <div class="col-lg-3 col-md-6">
-      <div class="card stat-card h-100 border-0 shadow" 
-           [class.bg-danger]="systemMetrics.alertas_pendientes > 5"
-           [class.bg-warning]="systemMetrics.alertas_pendientes > 0 && systemMetrics.alertas_pendientes <= 5"
-           [class.bg-secondary]="systemMetrics.alertas_pendientes === 0"
-           [class.text-white]="systemMetrics.alertas_pendientes > 0"
-           [class.text-dark]="systemMetrics.alertas_pendientes === 0">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <div class="stat-number">{{ systemMetrics.alertas_pendientes }}</div>
-              <div class="stat-label">Alertas Pendientes</div>
-              <small class="stat-change">
-                <i class="fas fa-bell me-1"></i>
-                {{ systemMetrics.alertas_pendientes === 0 ? 'Todo OK' : 'Requiere atención' }}
-              </small>
-            </div>
-            <div class="stat-icon">
-              <i class="fas fa-bell fa-2x"></i>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Estado del Sistema -->
-   <div class="col-lg-3 col-md-6">
-  <div class="card stat-card h-100 border-0 shadow"
-       [class.bg-success]="triggerTestResult?.success"
-       [class.bg-danger]="triggerTestResult && !triggerTestResult.success"
-       [class.bg-secondary]="!triggerTestResult"
-       class="text-white">
-    <div class="card-body">
-      <div class="d-flex justify-content-between align-items-center">
-        <div>
-          <div class="stat-number">
-            {{ triggerTestResult?.success ? 'ACTIVO' : triggerTestResult ? 'ERROR' : 'CARGANDO' }}
-          </div>
-          <div class="stat-label">Sistema de Auditoría</div>
-          <small class="stat-change">
-            <i class="fas fa-shield-alt me-1"></i>
-            {{ triggerTestResult?.data?.triggers_activos || 0 }} triggers, 
-            {{ triggerTestResult?.data?.funciones_activas || 0 }} funciones
-          </small>
-        </div>
-        <div class="stat-icon">
-          <i class="fas fa-shield-alt fa-2x"></i>
-        </div>
-      </div>
-    </div>
+ <!-- 🆕 MÉTRICAS DEL SISTEMA DE AUDITORÍA - VERSION MEJORADA -->
+<div class="row mb-4">
+  <div class="col-12">
+    <h5 class="mb-3">
+      <i class="fas fa-shield-alt me-2 text-info"></i>
+      Métricas del Sistema de Auditoría
+      <span class="badge bg-info" *ngIf="!loadingSystemMetrics">TIEMPO REAL</span>
+      <span class="badge bg-secondary" *ngIf="loadingSystemMetrics">CARGANDO...</span>
+    </h5>
   </div>
 </div>
+
+<div class="row mb-4 g-3">
+  
+  <!-- Órdenes Hoy -->
+  <div class="col-lg-3 col-md-6">
+    <div class="card stat-card bg-info text-white h-100 border-0 shadow info-state"
+         [class.loading]="loadingSystemMetrics"
+         [class.updating]="loadingSystemMetrics">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <div class="stat-number">{{ systemMetrics.ordenes_hoy }}</div>
+            <div class="stat-label">Órdenes Hoy</div>
+            <small class="stat-change">
+              <i class="fas fa-clock me-1"></i>Tiempo real
+            </small>
+          </div>
+          <div class="stat-icon">
+            <i class="fas fa-shopping-cart fa-2x"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ingresos Hoy -->
+  <div class="col-lg-3 col-md-6">
+    <div class="card stat-card bg-success text-white h-100 border-0 shadow success-state"
+         [class.loading]="loadingSystemMetrics"
+         [class.updating]="loadingSystemMetrics">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <div class="stat-number">${{ systemMetrics.ingresos_hoy.toFixed(2) }}</div>
+            <div class="stat-label">Ingresos Hoy</div>
+            <small class="stat-change">
+              <i class="fas fa-dollar-sign me-1"></i>En tiempo real
+            </small>
+          </div>
+          <div class="stat-icon">
+            <i class="fas fa-cash-register fa-2x"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alertas Pendientes -->
+  <div class="col-lg-3 col-md-6">
+    <div class="card stat-card h-100 border-0 shadow"
+         [class.bg-danger]="systemMetrics.alertas_pendientes > 5"
+         [class.bg-warning]="systemMetrics.alertas_pendientes > 0 && systemMetrics.alertas_pendientes <= 5"
+         [class.bg-secondary]="systemMetrics.alertas_pendientes === 0"
+         [class.text-white]="systemMetrics.alertas_pendientes > 0"
+         [class.text-dark]="systemMetrics.alertas_pendientes === 0"
+         [class.danger-state]="systemMetrics.alertas_pendientes > 5"
+         [class.warning-state]="systemMetrics.alertas_pendientes > 0 && systemMetrics.alertas_pendientes <= 5"
+         [class.loading]="loadingSystemMetrics"
+         [class.updating]="loadingSystemMetrics">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <div class="stat-number">{{ systemMetrics.alertas_pendientes }}</div>
+            <div class="stat-label">Alertas Pendientes</div>
+            <small class="stat-change">
+              <i class="fas fa-bell me-1"></i>
+              {{ systemMetrics.alertas_pendientes === 0 ? 'Todo OK' : 'Requiere atención' }}
+            </small>
+          </div>
+          <div class="stat-icon">
+            <i class="fas fa-bell fa-2x"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Estado del Sistema -->
+  <div class="col-lg-3 col-md-6">
+    <div class="card stat-card h-100 border-0 shadow text-white"
+         [class.bg-success]="triggerTestResult?.success"
+         [class.bg-danger]="triggerTestResult && !triggerTestResult.success"
+         [class.bg-secondary]="!triggerTestResult"
+         [class.success-state]="triggerTestResult?.success"
+         [class.danger-state]="triggerTestResult && !triggerTestResult.success"
+         [class.loading]="testingTriggers"
+         [class.updating]="testingTriggers">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <div class="stat-number">
+              {{ triggerTestResult?.success ? 'ACTIVO' : triggerTestResult ? 'ERROR' : 'CARGANDO' }}
+            </div>
+            <div class="stat-label">Sistema de Auditoría</div>
+            <small class="stat-change">
+              <i class="fas fa-shield-alt me-1"></i>
+              {{ triggerTestResult?.data?.triggers_activos || 0 }} triggers, 
+              {{ triggerTestResult?.data?.funciones_activas || 0 }} funciones
+            </small>
+          </div>
+          <div class="stat-icon">
+            <i class="fas fa-shield-alt fa-2x"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   </div>
 

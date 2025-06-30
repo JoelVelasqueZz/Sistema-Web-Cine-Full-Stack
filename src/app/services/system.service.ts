@@ -446,4 +446,4 @@ export class SystemService {
       return date.toLocaleDateString('es-ES');
     }
   }
-}
+}  
