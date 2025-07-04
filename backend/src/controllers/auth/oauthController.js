@@ -1,5 +1,4 @@
 const JWTUtils = require('../../utils/jwt');
-const config = require('../../config/config');
 
 // Manejar éxito de OAuth
 const handleOAuthSuccess = async (req, res) => {
@@ -8,7 +7,7 @@ const handleOAuthSuccess = async (req, res) => {
     
     if (!user) {
       console.error('❌ No user found in OAuth callback');
-      return res.redirect(`${config.frontend.url}/login?error=oauth_failed`);
+      return res.redirect(`${process.env.FRONTEND_URL}/login?error=oauth_failed`);
     }
 
     console.log('✅ OAuth success for user:', user.email);
@@ -31,21 +30,21 @@ const handleOAuthSuccess = async (req, res) => {
     const encodedUserData = encodeURIComponent(JSON.stringify(userData));
     
     // Redirigir al frontend con token y datos de usuario
-    const redirectUrl = `${config.frontend.url}/auth/oauth/callback?token=${token}&user=${encodedUserData}&success=true`;
+    const redirectUrl = `${process.env.FRONTEND_URL}/auth/oauth/callback?token=${token}&user=${encodedUserData}&success=true`;
     
     console.log('🔄 Redirecting to:', redirectUrl);
     res.redirect(redirectUrl);
     
   } catch (error) {
     console.error('❌ Error in OAuth success handler:', error);
-    res.redirect(`${config.frontend.url}/login?error=oauth_error`);
+    res.redirect(`${process.env.FRONTEND_URL}/login?error=oauth_error`);
   }
 };
 
 // Manejar error de OAuth
 const handleOAuthError = (req, res) => {
   console.error('❌ OAuth authentication failed');
-  res.redirect(`${config.frontend.url}/login?error=oauth_failed`);
+  res.redirect(`${process.env.FRONTEND_URL}/login?error=oauth_failed`);
 };
 
 // Obtener información del usuario OAuth (endpoint adicional)
