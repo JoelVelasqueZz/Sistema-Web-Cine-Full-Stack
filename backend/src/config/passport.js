@@ -4,11 +4,20 @@ const FacebookStrategy = require('passport-facebook').Strategy;
 const GitHubStrategy = require('passport-github2').Strategy;
 const User = require('../models/User');
 
+// 🔧 FORZAR HTTPS EN CALLBACKS PARA PRODUCCIÓN
+const getCallbackURL = (provider) => {
+  const baseUrl = process.env.NODE_ENV === 'production' 
+    ? process.env.BACKEND_URL // Ya incluye https://
+    : 'http://localhost:3000';
+  
+  return `${baseUrl}/api/auth/${provider}/callback`;
+};
+
 // Configurar Google OAuth
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: "/api/auth/google/callback"
+    callbackURL: getCallbackURL('google') // 🔧 USAR FUNCIÓN PARA FORZAR HTTPS
   },
   async (accessToken, refreshToken, profile, done) => {
     try {
@@ -53,7 +62,7 @@ passport.use(new GoogleStrategy({
 passport.use(new FacebookStrategy({
     clientID: process.env.FACEBOOK_CLIENT_ID,
     clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
-    callbackURL: "/api/auth/facebook/callback",
+    callbackURL: getCallbackURL('facebook'), // 🔧 USAR FUNCIÓN PARA FORZAR HTTPS
     profileFields: ['id', 'displayName', 'emails', 'photos']
   },
   async (accessToken, refreshToken, profile, done) => {
@@ -101,7 +110,7 @@ passport.use(new FacebookStrategy({
 passport.use(new GitHubStrategy({
     clientID: process.env.GITHUB_CLIENT_ID,
     clientSecret: process.env.GITHUB_CLIENT_SECRET,
-    callbackURL: "/api/auth/github/callback"
+    callbackURL: getCallbackURL('github') // 🔧 USAR FUNCIÓN PARA FORZAR HTTPS
   },
   async (accessToken, refreshToken, profile, done) => {
     try {
