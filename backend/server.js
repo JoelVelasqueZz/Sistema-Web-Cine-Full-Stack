@@ -1,6 +1,11 @@
 const express = require('express');
 const cors = require('cors');
+const session = require('express-session'); // 🆕 NUEVO PARA OAUTH
+const passport = require('passport'); // 🆕 NUEVO PARA OAUTH
 require('dotenv').config();
+
+// 🆕 IMPORTAR CONFIGURACIÓN DE PASSPORT
+require('./src/config/passport');
 
 const { connectDB } = require('./src/config/database');
 const routes = require('./src/routes');
@@ -16,7 +21,7 @@ const allowedOrigins = [
   process.env.FRONTEND_URL,                                         // Frontend dinámico
   process.env.BACKEND_URL,                                          // Backend dinámico
   process.env.CORS_ORIGIN,                                          // CORS origin específico
-  'https://parky-films.up.railway.app',                             // Frontend Railway (backup) ← CAMBIO AQUÍ
+  'https://parky-films.up.railway.app',                             // Frontend Railway (backup)
   'https://webcinenew-production.up.railway.app'                     // Backend Railway (backup)
 ].filter(Boolean)
 
@@ -77,6 +82,22 @@ app.use((req, res, next) => {
   }
 });
 
+// 🆕 CONFIGURACIÓN DE SESIONES PARA OAUTH
+app.use(session({
+  secret: process.env.SESSION_SECRET || process.env.JWT_SECRET || 'fallback-secret-key',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production', // HTTPS en producción
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000 // 24 horas
+  }
+}));
+
+// 🆕 INICIALIZAR PASSPORT PARA OAUTH
+app.use(passport.initialize());
+app.use(passport.session());
+
 // 📊 Parse JSON y URL encoded
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -94,11 +115,17 @@ if (process.env.NODE_ENV !== 'production') {
 // 🏥 Health check en la raíz
 app.get('/', (req, res) => {
   res.json({ 
-    message: '🎬 ParkyFilms Backend API - Railway Ready!',
+    message: '🎬 ParkyFilms Backend API - Railway Ready with OAuth!', // 🆕 ACTUALIZADO
     status: 'online',
     environment: process.env.NODE_ENV || 'development',
     cors: 'enabled',
     allowedOrigins: allowedOrigins,
+    // 🆕 INFORMACIÓN OAUTH
+    oauth: {
+      google: !!process.env.GOOGLE_CLIENT_ID,
+      facebook: !!process.env.FACEBOOK_CLIENT_ID,
+      github: !!process.env.GITHUB_CLIENT_ID
+    },
     timestamp: new Date().toISOString()
   });
 });
@@ -109,7 +136,13 @@ app.get('/health', (req, res) => {
     status: 'OK', 
     timestamp: new Date().toISOString(),
     service: 'ParkyFilms API',
-    version: '1.0.0'
+    version: '1.0.0',
+    // 🆕 ESTADO OAUTH
+    oauth_status: {
+      google: process.env.GOOGLE_CLIENT_ID ? '✅ Configurado' : '❌ No configurado',
+      facebook: process.env.FACEBOOK_CLIENT_ID ? '✅ Configurado' : '❌ No configurado',
+      github: process.env.GITHUB_CLIENT_ID ? '✅ Configurado' : '❌ No configurado'
+    }
   });
 });
 
@@ -123,6 +156,32 @@ app.get('/api/test', (req, res) => {
     origin: req.headers.origin,
     method: req.method,
     timestamp: new Date().toISOString()
+  });
+});
+
+// 🆕 TEST OAUTH ENDPOINTS (para verificar que funcionen)
+app.get('/api/test/oauth', (req, res) => {
+  res.json({
+    message: 'OAuth Test endpoint',
+    oauth_providers: {
+      google: {
+        configured: !!process.env.GOOGLE_CLIENT_ID,
+        auth_url: process.env.GOOGLE_CLIENT_ID ? '/api/auth/google' : 'Not configured'
+      },
+      facebook: {
+        configured: !!process.env.FACEBOOK_CLIENT_ID,
+        auth_url: process.env.FACEBOOK_CLIENT_ID ? '/api/auth/facebook' : 'Not configured'
+      },
+      github: {
+        configured: !!process.env.GITHUB_CLIENT_ID,
+        auth_url: process.env.GITHUB_CLIENT_ID ? '/api/auth/github' : 'Not configured'
+      }
+    },
+    callback_urls: {
+      google: '/api/auth/google/callback',
+      facebook: '/api/auth/facebook/callback',
+      github: '/api/auth/github/callback'
+    }
   });
 });
 
@@ -167,12 +226,13 @@ async function startServer() {
     // Iniciar servidor
     app.listen(PORT, () => {
       console.log('='.repeat(60));
-      console.log('🚀 ParkyFilms Backend - Railway Ready!');
+      console.log('🚀 ParkyFilms Backend - Railway Ready with OAuth!'); // 🆕 ACTUALIZADO
       console.log('='.repeat(60));
       console.log(`📡 Puerto: ${PORT}`);
       console.log(`🌍 Entorno: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🔗 Health: http://localhost:${PORT}/health`);
       console.log(`🎯 API: http://localhost:${PORT}/api`);
+      console.log(`🧪 OAuth Test: http://localhost:${PORT}/api/test/oauth`); // 🆕 NUEVO
       console.log('🛡️ CORS Origins permitidos:');
       allowedOrigins.forEach(origin => console.log(`   ✅ ${origin}`));
       console.log('🔍 Variables de entorno:');
@@ -181,6 +241,11 @@ async function startServer() {
       console.log(`   BACKEND_URL: ${process.env.BACKEND_URL}`);
       console.log(`   CORS_ORIGIN: ${process.env.CORS_ORIGIN}`);
       console.log(`   DATABASE_URL: ${process.env.DATABASE_URL ? 'Configurado ✅' : 'No configurado ❌'}`);
+      // 🆕 INFORMACIÓN OAUTH
+      console.log('🔐 OAuth Providers:');
+      console.log(`   Google: ${process.env.GOOGLE_CLIENT_ID ? 'Configurado ✅' : 'No configurado ❌'}`);
+      console.log(`   Facebook: ${process.env.FACEBOOK_CLIENT_ID ? 'Configurado ✅' : 'No configurado ❌'}`);
+      console.log(`   GitHub: ${process.env.GITHUB_CLIENT_ID ? 'Configurado ✅' : 'No configurado ❌'}`);
       console.log('='.repeat(60));
     });
     

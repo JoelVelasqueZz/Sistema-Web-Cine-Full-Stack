@@ -1,6 +1,6 @@
-// src/routes/auth.js
 const express = require('express');
 const router = express.Router();
+const passport = require('passport');
 const {
   register,
   login,
@@ -16,6 +16,12 @@ const {
   validateResetToken,
   resetPassword
 } = require('../controllers/auth/passwordResetController');
+
+// 🆕 IMPORTAR CONTROLADOR DE OAUTH
+const {
+  handleOAuthSuccess,
+  handleOAuthError
+} = require('../controllers/auth/oauthController');
 
 const { authenticateToken } = require('../middleware/auth');
 
@@ -39,6 +45,50 @@ router.get('/validate-reset-token/:token', validateResetToken);
 
 // POST /api/auth/reset-password - Restablecer contraseña
 router.post('/reset-password', resetPassword);
+
+// ==================== RUTAS OAUTH ====================
+
+// 🔗 GOOGLE OAUTH
+// GET /api/auth/google - Iniciar autenticación con Google
+router.get('/google', 
+  passport.authenticate('google', { 
+    scope: ['profile', 'email'] 
+  })
+);
+
+// GET /api/auth/google/callback - Callback de Google
+router.get('/google/callback',
+  passport.authenticate('google', { failureRedirect: '/login' }),
+  handleOAuthSuccess
+);
+
+// 🔗 FACEBOOK OAUTH
+// GET /api/auth/facebook - Iniciar autenticación con Facebook
+router.get('/facebook',
+  passport.authenticate('facebook', { 
+    scope: ['email'] 
+  })
+);
+
+// GET /api/auth/facebook/callback - Callback de Facebook
+router.get('/facebook/callback',
+  passport.authenticate('facebook', { failureRedirect: '/login' }),
+  handleOAuthSuccess
+);
+
+// 🔗 GITHUB OAUTH
+// GET /api/auth/github - Iniciar autenticación con GitHub
+router.get('/github',
+  passport.authenticate('github', { 
+    scope: ['user:email'] 
+  })
+);
+
+// GET /api/auth/github/callback - Callback de GitHub
+router.get('/github/callback',
+  passport.authenticate('github', { failureRedirect: '/login' }),
+  handleOAuthSuccess
+);
 
 // ==================== RUTAS PROTEGIDAS ====================
 

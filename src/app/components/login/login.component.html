@@ -1,9 +1,7 @@
-
 <div class="container mt-5">
   <div class="row justify-content-center">
     <div class="col-md-6 col-lg-4">
       
-     
       <div class="card shadow-lg border-0">
         <div class="card-header bg-primary text-white text-center py-4">
           <h3 class="mb-0">
@@ -14,7 +12,7 @@
         
         <div class="card-body p-4">
           
-         
+          <!-- Alertas -->
           <div class="alert alert-danger" *ngIf="mensajeError">
             <i class="fas fa-exclamation-triangle me-2"></i>
             {{ mensajeError }}
@@ -25,10 +23,44 @@
             {{ mensajeExito }}
           </div>
 
-          
+          <!-- 🆕 BOTONES DE OAUTH -->
+          <div class="oauth-buttons mb-4">
+            <button 
+              type="button" 
+              class="btn btn-google btn-block mb-2"
+              (click)="loginWithGoogle()"
+              [disabled]="cargando">
+              <i class="fab fa-google me-2"></i>
+              Continuar con Google
+            </button>
+            
+            <button 
+              type="button" 
+              class="btn btn-facebook btn-block mb-2"
+              (click)="loginWithFacebook()"
+              [disabled]="cargando">
+              <i class="fab fa-facebook-f me-2"></i>
+              Continuar con Facebook
+            </button>
+            
+            <button 
+              type="button" 
+              class="btn btn-github btn-block mb-3"
+              (click)="loginWithGitHub()"
+              [disabled]="cargando">
+              <i class="fab fa-github me-2"></i>
+              Continuar con GitHub
+            </button>
+            
+            <div class="divider my-3">
+              <span class="divider-text">O</span>
+            </div>
+          </div>
+
+          <!-- Formulario tradicional -->
           <form (ngSubmit)="onLogin()" #loginForm="ngForm">
             
-            
+            <!-- Email -->
             <div class="mb-3">
               <label for="email" class="form-label">
                 <i class="fas fa-envelope me-1"></i>
@@ -51,7 +83,7 @@
               </div>
             </div>
 
-            
+            <!-- Contraseña -->
             <div class="mb-3">
               <label for="password" class="form-label">
                 <i class="fas fa-lock me-1"></i>
@@ -82,7 +114,7 @@
               </div>
             </div>
 
-            
+            <!-- Recordar sesión -->
             <div class="checkbox-highlighted mb-3">
               <label class="custom-checkbox">
                 Recordar mi sesión
@@ -91,6 +123,7 @@
               </label>
             </div>
             
+            <!-- Botón de login -->
             <div class="d-grid mb-3">
               <button 
                 type="submit" 
@@ -111,22 +144,22 @@
 
           </form>
 
-          
+          <!-- Enlaces -->
           <div class="text-center">
-  <p class="mb-2">
-    <a [routerLink]="['/forgot-password']" class="text-decoration-none">
-      <i class="fas fa-key me-1"></i>
-      ¿Olvidaste tu contraseña?
-    </a>
-  </p>
-  <hr>
-  <p class="mb-0">
-    ¿No tienes cuenta? 
-    <a [routerLink]="['/register']" class="text-decoration-none fw-bold">
-      Regístrate aquí
-    </a>
-  </p>
-</div>
+            <p class="mb-2">
+              <a [routerLink]="['/forgot-password']" class="text-decoration-none">
+                <i class="fas fa-key me-1"></i>
+                ¿Olvidaste tu contraseña?
+              </a>
+            </p>
+            <hr>
+            <p class="mb-0">
+              ¿No tienes cuenta? 
+              <a [routerLink]="['/register']" class="text-decoration-none fw-bold">
+                Regístrate aquí
+              </a>
+            </p>
+          </div>
 
         </div>
       </div>

@@ -11,7 +11,7 @@ const createEmailTransporter = () => {
             user: process.env.EMAIL_USER || 'parkyfilms@gmail.com',
             pass: process.env.EMAIL_PASSWORD || 'tu_app_password'
         }
-    });
+    }); 
 };
 
 /**

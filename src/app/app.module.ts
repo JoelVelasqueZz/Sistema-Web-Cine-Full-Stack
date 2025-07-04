@@ -1,4 +1,4 @@
-// src/app/app.module.ts - ACTUALIZADO CON SYSTEM SERVICE
+// src/app/app.module.ts - CORREGIDO PARA OAUTH
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -25,12 +25,10 @@ import { BarService } from './services/bar.service';
 import { FunctionService } from './services/function.service';
 import { OrderService } from './services/order.service';
 import { LogsService } from './services/logs.service';
-// 🆕 NUEVOS SERVICIOS
 import { PointsService } from './services/points.service';
 import { RewardsService } from './services/rewards.service';
 import { UserService } from './services/user.service';
 import { ToastService } from './services/toast.service';
-// 🆕 SISTEMA DE AUDITORÍA
 import { SystemService } from './services/system.service';
 
 // Componentes principales
@@ -51,29 +49,33 @@ import { AdminDashboardComponent } from './components/admin/admin-dashboard/admi
 import { AdminMoviesComponent } from './components/admin/admin-movies/admin-movies.component';
 import { AdminUsersComponent } from './components/admin/admin-users/admin-users.component';
 import { AdminBarComponent } from './components/admin/admin-bar/admin-bar.component';
-// 🆕 ADMIN REWARDS COMPONENT (normal, no standalone)
 import { AdminRewardsComponent } from './components/admin/admin-rewards/admin-rewards.component';
 
-// 🍿 COMPONENTES DEL BAR
+// Componentes del Bar
 import { BarListComponent } from './components/bar-list/bar-list.component';
 import { BarDetailComponent } from './components/bar-detail/bar-detail.component';
 
-// 🎬 COMPONENTES DE FUNCIONES
+// Componentes de Funciones
 import { FunctionAdminComponent } from './components/admin/function-admin/function-admin.component';
 import { FunctionListComponent } from './components/function-list/function-list.component';
 import { FunctionDetailComponent } from './components/function-detail/function-detail.component';
 
-// 🆕 COMPONENTES DEL SISTEMA DE PUNTOS Y RECOMPENSAS (NO standalone)
+// Componentes del Sistema de Puntos y Recompensas
 import { RewardsComponent } from './components/rewards/rewards.component';
 import { OrderHistoryComponent } from './components/order-history/order-history.component';
 import { PointsHistoryComponent } from './components/points-history/points-history.component';
+
+// Componentes de Recovery
+import { ForgotPasswordComponent } from './components/forgot-password/forgot-password.component';
+import { ResetPasswordComponent } from './components/reset-password/reset-password.component';
+
+// 🆕 COMPONENTE OAUTH CALLBACK
+import { OAuthCallbackComponent } from './components/oauth-callback/oauth-callback.component';
 
 import { FooterComponent } from './components/footer/footer.component';
 
 // 🎬 COMPONENTES STANDALONE (van en imports)
 import { AdminComingSoonComponent } from './components/admin/admin-coming-soon/admin-coming-soon.component';
-import { ForgotPasswordComponent } from './components/forgot-password/forgot-password.component';
-import { ResetPasswordComponent } from './components/reset-password/reset-password.component';
 import { AdminConfigComponent } from './components/admin/admin-config/admin-config.component';
 import { AdminLogsComponent } from './components/admin/admin-logs/admin-logs.component';
 
@@ -95,7 +97,12 @@ import { AdminLogsComponent } from './components/admin/admin-logs/admin-logs.com
     
     // Componentes de autenticación
     LoginComponent,     
-    RegisterComponent, 
+    RegisterComponent,
+    ForgotPasswordComponent,
+    ResetPasswordComponent,
+    
+    // 🆕 COMPONENTE OAUTH CALLBACK
+    OAuthCallbackComponent,
     
     // Componentes de compra
     TicketPurchaseComponent, 
@@ -105,24 +112,23 @@ import { AdminLogsComponent } from './components/admin/admin-logs/admin-logs.com
     
     // Componentes de películas y estrenos
     ComingSoonComponent, 
-    ComingSoonDetailComponent, 
-    AdminLogsComponent,
+    ComingSoonDetailComponent,
     
     // Componentes de usuario
     ProfileComponent, 
     FavoritesComponent, 
     HistoryComponent, 
     
-    // 🆕 COMPONENTES DEL SISTEMA DE PUNTOS
+    // Componentes del Sistema de Puntos
     OrderHistoryComponent,
     PointsHistoryComponent,
     RewardsComponent,
     
-    // 🍿 COMPONENTES DEL BAR
+    // Componentes del Bar
     BarListComponent, 
     BarDetailComponent, 
     
-    // 🎬 COMPONENTES DE FUNCIONES
+    // Componentes de Funciones
     FunctionListComponent,
     FunctionDetailComponent,
     
@@ -133,12 +139,9 @@ import { AdminLogsComponent } from './components/admin/admin-logs/admin-logs.com
     AdminUsersComponent,
     AdminBarComponent,
     FunctionAdminComponent,
-    // 🆕 ADMIN REWARDS COMPONENT (movido aquí correctamente)
     AdminRewardsComponent,
-    ForgotPasswordComponent,
-    ResetPasswordComponent,
-    AdminConfigComponent
-    
+    AdminConfigComponent,
+    AdminLogsComponent
   ],
   imports: [
     // Módulos de Angular
@@ -147,10 +150,11 @@ import { AdminLogsComponent } from './components/admin/admin-logs/admin-logs.com
     BrowserAnimationsModule,
     HttpClientModule,
     ReactiveFormsModule,
-    FormsModule,
+    FormsModule, // ✅ ESTO SOLUCIONA EL ERROR DE ngModel
     
-    // 🎬 COMPONENTES STANDALONE
+    // Componentes Standalone
     AdminComingSoonComponent
+  
   ],
   providers: [
     // Servicios de autenticación y usuario
@@ -162,7 +166,7 @@ import { AdminLogsComponent } from './components/admin/admin-logs/admin-logs.com
     OrderService,
     LogsService,
     
-    // 🆕 SERVICIOS DEL SISTEMA DE PUNTOS
+    // Servicios del Sistema de Puntos
     PointsService,
     RewardsService,
     
@@ -176,7 +180,7 @@ import { AdminLogsComponent } from './components/admin/admin-logs/admin-logs.com
     BarService,
     FunctionService,
     
-    // 🆕 NUEVO: SISTEMA DE AUDITORÍA Y ALERTAS
+    // Sistema de Auditoría y Alertas
     SystemService
   ],
   bootstrap: [AppComponent]

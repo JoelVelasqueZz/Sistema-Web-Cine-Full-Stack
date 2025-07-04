@@ -1,7 +1,10 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core'; // 🔧 AGREGAR OnInit
 import { AuthService } from '../../services/auth.service';
 import { Router } from '@angular/router';
 import { ToastService } from '../../services/toast.service';
+// 🚫 QUITAR ESTOS IMPORTS - van en app.module.ts
+// import { FormsModule } from '@angular/forms';
+// import { BrowserModule } from '@angular/platform-browser';
 
 @Component({
   selector: 'app-login',
@@ -9,13 +12,13 @@ import { ToastService } from '../../services/toast.service';
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.css']
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit { // 🔧 IMPLEMENTAR OnInit
   loginData = { 
     email: '', 
     password: '' 
   };
-  mensajeError = '';      // Mantener para el HTML
-  mensajeExito = '';      // Mantener para el HTML  
+  mensajeError = '';
+  mensajeExito = '';
   mostrarPassword = false;
   recordarSesion = false;
   cargando = false;
@@ -26,7 +29,8 @@ export class LoginComponent {
     private toastService: ToastService
   ) {}
 
-  // ✅ MÉTODO CORREGIDO - Ahora usa Observable
+  // ==================== MÉTODOS DE AUTENTICACIÓN TRADICIONAL ====================
+
   onLogin() {
     this.cargando = true;
     this.mensajeError = '';   
@@ -45,7 +49,7 @@ export class LoginComponent {
       return;
     }
 
-    // ✅ USAR EL NUEVO MÉTODO OBSERVABLE
+    // Usar el método Observable
     this.authService.login(this.loginData.email, this.loginData.password).subscribe({
       next: (response) => {
         console.log('🔍 Respuesta de login:', response);
@@ -89,5 +93,115 @@ export class LoginComponent {
 
   togglePassword() {
     this.mostrarPassword = !this.mostrarPassword;
+  }
+
+  // ==================== MÉTODOS DE OAUTH ====================
+
+  /**
+   * 🔗 Iniciar autenticación con Google
+   */
+  loginWithGoogle() {
+    if (this.cargando) return;
+    
+    console.log('🔗 Iniciando login con Google...');
+    this.toastService.showInfo('Redirigiendo a Google...');
+    
+    // Guardar URL de redirección si existe
+    this.guardarUrlRedirect();
+    
+    // Llamar al servicio
+    this.authService.loginWithGoogle();
+  }
+
+  /**
+   * 🔗 Iniciar autenticación con Facebook
+   */
+  loginWithFacebook() {
+    if (this.cargando) return;
+    
+    console.log('🔗 Iniciando login con Facebook...');
+    this.toastService.showInfo('Redirigiendo a Facebook...');
+    
+    // Guardar URL de redirección si existe
+    this.guardarUrlRedirect();
+    
+    // Llamar al servicio
+    this.authService.loginWithFacebook();
+  }
+
+  /**
+   * 🔗 Iniciar autenticación con GitHub
+   */
+  loginWithGitHub() {
+    if (this.cargando) return;
+    
+    console.log('🔗 Iniciando login con GitHub...');
+    this.toastService.showInfo('Redirigiendo a GitHub...');
+    
+    // Guardar URL de redirección si existe
+    this.guardarUrlRedirect();
+    
+    // Llamar al servicio
+    this.authService.loginWithGitHub();
+  }
+
+  // ==================== MÉTODOS AUXILIARES ====================
+
+  /**
+   * Guardar URL de redirección para después del OAuth
+   */
+  private guardarUrlRedirect() {
+    const redirectUrl = localStorage.getItem('redirectUrl');
+    if (redirectUrl) {
+      // Ya hay una URL guardada, mantenerla
+      console.log('🔄 URL de redirección ya guardada:', redirectUrl);
+    }
+  }
+
+  /**
+   * Limpiar mensajes de error/éxito
+   */
+  private limpiarMensajes() {
+    this.mensajeError = '';
+    this.mensajeExito = '';
+  }
+
+  // ==================== MÉTODOS DE CICLO DE VIDA ====================
+
+  ngOnInit() {
+    // Verificar si hay parámetros de error en la URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const error = urlParams.get('error');
+    
+    if (error) {
+      this.mostrarErrorOAuth(error);
+    }
+  }
+
+  /**
+   * Mostrar error de OAuth basado en el parámetro
+   */
+  private mostrarErrorOAuth(error: string) {
+    let mensaje = '';
+    
+    switch (error) {
+      case 'oauth_failed':
+        mensaje = 'La autenticación falló. Por favor, inténtalo de nuevo.';
+        break;
+      case 'oauth_error':
+        mensaje = 'Ocurrió un error durante la autenticación. Inténtalo más tarde.';
+        break;
+      case 'access_denied':
+        mensaje = 'Acceso denegado. Has cancelado la autenticación.';
+        break;
+      default:
+        mensaje = 'Error desconocido en la autenticación.';
+    }
+    
+    this.toastService.showError(mensaje);
+    this.mensajeError = mensaje;
+    
+    // Limpiar la URL
+    window.history.replaceState({}, document.title, window.location.pathname);
   }
 }

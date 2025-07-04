@@ -37,9 +37,12 @@ import { RewardsComponent } from './components/rewards/rewards.component';
 import { OrderHistoryComponent } from './components/order-history/order-history.component';
 import { PointsHistoryComponent } from './components/points-history/points-history.component';
 
-// 🆕 COMPONENTES DE RECUPERACIÓN DE CONTRASEÑA
+// COMPONENTES DE RECUPERACIÓN DE CONTRASEÑA
 import { ForgotPasswordComponent } from './components/forgot-password/forgot-password.component';
 import { ResetPasswordComponent } from './components/reset-password/reset-password.component';
+
+// 🆕 COMPONENTE DE OAUTH CALLBACK
+import { OAuthCallbackComponent } from './components/oauth-callback/oauth-callback.component';
 
 const routes: Routes = [
   // ==================== RUTAS PRINCIPALES ====================
@@ -173,7 +176,8 @@ const routes: Routes = [
     component: RegisterComponent,
     data: { title: 'Registrarse' }
   },
-  // 🆕 RUTAS DE RECUPERACIÓN DE CONTRASEÑA
+  
+  // RUTAS DE RECUPERACIÓN DE CONTRASEÑA
   { 
     path: 'forgot-password', 
     component: ForgotPasswordComponent,
@@ -185,71 +189,77 @@ const routes: Routes = [
     data: { title: 'Nueva Contraseña' }
   },
   
+  // 🆕 RUTA DE OAUTH CALLBACK
+  { 
+    path: 'auth/oauth/callback', 
+    component: OAuthCallbackComponent,
+    data: { title: 'Procesando Autenticación' }
+  },
+  
   // ==================== RUTAS DE ADMINISTRACIÓN (PROTEGIDAS) ====================
   {
-  path: 'admin',
-  component: AdminLayoutComponent,
-  canActivate: [AuthGuard, AdminGuard],
-  data: { title: 'Panel de Administración' },
-  children: [
-    {
-      path: '',
-      redirectTo: 'dashboard',
-      pathMatch: 'full'
-    },
-    {
-      path: 'dashboard',
-      component: AdminDashboardComponent,
-      data: { title: 'Dashboard Admin' }
-    },
-    {
-      path: 'movies',
-      component: AdminMoviesComponent,
-      data: { title: 'Gestión de Películas' }
-    },
-    {
-      path: 'coming-soon',
-      component: AdminComingSoonComponent,
-      data: { title: 'Gestión de Próximos Estrenos' }
-    },
-    {
-      path: 'functions',
-      component: FunctionAdminComponent,
-      data: { title: 'Gestión de Funciones' }
-    },
-    {
-      path: 'users',
-      component: AdminUsersComponent,
-      data: { title: 'Gestión de Usuarios' }
-    },
-    {
-      path: 'bar',
-      component: AdminBarComponent,
-      data: { title: 'Gestión del Bar' }
-    },
-    {
-      path: 'points',
-      component: AdminDashboardComponent, // Temporal, puedes crear AdminPointsComponent después
-      data: { title: 'Gestión de Puntos' }
-    },
-    {
-      path: 'rewards',
-      component: AdminRewardsComponent,
-      data: { title: 'Gestión de Recompensas' }
-    },
-    // 🆕 AGREGAR ESTA RUTA
-    {
-      path: 'config',
-      component: AdminConfigComponent,
-      data: { title: 'Configuración del Sistema' }
-    },
-    {
-  path: 'logs',
-  component: AdminLogsComponent,
-  data: { title: 'Logs del Sistema' }
-}
-  ]
-},
+    path: 'admin',
+    component: AdminLayoutComponent,
+    canActivate: [AuthGuard, AdminGuard],
+    data: { title: 'Panel de Administración' },
+    children: [
+      {
+        path: '',
+        redirectTo: 'dashboard',
+        pathMatch: 'full'
+      },
+      {
+        path: 'dashboard',
+        component: AdminDashboardComponent,
+        data: { title: 'Dashboard Admin' }
+      },
+      {
+        path: 'movies',
+        component: AdminMoviesComponent,
+        data: { title: 'Gestión de Películas' }
+      },
+      {
+        path: 'coming-soon',
+        component: AdminComingSoonComponent,
+        data: { title: 'Gestión de Próximos Estrenos' }
+      },
+      {
+        path: 'functions',
+        component: FunctionAdminComponent,
+        data: { title: 'Gestión de Funciones' }
+      },
+      {
+        path: 'users',
+        component: AdminUsersComponent,
+        data: { title: 'Gestión de Usuarios' }
+      },
+      {
+        path: 'bar',
+        component: AdminBarComponent,
+        data: { title: 'Gestión del Bar' }
+      },
+      {
+        path: 'points',
+        component: AdminDashboardComponent, // Temporal
+        data: { title: 'Gestión de Puntos' }
+      },
+      {
+        path: 'rewards',
+        component: AdminRewardsComponent,
+        data: { title: 'Gestión de Recompensas' }
+      },
+      {
+        path: 'config',
+        component: AdminConfigComponent,
+        data: { title: 'Configuración del Sistema' }
+      },
+      {
+        path: 'logs',
+        component: AdminLogsComponent,
+        data: { title: 'Logs del Sistema' }
+      }
+    ]
+  },
   
   // ==================== RUTAS DE REDIRECCIÓN ====================
   { 
@@ -260,8 +270,7 @@ const routes: Routes = [
   { 
     path: '**', 
     redirectTo: '/home' 
-  },
-  
+  }
 ];
 
 @NgModule({
