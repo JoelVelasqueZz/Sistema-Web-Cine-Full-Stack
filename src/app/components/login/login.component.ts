@@ -14,7 +14,6 @@ export class LoginComponent implements OnInit {
     email: '', 
     password: '' 
   };
-  
   mensajeError = '';
   mensajeExito = '';
   mostrarPassword = false;
@@ -31,38 +30,59 @@ export class LoginComponent implements OnInit {
 
   onLogin() {
     this.cargando = true;
-    this.limpiarMensajes();
+    this.mensajeError = '';   
+    this.mensajeExito = '';   
     
     // Validaciones básicas
     if (!this.loginData.email.trim()) {
-      this.mostrarError('El email es requerido');
+      this.toastService.showWarning('El email es requerido');
       this.cargando = false;
       return;
     }
 
     if (!this.loginData.password.trim()) {
-      this.mostrarError('La contraseña es requerida');
+      this.toastService.showWarning('La contraseña es requerida');
       this.cargando = false;
       return;
     }
 
-    // Realizar login
+    // Usar el método Observable
     this.authService.login(this.loginData.email, this.loginData.password).subscribe({
       next: (response) => {
         console.log('🔍 Respuesta de login:', response);
         
         if (response.success) {
-          this.mostrarExito(response.message || '¡Bienvenido de vuelta!');
-          this.redirigirUsuario(response.user);
+          this.toastService.showSuccess(response.message || '¡Bienvenido de vuelta!');
+          this.mensajeExito = response.message || '¡Bienvenido de vuelta!';
+          
+          // Verificar si hay URL de redirección
+          const redirectUrl = localStorage.getItem('redirectUrl');
+          if (redirectUrl) {
+            localStorage.removeItem('redirectUrl');
+            setTimeout(() => {
+              window.location.href = redirectUrl;
+            }, 1000);
+          } else {
+            // Redirigir según el rol del usuario
+            setTimeout(() => {
+              if (response.user?.role === 'admin') {
+                this.router.navigate(['/admin']);
+              } else {
+                this.router.navigate(['/home']);
+              }
+            }, 1000);
+          }
         } else {
-          this.mostrarError(response.message || 'Email o contraseña incorrectos');
+          this.toastService.showError(response.message || 'Email o contraseña incorrectos');
+          this.mensajeError = response.message || 'Email o contraseña incorrectos';
         }
         
         this.cargando = false;
       },
       error: (error) => {
         console.error('❌ Error en login:', error);
-        this.mostrarError('Error de conexión. Intenta de nuevo.');
+        this.toastService.showError('Error de conexión. Intenta de nuevo.');
+        this.mensajeError = 'Error de conexión. Intenta de nuevo.';
         this.cargando = false;
       }
     });
@@ -114,6 +134,7 @@ export class LoginComponent implements OnInit {
   private guardarUrlRedirect() {
     const redirectUrl = localStorage.getItem('redirectUrl');
     if (redirectUrl) {
+      // Ya hay una URL guardada, mantenerla
       console.log('🔄 URL de redirección ya guardada:', redirectUrl);
     }
   }
@@ -124,46 +145,6 @@ export class LoginComponent implements OnInit {
   private limpiarMensajes() {
     this.mensajeError = '';
     this.mensajeExito = '';
-  }
-
-  /**
-   * Mostrar mensaje de error
-   */
-  private mostrarError(mensaje: string) {
-    this.mensajeError = mensaje;
-    this.toastService.showError(mensaje);
-  }
-
-  /**
-   * Mostrar mensaje de éxito
-   */
-  private mostrarExito(mensaje: string) {
-    this.mensajeExito = mensaje;
-    this.toastService.showSuccess(mensaje);
-  }
-
-  /**
-   * Redirigir usuario después del login exitoso
-   */
-  private redirigirUsuario(user?: any) {
-    // Verificar si hay URL de redirección guardada
-    const redirectUrl = localStorage.getItem('redirectUrl');
-    
-    if (redirectUrl) {
-      localStorage.removeItem('redirectUrl');
-      setTimeout(() => {
-        window.location.href = redirectUrl;
-      }, 1000);
-    } else {
-      // Redirigir según el rol del usuario
-      setTimeout(() => {
-        if (user?.role === 'admin') {
-          this.router.navigate(['/admin']);
-        } else {
-          this.router.navigate(['/home']);
-        }
-      }, 1000);
-    }
   }
 
   // ==================== MÉTODOS DE CICLO DE VIDA ====================
@@ -198,7 +179,8 @@ export class LoginComponent implements OnInit {
         mensaje = 'Error desconocido en la autenticación.';
     }
     
-    this.mostrarError(mensaje);
+    this.toastService.showError(mensaje);
+    this.mensajeError = mensaje;
     
     // Limpiar la URL
     window.history.replaceState({}, document.title, window.location.pathname);
