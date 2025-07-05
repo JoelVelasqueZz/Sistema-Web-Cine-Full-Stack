@@ -27,7 +27,6 @@ export class LoginComponent implements OnInit {
   ) {}
 
   // ==================== MÉTODOS DE AUTENTICACIÓN TRADICIONAL ====================
-
   onLogin() {
     this.cargando = true;
     this.mensajeError = '';   
@@ -39,7 +38,6 @@ export class LoginComponent implements OnInit {
       this.cargando = false;
       return;
     }
-
     if (!this.loginData.password.trim()) {
       this.toastService.showWarning('La contraseña es requerida');
       this.cargando = false;
@@ -92,8 +90,7 @@ export class LoginComponent implements OnInit {
     this.mostrarPassword = !this.mostrarPassword;
   }
 
-  // ==================== MÉTODOS DE OAUTH (SOLO GOOGLE Y FACEBOOK) ====================
-
+  // ==================== MÉTODO DE OAUTH (SOLO GOOGLE) ====================
   /**
    * 🔗 Iniciar autenticación con Google
    */
@@ -110,24 +107,7 @@ export class LoginComponent implements OnInit {
     this.authService.loginWithGoogle();
   }
 
-  /**
-   * 🔗 Iniciar autenticación con Facebook
-   */
-  loginWithFacebook() {
-    if (this.cargando) return;
-    
-    console.log('🔗 Iniciando login con Facebook...');
-    this.toastService.showInfo('Redirigiendo a Facebook...');
-    
-    // Guardar URL de redirección si existe
-    this.guardarUrlRedirect();
-    
-    // Llamar al servicio
-    this.authService.loginWithFacebook();
-  }
-
   // ==================== MÉTODOS AUXILIARES ====================
-
   /**
    * Guardar URL de redirección para después del OAuth
    */
@@ -148,7 +128,6 @@ export class LoginComponent implements OnInit {
   }
 
   // ==================== MÉTODOS DE CICLO DE VIDA ====================
-
   ngOnInit() {
     // Verificar si hay parámetros de error en la URL
     const urlParams = new URLSearchParams(window.location.search);
