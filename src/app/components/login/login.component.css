@@ -208,6 +208,112 @@
 }
 
 /* ======================================
+   🎨 BOTONES OAUTH ESPECIALES
+   ====================================== */
+
+.btn-google {
+  background: #fff;
+  border: 2px solid #dadce0;
+  color: #3c4043;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: normal;
+  transition: all 0.3s ease;
+  width: 100%;
+  margin-bottom: 0.75rem;
+}
+
+.btn-google:hover {
+  background: #f8f9fa;
+  border-color: #dadce0;
+  color: #3c4043;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-facebook {
+  background: #1877f2;
+  border: 2px solid #1877f2;
+  color: white;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: normal;
+  transition: all 0.3s ease;
+  width: 100%;
+  margin-bottom: 0.75rem;
+}
+
+.btn-facebook:hover {
+  background: #166fe5;
+  border-color: #166fe5;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(24, 119, 242, 0.3);
+}
+
+/* ======================================
+   🎯 SECCIÓN OAUTH MEJORADA
+   ====================================== */
+
+.oauth-section {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border: 1px solid rgba(13, 110, 253, 0.1);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.oauth-section:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(13, 110, 253, 0.1);
+}
+
+.oauth-title {
+  text-align: center;
+  margin-bottom: 1rem;
+  font-weight: 600;
+  color: #495057;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+}
+
+.oauth-buttons .btn {
+  margin-bottom: 0.75rem;
+}
+
+.divider {
+  position: relative;
+  text-align: center;
+  margin: 1.5rem 0;
+}
+
+.divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(13, 110, 253, 0.2), transparent);
+}
+
+.divider-text {
+  background: white;
+  padding: 0 1rem;
+  color: #6c757d;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+/* ======================================
    🚨 ALERTAS - Mensajes de error/éxito
    ====================================== */
 
@@ -423,6 +529,10 @@ a.fw-bold:hover {
   .d-flex.gap-2 .btn {
     width: 100%;
   }
+  
+  .oauth-section {
+    padding: 1rem;
+  }
 }
 
 @media (max-width: 576px) {
@@ -555,7 +665,7 @@ a.fw-bold:hover {
 .form-check-input:focus {
   outline: 2px solid #ffc107;
   outline-offset: 2px;
-}
+} 
 
 /* Modo de alto contraste */
 @media (prefers-contrast: high) {
@@ -579,4 +689,67 @@ a.fw-bold:hover {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ======================================
+   ✨ CHECKBOX PERSONALIZADO
+   ====================================== */
+
+.custom-checkbox {
+  position: relative;
+  padding-left: 35px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  font-size: 16px;
+  user-select: none;
+  line-height: 1.5;
+}
+
+.custom-checkbox input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.custom-checkbox .checkmark {
+  position: absolute;
+  top: 2px;
+  left: 0;
+  height: 24px;
+  width: 24px;
+  background-color: #fff;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+.custom-checkbox:hover input ~ .checkmark {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
+  transform: scale(1.05);
+}
+
+.custom-checkbox input:checked ~ .checkmark {
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+  transform: scale(1.1);
+}
+
+.custom-checkbox input:checked ~ .checkmark:after {
+  display: block;
+}
+
+.custom-checkbox .checkmark:after {
+  content: "";
+  position: absolute;
+  display: none;
+  left: 7px;
+  top: 3px;
+  width: 6px;
+  height: 12px;
+  border: solid white;
+  border-width: 0 3px 3px 0;
+  transform: rotate(45deg);
 }
