@@ -1,0 +1,301 @@
+<!-- frontend/src/app/components/comments/comments.component.html -->
+<div class="comments-container">
+  
+  <!-- ==================== ESTADÍSTICAS (Solo para películas) ==================== -->
+  <div *ngIf="tipo === 'pelicula' && estadisticas" class="comments-stats mb-4">
+    <div class="row">
+      <div class="col-md-6">
+        <div class="rating-summary">
+          <div class="d-flex align-items-center mb-2">
+            <h4 class="mb-0 me-2">{{ estadisticas.puntuacion_promedio || 0 }}</h4>
+            <div class="stars-display">
+              <i *ngFor="let star of getStars(estadisticas.puntuacion_promedio || 0)" 
+                 class="fas fa-star" 
+                 [class.text-warning]="star.filled"
+                 [class.text-muted]="!star.filled"></i>
+            </div>
+            <span class="text-muted ms-2">({{ estadisticas.total_comentarios }} reseñas)</span>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="rating-breakdown">
+          <div *ngFor="let item of [
+            {stars: 5, count: estadisticas.distribucion_puntuaciones['5_estrellas']},
+            {stars: 4, count: estadisticas.distribucion_puntuaciones['4_estrellas']},
+            {stars: 3, count: estadisticas.distribucion_puntuaciones['3_estrellas']},
+            {stars: 2, count: estadisticas.distribucion_puntuaciones['2_estrellas']},
+            {stars: 1, count: estadisticas.distribucion_puntuaciones['1_estrella']}
+          ]" class="d-flex align-items-center mb-1">
+            <span class="me-2">{{ item.stars }}<i class="fas fa-star text-warning ms-1"></i></span>
+            <div class="progress flex-grow-1 me-2" style="height: 8px;">
+              <div class="progress-bar bg-warning" 
+                   [style.width.%]="estadisticas.total_comentarios > 0 ? (item.count / estadisticas.total_comentarios) * 100 : 0"></div>
+            </div>
+            <span class="text-muted">{{ item.count }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== HEADER Y BOTÓN CREAR ==================== -->
+  <div class="comments-header d-flex justify-content-between align-items-center mb-4">
+    <h5 class="mb-0">
+      <i [class]="getTypeIcon(tipo)" class="me-2"></i>
+      {{ getTypeText(tipo) }}
+      <span class="badge bg-primary ms-2">{{ comentarios.length }}</span>
+    </h5>
+    
+    <button *ngIf="showCreateForm && currentUser" 
+            class="btn btn-primary btn-sm"
+            (click)="toggleForm()"
+            [disabled]="loading">
+      <i class="fas fa-plus me-1"></i>
+      {{ showForm ? 'Cancelar' : 'Nuevo ' + (tipo === 'pelicula' ? 'Reseña' : 'Comentario') }}
+    </button>
+  </div>
+
+  <!-- ==================== FORMULARIO DE NUEVO COMENTARIO ==================== -->
+  <div *ngIf="showForm" class="new-comment-form card mb-4">
+    <div class="card-header">
+      <h6 class="mb-0">
+        <i [class]="getTypeIcon(tipo)" class="me-2"></i>
+        Nuevo {{ tipo === 'pelicula' ? 'Reseña' : 'Comentario' }}
+      </h6>
+    </div>
+    <div class="card-body">
+      <form (ngSubmit)="createComment()" #commentForm="ngForm">
+        
+        <!-- Puntuación (solo para películas) -->
+        <div *ngIf="tipo === 'pelicula'" class="mb-3">
+          <label class="form-label">Puntuación *</label>
+          <div class="rating-input">
+            <i *ngFor="let i of [1,2,3,4,5]" 
+               class="fas fa-star rating-star"
+               [class.active]="i <= (nuevoComentario.puntuacion || 0)"
+               (click)="setRating(i)"
+               (mouseenter)="nuevoComentario.puntuacion = i"
+               style="cursor: pointer; font-size: 1.5rem; margin-right: 5px;"></i>
+            <span class="ms-2 text-muted">{{ nuevoComentario.puntuacion }} estrella(s)</span>
+          </div>
+        </div>
+
+        <!-- Título -->
+        <div class="mb-3">
+          <label for="titulo" class="form-label">Título *</label>
+          <input type="text" 
+                 class="form-control" 
+                 id="titulo"
+                 [(ngModel)]="nuevoComentario.titulo"
+                 name="titulo"
+                 placeholder="Título de tu {{ tipo === 'pelicula' ? 'reseña' : 'comentario' }}"
+                 maxlength="255"
+                 required>
+          <div class="form-text">{{ nuevoComentario.titulo.length }}/255 caracteres</div>
+        </div>
+
+        <!-- Contenido -->
+        <div class="mb-3">
+          <label for="contenido" class="form-label">Contenido *</label>
+          <textarea class="form-control" 
+                    id="contenido"
+                    [(ngModel)]="nuevoComentario.contenido"
+                    name="contenido"
+                    rows="4"
+                    placeholder="Escribe tu {{ tipo === 'pelicula' ? 'reseña' : 'comentario' }} aquí..."
+                    maxlength="2000"
+                    required></textarea>
+          <div class="form-text">{{ nuevoComentario.contenido.length }}/2000 caracteres</div>
+        </div>
+
+        <!-- Botones -->
+        <div class="d-flex gap-2">
+          <button type="submit" 
+                  class="btn btn-primary"
+                  [disabled]="submitting || !commentForm.valid">
+            <span *ngIf="submitting" class="spinner-border spinner-border-sm me-2"></span>
+            <i *ngIf="!submitting" class="fas fa-paper-plane me-2"></i>
+            {{ submitting ? 'Enviando...' : 'Publicar' }}
+          </button>
+          <button type="button" 
+                  class="btn btn-secondary"
+                  (click)="toggleForm()"
+                  [disabled]="submitting">
+            Cancelar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== LISTA DE COMENTARIOS ==================== -->
+  <div class="comments-list">
+    
+    <!-- Loading -->
+    <div *ngIf="loading" class="text-center py-4">
+      <div class="spinner-border" role="status">
+        <span class="visually-hidden">Cargando...</span>
+      </div>
+    </div>
+
+    <!-- Sin comentarios -->
+    <div *ngIf="!loading && comentarios.length === 0" class="text-center py-4">
+      <i [class]="getTypeIcon(tipo)" class="display-4 text-muted mb-3"></i>
+      <h6 class="text-muted">No hay {{ tipo === 'pelicula' ? 'reseñas' : 'comentarios' }} aún</h6>
+      <p class="text-muted">¡Sé el primero en compartir tu opinión!</p>
+    </div>
+
+    <!-- Comentarios -->
+    <div *ngFor="let comentario of comentarios; trackBy: trackByCommentId" class="comment-item">
+      
+      <!-- Comentario normal (no editando) -->
+      <div *ngIf="editingComment?.id !== comentario.id" class="card mb-3">
+        <div class="card-body">
+          
+          <!-- Header del comentario -->
+          <div class="comment-header d-flex justify-content-between align-items-start mb-3">
+            <div class="user-info d-flex align-items-center">
+              <img [src]="comentario.usuario_avatar || 'assets/images/default-avatar.png'" 
+                   [alt]="comentario.usuario_nombre"
+                   class="rounded-circle me-2"
+                   width="40" height="40">
+              <div>
+                <h6 class="mb-0">{{ comentario.usuario_nombre }}</h6>
+                <small class="text-muted">{{ formatDate(comentario.fecha_creacion) }}</small>
+                <span *ngIf="comentario.fecha_creacion !== comentario.fecha_actualizacion"
+                      class="badge bg-info ms-2">Editado</span>
+              </div>
+            </div>
+            
+            <!-- Puntuación (para películas) -->
+            <div *ngIf="comentario.puntuacion" class="rating-display">
+              <div class="stars-small">
+                <i *ngFor="let star of getStars(comentario.puntuacion)" 
+                   class="fas fa-star"
+                   [class.text-warning]="star.filled"
+                   [class.text-muted]="!star.filled"></i>
+              </div>
+              <small class="text-muted">{{ comentario.puntuacion }}/5</small>
+            </div>
+          </div>
+
+          <!-- Contenido del comentario -->
+          <div class="comment-content">
+            <h6 class="comment-title">{{ comentario.titulo }}</h6>
+            <p class="comment-text">{{ comentario.contenido }}</p>
+            
+            <!-- Info de película (si aplica) -->
+            <div *ngIf="comentario.pelicula_titulo && tipo !== 'pelicula'" 
+                 class="movie-reference mt-2">
+              <small class="text-muted">
+                <i class="fas fa-film me-1"></i>
+                Sobre: {{ comentario.pelicula_titulo }}
+              </small>
+            </div>
+          </div>
+
+          <!-- Acciones del comentario -->
+          <div *ngIf="canEditComment(comentario)" class="comment-actions mt-3">
+            <button class="btn btn-sm btn-outline-primary me-2"
+                    (click)="startEdit(comentario)">
+              <i class="fas fa-edit me-1"></i>Editar
+            </button>
+            <button class="btn btn-sm btn-outline-danger"
+                    (click)="deleteComment(comentario)">
+              <i class="fas fa-trash me-1"></i>Eliminar
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Formulario de edición -->
+      <div *ngIf="editingComment?.id === comentario.id" class="card mb-3 border-warning">
+        <div class="card-header bg-warning bg-opacity-10">
+          <h6 class="mb-0">
+            <i class="fas fa-edit me-2"></i>Editando comentario
+          </h6>
+        </div>
+        <div class="card-body">
+          <form (ngSubmit)="saveEdit()" #editFormRef="ngForm">
+            
+            <!-- Puntuación en edición -->
+            <div *ngIf="comentario.puntuacion" class="mb-3">
+              <label class="form-label">Puntuación *</label>
+              <div class="rating-input">
+                <i *ngFor="let i of [1,2,3,4,5]" 
+                   class="fas fa-star rating-star"
+                   [class.active]="i <= (editForm.puntuacion || 0)"
+                   (click)="setEditRating(i)"
+                   style="cursor: pointer; font-size: 1.5rem; margin-right: 5px;"></i>
+                <span class="ms-2 text-muted">{{ editForm.puntuacion }} estrella(s)</span>
+              </div>
+            </div>
+
+            <!-- Título en edición -->
+            <div class="mb-3">
+              <label class="form-label">Título *</label>
+              <input type="text" 
+                     class="form-control"
+                     [(ngModel)]="editForm.titulo"
+                     name="editTitulo"
+                     maxlength="255"
+                     required>
+            </div>
+
+            <!-- Contenido en edición -->
+            <div class="mb-3">
+              <label class="form-label">Contenido *</label>
+              <textarea class="form-control"
+                        [(ngModel)]="editForm.contenido"
+                        name="editContenido"
+                        rows="4"
+                        maxlength="2000"
+                        required></textarea>
+            </div>
+
+            <!-- Botones de edición -->
+            <div class="d-flex gap-2">
+              <button type="submit" 
+                      class="btn btn-success btn-sm"
+                      [disabled]="submitting || !editFormRef.valid">
+                <span *ngIf="submitting" class="spinner-border spinner-border-sm me-2"></span>
+                <i *ngIf="!submitting" class="fas fa-save me-2"></i>
+                {{ submitting ? 'Guardando...' : 'Guardar' }}
+              </button>
+              <button type="button" 
+                      class="btn btn-secondary btn-sm"
+                      (click)="cancelEdit()"
+                      [disabled]="submitting">
+                Cancelar
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== PAGINACIÓN ==================== -->
+  <nav *ngIf="totalPages > 1" aria-label="Paginación de comentarios">
+    <ul class="pagination justify-content-center mt-4">
+      <li class="page-item" [class.disabled]="currentPage === 1">
+        <button class="page-link" (click)="changePage(currentPage - 1)" [disabled]="currentPage === 1">
+          <i class="fas fa-chevron-left"></i>
+        </button>
+      </li>
+      
+      <li *ngFor="let page of [].constructor(totalPages); let i = index" 
+          class="page-item" 
+          [class.active]="i + 1 === currentPage">
+        <button class="page-link" (click)="changePage(i + 1)">{{ i + 1 }}</button>
+      </li>
+      
+      <li class="page-item" [class.disabled]="currentPage === totalPages">
+        <button class="page-link" (click)="changePage(currentPage + 1)" [disabled]="currentPage === totalPages">
+          <i class="fas fa-chevron-right"></i>
+        </button>
+      </li>
+    </ul>
+  </nav>
+</div>

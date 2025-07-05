@@ -22,7 +22,8 @@ router.get('/', (req, res) => {
       orders: '/api/orders',
       points: '/api/points',
       rewards: '/api/rewards',
-      admin: '/api/admin' // 🆕 AGREGADO
+      admin: '/api/admin',
+      comments: '/api/comments' // 🆕 NUEVO
     }
   });
 });
@@ -66,7 +67,8 @@ router.get('/health', (req, res) => {
       orders: 'OK',
       points: 'OK',
       rewards: 'OK',
-      admin: 'OK' // 🆕 AGREGADO
+      admin: 'OK',
+      comments: 'OK' // 🆕 NUEVO
     }
   });
 });
@@ -103,22 +105,19 @@ router.use('/orders', require('./orders'));
 // Rutas de puntos y referidos
 router.use('/points', require('./points'));
 
-// ==================== 🆕 NUEVAS RUTAS - SISTEMA DE RECOMPENSAS ====================
-// 🆕 NUEVA - Rutas de recompensas y canjes
+// ==================== RUTAS DE RECOMPENSAS ====================
+// Rutas de recompensas y canjes
 router.use('/rewards', require('./rewards'));
 
-// ==================== 🆕 RUTAS DE ADMINISTRACIÓN ====================
-// 🆕 NUEVA - Rutas de administración
+// ==================== RUTAS DE ADMINISTRACIÓN ====================
+// Rutas de administración
 router.use('/admin', require('./admin'));
-
 router.use('/reports', require('./reports'));
-
 router.use('/logs', require('./logs'));
 
-// ==================== RUTAS FUTURAS (COMENTADAS) ====================
-// Estas se pueden activar cuando las implementes
-// Rutas de administración general
-// router.use('/admin', require('./admin')); // ✅ YA ACTIVADA ARRIBA
+// ==================== 🆕 NUEVA RUTA - SISTEMA DE COMENTARIOS ====================
+// 🆕 NUEVA - Rutas de comentarios y feedback
+router.use('/comments', require('./comments'));
 
 // ==================== MANEJO DE RUTAS NO ENCONTRADAS ====================
 // Middleware para rutas no encontradas
@@ -143,7 +142,8 @@ router.use('*', (req, res) => {
       '/api/orders',
       '/api/points',
       '/api/rewards',
-      '/api/admin' // 🆕 AGREGADO
+      '/api/admin',
+      '/api/comments' // 🆕 NUEVO
     ],
     suggestion: 'Verifica la URL y el método HTTP'
   });

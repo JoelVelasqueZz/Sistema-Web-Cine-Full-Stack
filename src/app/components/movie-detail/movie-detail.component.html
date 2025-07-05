@@ -1,4 +1,4 @@
-<!-- movie-detail.component.html -->
+<!-- movie-detail.component.html - ACTUALIZADO CON COMENTARIOS -->
 <div class="container mt-4">
   <!-- Header con título y años -->
   <div class="row mb-4">
@@ -137,51 +137,52 @@
         
         <!-- 🔥 PANEL DE FUNCIONES (PARA ADMIN) -->
         <div class="funciones-admin mb-4" *ngIf="authService.isAdmin()">
-  <h5 class="text-warning mb-3">
-    <i class="fas fa-cog me-2"></i>Gestión de Funciones
-  </h5>
-  <div class="card border-warning">
-    <div class="card-body">
-      <div class="row g-2">
-        <div class="col-md-6">
-          <button class="btn btn-outline-success w-100"
-                  (click)="agregarFuncion()">
-            <i class="fas fa-plus me-2"></i>Agregar Función
-          </button>
+          <h5 class="text-warning mb-3">
+            <i class="fas fa-cog me-2"></i>Gestión de Funciones
+          </h5>
+          <div class="card border-warning">
+            <div class="card-body">
+              <div class="row g-2">
+                <div class="col-md-6">
+                  <button class="btn btn-outline-success w-100"
+                          (click)="agregarFuncion()">
+                    <i class="fas fa-plus me-2"></i>Agregar Función
+                  </button>
+                </div>
+                <div class="col-md-6">
+                  <button class="btn btn-outline-info w-100"
+                          (click)="verTodasLasFunciones()">
+                    <i class="fas fa-list me-2"></i>Ver Todas 
+                      <span *ngIf="funcionesLoaded">({{ getFuncionesCount() }})</span>
+                      <span *ngIf="!funcionesLoaded" class="spinner-border spinner-border-sm ms-1"></span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="col-md-6">
-          <button class="btn btn-outline-info w-100"
-                  (click)="verTodasLasFunciones()">
-            <i class="fas fa-list me-2"></i>Ver Todas 
-              <span *ngIf="funcionesLoaded">({{ getFuncionesCount() }})</span>
-              <span *ngIf="!funcionesLoaded" class="spinner-border spinner-border-sm ms-1"></span>
-          </button>
+
+        <!-- 🆕 COMPONENTE DE GESTIÓN DE FUNCIONES -->
+        <div class="mb-4" *ngIf="authService.isAdmin() && showFunctionAdmin">
+          <div class="card border-primary">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+              <h5 class="mb-0">
+                <i class="fas fa-clock me-2"></i>
+                Gestión de Funciones - {{ pelicula?.titulo }}
+              </h5>
+              <button class="btn btn-sm btn-outline-light" 
+                      (click)="showFunctionAdmin = false">
+                <i class="fas fa-times"></i> 
+              </button>
+            </div>
+            <div class="card-body p-0">
+              <app-function-admin 
+                [peliculaId]="peliculaId"
+                (funcionesChanged)="refreshFuncionesCount()">
+              </app-function-admin>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
-  </div>
-</div>
-<!-- 🆕 COMPONENTE DE GESTIÓN DE FUNCIONES -->
-<div class="mb-4" *ngIf="authService.isAdmin() && showFunctionAdmin">
-  <div class="card border-primary">
-    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-      <h5 class="mb-0">
-        <i class="fas fa-clock me-2"></i>
-        Gestión de Funciones - {{ pelicula?.titulo }}
-      </h5>
-      <button class="btn btn-sm btn-outline-light" 
-              (click)="showFunctionAdmin = false">
-        <i class="fas fa-times"></i> 
-      </button>
-    </div>
-    <div class="card-body p-0">
-      <app-function-admin 
-        [peliculaId]="peliculaId"
-        (funcionesChanged)="refreshFuncionesCount()">
-      </app-function-admin>
-    </div>
-  </div>
-</div>
         
         <!-- Sección del Trailer -->
         <div class="trailer-section mb-4" *ngIf="tieneTrailer()">
@@ -230,11 +231,31 @@
                  style="max-width: 200px; height: auto; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));">
           </div>
         </div>
-        
+      </div>
+    </div>
+  </div>
+
+  <!-- 🆕 SECCIÓN DE COMENTARIOS Y RESEÑAS -->
+  <div class="row mt-5">
+    <div class="col-12">
+      <div class="card shadow-lg">
+        <div class="card-header bg-gradient text-white" 
+             style="background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);">
+          <h4 class="mb-0">
+            <i class="fas fa-comments me-2"></i>
+            Reseñas y Comentarios
+          </h4>
+          <p class="mb-0 opacity-75">Comparte tu opinión sobre esta película</p>
+        </div>
+        <div class="card-body p-4">
+          <!-- Componente de comentarios para esta película -->
+          <app-comments 
+            [peliculaId]="peliculaId"
+            [tipo]="'pelicula'"
+            [showCreateForm]="true">
+          </app-comments>
+        </div>
       </div>
     </div>
   </div>
 </div>
-
-    
-  

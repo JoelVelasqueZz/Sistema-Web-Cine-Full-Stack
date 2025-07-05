@@ -1,3 +1,4 @@
+// frontend/src/app/app-routing.module.ts - ACTUALIZADO CON COMENTARIOS
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { HomeComponent } from './components/home/home.component';
@@ -43,6 +44,9 @@ import { ResetPasswordComponent } from './components/reset-password/reset-passwo
 
 // 🆕 COMPONENTE DE OAUTH CALLBACK
 import { OAuthCallbackComponent } from './components/oauth-callback/oauth-callback.component';
+
+// 🆕 NUEVO COMPONENTE DE SUGERENCIAS
+import { SuggestionsComponent } from './components/suggestions/suggestions.component';
 
 const routes: Routes = [
   // ==================== RUTAS PRINCIPALES ====================
@@ -111,6 +115,14 @@ const routes: Routes = [
     component: CheckoutComponent,
     canActivate: [AuthGuard],
     data: { title: 'Finalizar Compra' }
+  },
+  
+  // ==================== 🆕 RUTAS DE COMENTARIOS Y SUGERENCIAS ====================
+  { 
+    path: 'suggestions', 
+    component: SuggestionsComponent,
+    canActivate: [AuthGuard],
+    data: { title: 'Sugerencias y Feedback' }
   },
   
   // ==================== RUTAS DEL SISTEMA DE PUNTOS ====================

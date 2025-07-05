@@ -1,4 +1,4 @@
-// src/app/app.module.ts - CORREGIDO PARA OAUTH
+// frontend/src/app/app.module.ts - ACTUALIZADO CON COMENTARIOS
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -30,6 +30,9 @@ import { RewardsService } from './services/rewards.service';
 import { UserService } from './services/user.service';
 import { ToastService } from './services/toast.service';
 import { SystemService } from './services/system.service';
+
+// 🆕 NUEVO SERVICIO DE COMENTARIOS
+import { CommentService } from './services/comment.service';
 
 // Componentes principales
 import { TicketPurchaseComponent } from './components/ticket-purchase/ticket-purchase.component';
@@ -78,6 +81,10 @@ import { FooterComponent } from './components/footer/footer.component';
 import { AdminComingSoonComponent } from './components/admin/admin-coming-soon/admin-coming-soon.component';
 import { AdminConfigComponent } from './components/admin/admin-config/admin-config.component';
 import { AdminLogsComponent } from './components/admin/admin-logs/admin-logs.component';
+
+// 🆕 NUEVOS COMPONENTES DE COMENTARIOS
+import { CommentsComponent } from './components/comments/comments.component';
+import { SuggestionsComponent } from './components/suggestions/suggestions.component';
 
 @NgModule({
   declarations: [
@@ -141,7 +148,11 @@ import { AdminLogsComponent } from './components/admin/admin-logs/admin-logs.com
     FunctionAdminComponent,
     AdminRewardsComponent,
     AdminConfigComponent,
-    AdminLogsComponent
+    AdminLogsComponent,
+    
+    // 🆕 NUEVOS COMPONENTES DE COMENTARIOS
+    CommentsComponent,
+    SuggestionsComponent
   ],
   imports: [
     // Módulos de Angular
@@ -181,7 +192,10 @@ import { AdminLogsComponent } from './components/admin/admin-logs/admin-logs.com
     FunctionService,
     
     // Sistema de Auditoría y Alertas
-    SystemService
+    SystemService,
+    
+    // 🆕 NUEVO SERVICIO DE COMENTARIOS
+    CommentService
   ],
   bootstrap: [AppComponent]
 })
