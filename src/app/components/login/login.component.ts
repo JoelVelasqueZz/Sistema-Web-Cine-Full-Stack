@@ -1,10 +1,7 @@
-import { Component, OnInit } from '@angular/core'; // 🔧 AGREGAR OnInit
+import { Component, OnInit } from '@angular/core';
 import { AuthService } from '../../services/auth.service';
 import { Router } from '@angular/router';
 import { ToastService } from '../../services/toast.service';
-// 🚫 QUITAR ESTOS IMPORTS - van en app.module.ts
-// import { FormsModule } from '@angular/forms';
-// import { BrowserModule } from '@angular/platform-browser';
 
 @Component({
   selector: 'app-login',
@@ -12,11 +9,12 @@ import { ToastService } from '../../services/toast.service';
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.css']
 })
-export class LoginComponent implements OnInit { // 🔧 IMPLEMENTAR OnInit
+export class LoginComponent implements OnInit {
   loginData = { 
     email: '', 
     password: '' 
   };
+  
   mensajeError = '';
   mensajeExito = '';
   mostrarPassword = false;
@@ -33,59 +31,38 @@ export class LoginComponent implements OnInit { // 🔧 IMPLEMENTAR OnInit
 
   onLogin() {
     this.cargando = true;
-    this.mensajeError = '';   
-    this.mensajeExito = '';   
+    this.limpiarMensajes();
     
     // Validaciones básicas
     if (!this.loginData.email.trim()) {
-      this.toastService.showWarning('El email es requerido');
+      this.mostrarError('El email es requerido');
       this.cargando = false;
       return;
     }
 
     if (!this.loginData.password.trim()) {
-      this.toastService.showWarning('La contraseña es requerida');
+      this.mostrarError('La contraseña es requerida');
       this.cargando = false;
       return;
     }
 
-    // Usar el método Observable
+    // Realizar login
     this.authService.login(this.loginData.email, this.loginData.password).subscribe({
       next: (response) => {
         console.log('🔍 Respuesta de login:', response);
         
         if (response.success) {
-          this.toastService.showSuccess(response.message || '¡Bienvenido de vuelta!');
-          this.mensajeExito = response.message || '¡Bienvenido de vuelta!';
-          
-          // Verificar si hay URL de redirección
-          const redirectUrl = localStorage.getItem('redirectUrl');
-          if (redirectUrl) {
-            localStorage.removeItem('redirectUrl');
-            setTimeout(() => {
-              window.location.href = redirectUrl;
-            }, 1000);
-          } else {
-            // Redirigir según el rol del usuario
-            setTimeout(() => {
-              if (response.user?.role === 'admin') {
-                this.router.navigate(['/admin']);
-              } else {
-                this.router.navigate(['/home']);
-              }
-            }, 1000);
-          }
+          this.mostrarExito(response.message || '¡Bienvenido de vuelta!');
+          this.redirigirUsuario(response.user);
         } else {
-          this.toastService.showError(response.message || 'Email o contraseña incorrectos');
-          this.mensajeError = response.message || 'Email o contraseña incorrectos';
+          this.mostrarError(response.message || 'Email o contraseña incorrectos');
         }
         
         this.cargando = false;
       },
       error: (error) => {
         console.error('❌ Error en login:', error);
-        this.toastService.showError('Error de conexión. Intenta de nuevo.');
-        this.mensajeError = 'Error de conexión. Intenta de nuevo.';
+        this.mostrarError('Error de conexión. Intenta de nuevo.');
         this.cargando = false;
       }
     });
@@ -95,7 +72,7 @@ export class LoginComponent implements OnInit { // 🔧 IMPLEMENTAR OnInit
     this.mostrarPassword = !this.mostrarPassword;
   }
 
-  // ==================== MÉTODOS DE OAUTH ====================
+  // ==================== MÉTODOS DE OAUTH (SOLO GOOGLE Y FACEBOOK) ====================
 
   /**
    * 🔗 Iniciar autenticación con Google
@@ -129,22 +106,6 @@ export class LoginComponent implements OnInit { // 🔧 IMPLEMENTAR OnInit
     this.authService.loginWithFacebook();
   }
 
-  /**
-   * 🔗 Iniciar autenticación con GitHub
-   */
-  loginWithGitHub() {
-    if (this.cargando) return;
-    
-    console.log('🔗 Iniciando login con GitHub...');
-    this.toastService.showInfo('Redirigiendo a GitHub...');
-    
-    // Guardar URL de redirección si existe
-    this.guardarUrlRedirect();
-    
-    // Llamar al servicio
-    this.authService.loginWithGitHub();
-  }
-
   // ==================== MÉTODOS AUXILIARES ====================
 
   /**
@@ -153,7 +114,6 @@ export class LoginComponent implements OnInit { // 🔧 IMPLEMENTAR OnInit
   private guardarUrlRedirect() {
     const redirectUrl = localStorage.getItem('redirectUrl');
     if (redirectUrl) {
-      // Ya hay una URL guardada, mantenerla
       console.log('🔄 URL de redirección ya guardada:', redirectUrl);
     }
   }
@@ -164,6 +124,46 @@ export class LoginComponent implements OnInit { // 🔧 IMPLEMENTAR OnInit
   private limpiarMensajes() {
     this.mensajeError = '';
     this.mensajeExito = '';
+  }
+
+  /**
+   * Mostrar mensaje de error
+   */
+  private mostrarError(mensaje: string) {
+    this.mensajeError = mensaje;
+    this.toastService.showError(mensaje);
+  }
+
+  /**
+   * Mostrar mensaje de éxito
+   */
+  private mostrarExito(mensaje: string) {
+    this.mensajeExito = mensaje;
+    this.toastService.showSuccess(mensaje);
+  }
+
+  /**
+   * Redirigir usuario después del login exitoso
+   */
+  private redirigirUsuario(user?: any) {
+    // Verificar si hay URL de redirección guardada
+    const redirectUrl = localStorage.getItem('redirectUrl');
+    
+    if (redirectUrl) {
+      localStorage.removeItem('redirectUrl');
+      setTimeout(() => {
+        window.location.href = redirectUrl;
+      }, 1000);
+    } else {
+      // Redirigir según el rol del usuario
+      setTimeout(() => {
+        if (user?.role === 'admin') {
+          this.router.navigate(['/admin']);
+        } else {
+          this.router.navigate(['/home']);
+        }
+      }, 1000);
+    }
   }
 
   // ==================== MÉTODOS DE CICLO DE VIDA ====================
@@ -198,8 +198,7 @@ export class LoginComponent implements OnInit { // 🔧 IMPLEMENTAR OnInit
         mensaje = 'Error desconocido en la autenticación.';
     }
     
-    this.toastService.showError(mensaje);
-    this.mensajeError = mensaje;
+    this.mostrarError(mensaje);
     
     // Limpiar la URL
     window.history.replaceState({}, document.title, window.location.pathname);
