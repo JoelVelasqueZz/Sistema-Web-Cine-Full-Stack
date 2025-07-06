@@ -1,4 +1,4 @@
-// backend/src/routes/comments.js - CORREGIDO Y ACTUALIZADO
+// backend/src/routes/comments.js - VERSIÓN LIMPIA QUE FUNCIONA
 const express = require('express');
 const router = express.Router();
 const { body, param } = require('express-validator');
@@ -65,30 +65,11 @@ const validateId = [
 router.get('/user/my-comments', authenticateToken, commentController.getMyComments);
 
 /**
- * @route   GET /api/comments/user/my-comments-with-reactions
- * @desc    Obtener mis comentarios CON reacciones
- * @access  Private
- */
-router.get('/user/my-comments-with-reactions', 
-    authenticateToken, 
-    commentController.getMyCommentsWithReactions
-);
-
-/**
- * @route   GET /api/comments/system/feedback
+ * @route   GET /api/comments/suggestions
  * @desc    Obtener sugerencias del sistema
  * @access  Private
  */
 router.get('/suggestions', authenticateToken, commentController.getSystemFeedback);
-
-/**
- * @route   GET /api/comments/suggestions-with-reactions
- * @desc    Obtener sugerencias CON reacciones
- * @access  Public/Private (opcional)
- */
-router.get('/suggestions-with-reactions', 
-    commentController.getSystemFeedbackWithReactions
-);
 
 /**
  * @route   GET /api/comments/movie/:pelicula_id
@@ -96,16 +77,6 @@ router.get('/suggestions-with-reactions',
  * @access  Public (no requiere auth)
  */
 router.get('/movie/:pelicula_id', commentController.getByMovie);
-
-/**
- * @route   GET /api/comments/movie/:pelicula_id/with-reactions
- * @desc    Obtener comentarios de película CON reacciones
- * @access  Public/Private (opcional)
- */
-router.get('/movie/:pelicula_id/with-reactions', 
-    [param('pelicula_id').isInt({ min: 1 }).withMessage('ID de película inválido')],
-    commentController.getByMovieWithReactions
-);
 
 // ==================== RUTAS ADMIN ESPECÍFICAS ====================
 
@@ -141,10 +112,9 @@ router.put('/admin/:id/featured',
     commentController.toggleFeatured
 );
 
-// ==================== RUTAS GENERALES (CON PARÁMETROS AL FINAL) ====================
+// ==================== RUTAS GENERALES ====================
 
 /**
- * 🔥 RUTA CORREGIDA: POST con autenticación
  * @route   POST /api/comments
  * @desc    Crear nuevo comentario
  * @access  Private
@@ -165,7 +135,14 @@ router.get('/:id', authenticateToken, validateId, commentController.getById);
  */
 router.put('/:id', authenticateToken, validateId, validateUpdate, commentController.update);
 
-// ==================== 🆕 RUTAS DE REACCIONES ====================
+/**
+ * @route   DELETE /api/comments/:id
+ * @desc    Eliminar comentario
+ * @access  Private (solo el autor)
+ */
+router.delete('/:id', authenticateToken, validateId, commentController.delete);
+
+// ==================== 🆕 RUTAS DE REACCIONES (SOLO LA QUE FUNCIONA) ====================
 
 /**
  * @route   POST /api/comments/:id/reactions
@@ -178,22 +155,5 @@ router.post('/:id/reactions',
     [body('tipo').isIn(['like', 'dislike']).withMessage('Tipo de reacción inválido')],
     commentController.addReaction
 );
-
-/**
- * @route   GET /api/comments/:id/reactions
- * @desc    Obtener estadísticas de reacciones
- * @access  Public/Private (opcional)
- */
-router.get('/:id/reactions', 
-    validateId,
-    commentController.getReactionStats
-);
-
-/**
- * @route   DELETE /api/comments/:id
- * @desc    Eliminar comentario
- * @access  Private (solo el autor)
- */
-router.delete('/:id', authenticateToken, validateId, commentController.delete);
 
 module.exports = router;
