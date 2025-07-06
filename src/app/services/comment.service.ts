@@ -1,6 +1,6 @@
-// frontend/src/app/services/comment.service.ts - CORREGIDO
+// frontend/src/app/services/comment.service.ts - CON AUTENTICACIÓN
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 
@@ -63,25 +63,52 @@ export class CommentService {
 
   constructor(private http: HttpClient) {}
 
-  // ==================== MÉTODOS PÚBLICOS ====================
+  // 🔥 MÉTODO PARA OBTENER HEADERS CON TOKEN
+  private getAuthHeaders(): HttpHeaders {
+    const token = localStorage.getItem('auth_token');
+    
+    if (!token) {
+      console.warn('⚠️ No hay token de autenticación para comentarios');
+      return new HttpHeaders({
+        'Content-Type': 'application/json'
+      });
+    }
+
+    console.log('🔑 Enviando comentario con token:', token.substring(0, 20) + '...');
+    
+    return new HttpHeaders({
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    });
+  }
+
+  // ==================== MÉTODOS PÚBLICOS CON AUTENTICACIÓN ====================
 
   /**
-   * Crear nuevo comentario
+   * 🔥 CREAR COMENTARIO CON TOKEN
    */
   create(commentData: CreateCommentData): Observable<ApiResponse<Comment>> {
-    return this.http.post<ApiResponse<Comment>>(`${this.apiUrl}`, commentData);
+    const headers = this.getAuthHeaders();
+    
+    console.log('📝 Enviando comentario:', {
+      tipo: commentData.tipo,
+      titulo: commentData.titulo?.substring(0, 30),
+      hasToken: headers.has('Authorization')
+    });
+    
+    return this.http.post<ApiResponse<Comment>>(`${this.apiUrl}`, commentData, { headers });
   }
 
   /**
-   * Obtener comentario por ID
+   * 🔥 OBTENER COMENTARIO POR ID CON TOKEN
    */
   getById(id: number): Observable<ApiResponse<Comment>> {
-    return this.http.get<ApiResponse<Comment>>(`${this.apiUrl}/${id}`);
+    const headers = this.getAuthHeaders();
+    return this.http.get<ApiResponse<Comment>>(`${this.apiUrl}/${id}`, { headers });
   }
 
   /**
-   * 🔥 MÉTODO CORREGIDO: getByMovie
-   * Este método es el que usa tu componente
+   * OBTENER COMENTARIOS DE PELÍCULA (PÚBLICO - SIN TOKEN)
    */
   getByMovie(peliculaId: number, page: number = 1, limit: number = 20): Observable<ApiResponse<{
     comentarios: Comment[];
@@ -92,55 +119,59 @@ export class CommentService {
       .set('page', page.toString())
       .set('limit', limit.toString());
 
+    // Este endpoint es público, no necesita token
     return this.http.get<ApiResponse<any>>(`${this.apiUrl}/movie/${peliculaId}`, { params });
   }
 
   /**
-   * Obtener comentarios del usuario actual
+   * 🔥 OBTENER MIS COMENTARIOS CON TOKEN
    */
   getMyComments(page: number = 1, limit: number = 20): Observable<ApiResponse<{
     comentarios: Comment[];
     pagination: any;
   }>> {
+    const headers = this.getAuthHeaders();
+    
     let params = new HttpParams()
       .set('page', page.toString())
       .set('limit', limit.toString());
 
-    return this.http.get<ApiResponse<any>>(`${this.apiUrl}/user/my-comments`, { params });
+    return this.http.get<ApiResponse<any>>(`${this.apiUrl}/user/my-comments`, { params, headers });
   }
 
   /**
-   * 🔥 MÉTODO CORREGIDO: getSystemFeedback
-   * Este método es el que usa tu componente
+   * 🔥 OBTENER SUGERENCIAS DEL SISTEMA CON TOKEN
    */
   getSystemFeedback(page: number = 1, limit: number = 50): Observable<ApiResponse<{
     sugerencias: Comment[];
     pagination: any;
   }>> {
+    const headers = this.getAuthHeaders();
+    
     let params = new HttpParams()
       .set('page', page.toString())
       .set('limit', limit.toString());
 
-    return this.http.get<ApiResponse<any>>(`${this.apiUrl}/system/feedback`, { params });
+    return this.http.get<ApiResponse<any>>(`${this.apiUrl}/system/feedback`, { params, headers });
   }
 
   /**
-   * 🔥 MÉTODO CORREGIDO: update
-   * Este método es el que usa tu componente
+   * 🔥 ACTUALIZAR COMENTARIO CON TOKEN
    */
   update(id: number, updateData: UpdateCommentData): Observable<ApiResponse<Comment>> {
-    return this.http.put<ApiResponse<Comment>>(`${this.apiUrl}/${id}`, updateData);
+    const headers = this.getAuthHeaders();
+    return this.http.put<ApiResponse<Comment>>(`${this.apiUrl}/${id}`, updateData, { headers });
   }
 
   /**
-   * 🔥 MÉTODO CORREGIDO: delete
-   * Este método es el que usa tu componente
+   * 🔥 ELIMINAR COMENTARIO CON TOKEN
    */
   delete(id: number): Observable<ApiResponse<any>> {
-    return this.http.delete<ApiResponse<any>>(`${this.apiUrl}/${id}`);
+    const headers = this.getAuthHeaders();
+    return this.http.delete<ApiResponse<any>>(`${this.apiUrl}/${id}`, { headers });
   }
 
-  // ==================== MÉTODOS ADMIN ====================
+  // ==================== MÉTODOS ADMIN CON TOKEN ====================
 
   /**
    * Obtener todos los comentarios (admin)
@@ -156,6 +187,8 @@ export class CommentService {
     estadisticas: any;
     pagination: any;
   }>> {
+    const headers = this.getAuthHeaders();
+    
     let params = new HttpParams();
     
     Object.keys(filters).forEach(key => {
@@ -165,29 +198,27 @@ export class CommentService {
       }
     });
 
-    return this.http.get<ApiResponse<any>>(`${this.apiUrl}/admin/all`, { params });
+    return this.http.get<ApiResponse<any>>(`${this.apiUrl}/admin/all`, { params, headers });
   }
 
   /**
    * Cambiar estado del comentario (admin)
    */
   updateStatus(id: number, estado: string): Observable<ApiResponse<Comment>> {
-    return this.http.put<ApiResponse<Comment>>(`${this.apiUrl}/admin/${id}/status`, { estado });
+    const headers = this.getAuthHeaders();
+    return this.http.put<ApiResponse<Comment>>(`${this.apiUrl}/admin/${id}/status`, { estado }, { headers });
   }
 
   /**
    * Destacar/quitar destaque de comentario (admin)
    */
   toggleFeatured(id: number): Observable<ApiResponse<Comment>> {
-    return this.http.put<ApiResponse<Comment>>(`${this.apiUrl}/admin/${id}/featured`, {});
+    const headers = this.getAuthHeaders();
+    return this.http.put<ApiResponse<Comment>>(`${this.apiUrl}/admin/${id}/featured`, {}, { headers });
   }
 
-  // ==================== MÉTODOS AUXILIARES QUE USA TU COMPONENTE ====================
+  // ==================== MÉTODOS AUXILIARES (SIN CAMBIOS) ====================
 
-  /**
-   * 🔥 MÉTODO CORREGIDO: getStarsArray
-   * Obtener array de estrellas para mostrar rating
-   */
   getStarsArray(rating: number): { filled: boolean; half: boolean }[] {
     const stars = [];
     const fullStars = Math.floor(rating);
@@ -203,10 +234,6 @@ export class CommentService {
     return stars;
   }
 
-  /**
-   * 🔥 MÉTODO CORREGIDO: formatDate
-   * Formatear fecha para mostrar
-   */
   formatDate(dateString: string): string {
     const date = new Date(dateString);
     return date.toLocaleDateString('es-ES', {
@@ -218,9 +245,6 @@ export class CommentService {
     });
   }
 
-  /**
-   * Obtener texto del estado
-   */
   getStatusText(estado: string): string {
     const statusMap = {
       'activo': 'Activo',
@@ -231,9 +255,6 @@ export class CommentService {
     return statusMap[estado as keyof typeof statusMap] || estado;
   }
 
-  /**
-   * Obtener clase CSS para el estado
-   */
   getStatusClass(estado: string): string {
     const classMap = {
       'activo': 'badge-success',
@@ -244,9 +265,6 @@ export class CommentService {
     return classMap[estado as keyof typeof classMap] || 'badge-secondary';
   }
 
-  /**
-   * Obtener texto del tipo de comentario
-   */
   getTypeText(tipo: string): string {
     const typeMap = {
       'pelicula': 'Reseña de película',
@@ -256,10 +274,6 @@ export class CommentService {
     return typeMap[tipo as keyof typeof typeMap] || tipo;
   }
 
-  /**
-   * 🔥 MÉTODO CORREGIDO: getTypeIcon
-   * Obtener icono para el tipo de comentario
-   */
   getTypeIcon(tipo: 'pelicula' | 'sistema' | 'sugerencia' | string): string {
     const iconMap: Record<'pelicula' | 'sistema' | 'sugerencia', string> = {
       'pelicula': 'fas fa-film',
@@ -267,5 +281,22 @@ export class CommentService {
       'sugerencia': 'fas fa-lightbulb'
     };
     return iconMap[tipo as 'pelicula' | 'sistema' | 'sugerencia'] || 'fas fa-comment';
+  }
+
+  // 🔥 MÉTODO PARA VERIFICAR SI EL USUARIO ESTÁ AUTENTICADO
+  isAuthenticated(): boolean {
+    const token = localStorage.getItem('auth_token');
+    const isAuth = localStorage.getItem('is_authenticated') === 'true';
+    
+    return !!(token && isAuth);
+  }
+
+  // 🔥 MÉTODO PARA DEBUGGING
+  debugAuth(): void {
+    console.log('🔍 DEBUG CommentService:', {
+      hasToken: !!localStorage.getItem('auth_token'),
+      isAuthenticated: localStorage.getItem('is_authenticated'),
+      currentUser: localStorage.getItem('current_user') ? 'Present' : 'Missing'
+    });
   }
 }
