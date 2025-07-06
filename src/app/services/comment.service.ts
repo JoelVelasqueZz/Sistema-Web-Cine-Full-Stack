@@ -143,11 +143,15 @@ export class CommentService {
    * 🔥 OBTENER SUGERENCIAS DEL SISTEMA CON TOKEN
    */
   getSystemFeedback(page: number = 1, limit: number = 10): Observable<any> {
+  // 🔥 AGREGAR HEADERS CON TOKEN
+  const headers = this.getAuthHeaders();
+  
   const params = new HttpParams()
     .set('page', page.toString())
     .set('limit', limit.toString());
 
-  return this.http.get<any>(`${this.apiUrl}/suggestions`, { params });
+  // ✅ Ruta correcta: /suggestions (ya coincide con backend)
+  return this.http.get<any>(`${this.apiUrl}/suggestions`, { params, headers });
 }
 
   /**
@@ -286,11 +290,14 @@ export class CommentService {
     return !!(token && isAuth);
   }
   getUserComments(page: number = 1, limit: number = 10): Observable<any> {
+  // 🔥 AGREGAR HEADERS CON TOKEN
+  const headers = this.getAuthHeaders();
+  
   const params = new HttpParams()
     .set('page', page.toString())
     .set('limit', limit.toString());
 
-  return this.http.get<any>(`${this.apiUrl}/user/my-comments`, { params });
+  return this.http.get<any>(`${this.apiUrl}/user/my-comments`, { params, headers });
 }
 
   // 🔥 MÉTODO PARA DEBUGGING

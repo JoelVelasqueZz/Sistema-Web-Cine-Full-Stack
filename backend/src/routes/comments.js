@@ -69,7 +69,7 @@ router.get('/user/my-comments', authenticateToken, commentController.getMyCommen
  * @desc    Obtener sugerencias del sistema
  * @access  Private
  */
-router.get('/system/feedback', authenticateToken, commentController.getSystemFeedback);
+router.get('/suggestions', authenticateToken, commentController.getSystemFeedback);
 
 /**
  * @route   GET /api/comments/movie/:pelicula_id
