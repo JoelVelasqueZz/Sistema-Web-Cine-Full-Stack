@@ -1,8 +1,27 @@
-// backend/src/routes/comments.js
+// backend/src/routes/comments.js - DEBUG VERSION
 const express = require('express');
 const router = express.Router();
 const { body, param } = require('express-validator');
+
+// 🔍 DEBUG: Verificar importación del controlador
+console.log('🔍 Iniciando importación del controlador...');
 const commentController = require('../controllers/comments/commentController');
+console.log('✅ Controlador importado:', typeof commentController);
+console.log('📋 Métodos disponibles:', Object.keys(commentController));
+
+// Verificar cada método específicamente
+console.log('🔍 Verificando métodos:');
+console.log('- create:', typeof commentController.create);
+console.log('- getById:', typeof commentController.getById);
+console.log('- getByMovie:', typeof commentController.getByMovie);
+console.log('- getMyComments:', typeof commentController.getMyComments);
+console.log('- getSystemFeedback:', typeof commentController.getSystemFeedback);
+console.log('- update:', typeof commentController.update);
+console.log('- delete:', typeof commentController.delete);
+console.log('- getAllForAdmin:', typeof commentController.getAllForAdmin);
+console.log('- updateStatus:', typeof commentController.updateStatus);
+console.log('- toggleFeatured:', typeof commentController.toggleFeatured);
+
 const authMiddleware = require('../middleware/auth');
 const adminMiddleware = require('../middleware/admin');
 
@@ -55,41 +74,21 @@ const validateId = [
 
 // ==================== RUTAS ESPECÍFICAS PRIMERO ====================
 
-/**
- * @route   GET /api/comments/user/my-comments
- * @desc    Obtener comentarios del usuario actual
- * @access  Private
- */
+console.log('📝 Definiendo ruta: GET /user/my-comments');
 router.get('/user/my-comments', authMiddleware, commentController.getMyComments);
 
-/**
- * @route   GET /api/comments/system/feedback
- * @desc    Obtener sugerencias del sistema
- * @access  Private
- */
+console.log('📝 Definiendo ruta: GET /system/feedback');
 router.get('/system/feedback', authMiddleware, commentController.getSystemFeedback);
 
-/**
- * @route   GET /api/comments/movie/:pelicula_id
- * @desc    Obtener comentarios de una película
- * @access  Public (no requiere auth)
- */
+console.log('📝 Definiendo ruta: GET /movie/:pelicula_id');
 router.get('/movie/:pelicula_id', commentController.getByMovie);
 
 // ==================== RUTAS ADMIN ESPECÍFICAS ====================
 
-/**
- * @route   GET /api/comments/admin/all
- * @desc    Obtener todos los comentarios (admin)
- * @access  Admin
- */
+console.log('📝 Definiendo ruta: GET /admin/all');
 router.get('/admin/all', authMiddleware, adminMiddleware, commentController.getAllForAdmin);
 
-/**
- * @route   PUT /api/comments/admin/:id/status
- * @desc    Cambiar estado del comentario
- * @access  Admin
- */
+console.log('📝 Definiendo ruta: PUT /admin/:id/status');
 router.put('/admin/:id/status', 
     authMiddleware, 
     adminMiddleware,
@@ -98,11 +97,7 @@ router.put('/admin/:id/status',
     commentController.updateStatus
 );
 
-/**
- * @route   PUT /api/comments/admin/:id/featured
- * @desc    Destacar/quitar destaque de comentario
- * @access  Admin
- */
+console.log('📝 Definiendo ruta: PUT /admin/:id/featured');
 router.put('/admin/:id/featured', 
     authMiddleware, 
     adminMiddleware,
@@ -112,32 +107,18 @@ router.put('/admin/:id/featured',
 
 // ==================== RUTAS GENERALES (CON PARÁMETROS AL FINAL) ====================
 
-/**
- * @route   POST /api/comments
- * @desc    Crear nuevo comentario
- * @access  Private
- */
+console.log('📝 Definiendo ruta: POST /');
 router.post('/', authMiddleware, validateComment, commentController.create);
 
-/**
- * @route   GET /api/comments/:id
- * @desc    Obtener comentario por ID
- * @access  Private
- */
+console.log('📝 Definiendo ruta: GET /:id - LÍNEA 63 APROX');
 router.get('/:id', authMiddleware, validateId, commentController.getById);
 
-/**
- * @route   PUT /api/comments/:id
- * @desc    Actualizar comentario
- * @access  Private (solo el autor)
- */
+console.log('📝 Definiendo ruta: PUT /:id');
 router.put('/:id', authMiddleware, validateId, validateUpdate, commentController.update);
 
-/**
- * @route   DELETE /api/comments/:id
- * @desc    Eliminar comentario
- * @access  Private (solo el autor)
- */
+console.log('📝 Definiendo ruta: DELETE /:id');
 router.delete('/:id', authMiddleware, validateId, commentController.delete);
+
+console.log('✅ Todas las rutas definidas correctamente');
 
 module.exports = router;
