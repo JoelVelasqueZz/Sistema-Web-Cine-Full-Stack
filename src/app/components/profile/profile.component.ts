@@ -69,89 +69,139 @@ export class ProfileComponent implements OnInit {
 
   // 🔧 MÉTODO ACTUALIZADO CON CORRECCIONES
   private loadUserData(): void {
-    this.currentUser = this.authService.getCurrentUser();
-    
-    if (this.currentUser) {
-      // 🔧 CORREGIDO: Usar Observable correctamente
-      this.userService.getUserStats(this.currentUser.id).subscribe({
-        next: (stats) => {
-          this.userStats = stats;
-          console.log('📊 Estadísticas de usuario cargadas:', stats);
-        },
-        error: (error) => {
-          console.error('❌ Error al cargar estadísticas de usuario:', error);
-          this.userStats = {
-            totalFavoritas: 0,
-            totalVistas: 0,
-            generoFavorito: 'Ninguno',
-            ultimaActividad: null
-          };
-        }
-      });
+  this.currentUser = this.authService.getCurrentUser();
+  
+  if (this.currentUser) {
+    // 🔧 CORREGIDO: Usar Observable correctamente
+    this.userService.getUserStats(this.currentUser.id).subscribe({
+      next: (stats) => {
+        this.userStats = stats;
+        console.log('📊 Estadísticas de usuario cargadas:', stats);
+      },
+      error: (error) => {
+        console.error('❌ Error al cargar estadísticas de usuario:', error);
+        this.userStats = {
+          totalFavoritas: 0,
+          totalVistas: 0,
+          generoFavorito: 'Ninguno',
+          ultimaActividad: null
+        };
+      }
+    });
 
-      // 🔧 CORREGIDO: Cargar puntos con Observable
-      this.pointsService.getUserPoints().subscribe({
-        next: (response) => {
-          this.pointsStats = {
-            puntosActuales: response.puntosActuales,
-            totalGanados: response.totalGanados,
-            totalUsados: response.totalUsados,
-            valorEnDolares: response.puntosActuales / 1, // 1 punto = $1
-            ultimaActividad: new Date().toISOString(),
-            totalReferidos: 0 // 🆕 AGREGAR ESTA LÍNEA (por ahora en 0)
-          };
-          this.userPoints = response.puntosActuales;
+    // 🔧 CORREGIDO: Cargar puntos con Observable
+    this.pointsService.getUserPoints().subscribe({
+      next: (response) => {
+        this.pointsStats = {
+          puntosActuales: response.puntosActuales,
+          totalGanados: response.totalGanados,
+          totalUsados: response.totalUsados,
+          valorEnDolares: response.puntosActuales / 1, // 1 punto = $1
+          ultimaActividad: new Date().toISOString(),
+          totalReferidos: 0 // 🆕 AGREGAR ESTA LÍNEA (por ahora en 0)
+        };
+        this.userPoints = response.puntosActuales;
 
-          // 🆕 CARGAR REFERIDOS SEPARADAMENTE
-          this.pointsService.getUserReferrals().subscribe({
-            next: (referrals) => {
-              if (this.pointsStats) {
-                this.pointsStats.totalReferidos = referrals.length;
-              }
-            },
-            error: (error) => {
-              console.error('❌ Error cargando referidos:', error);
+        // 🆕 CARGAR REFERIDOS SEPARADAMENTE
+        this.pointsService.getUserReferrals().subscribe({
+          next: (referrals) => {
+            if (this.pointsStats) {
+              this.pointsStats.totalReferidos = referrals.length;
             }
-          });
-        },
-        error: (error) => {
-          console.error('❌ Error cargando puntos:', error);
-          this.userPoints = 0;
-          this.pointsStats = {
-            puntosActuales: 0,
-            totalGanados: 0,
-            totalUsados: 0,
-            valorEnDolares: 0,
-            ultimaActividad: null,
-            totalReferidos: 0 // 🆕 AGREGAR ESTA LÍNEA
-          };
-        }
-      });
-
-      // 🔧 CORREGIDO: Obtener código de referido
-      this.pointsService.getReferralCode().subscribe({
-        next: (code) => {
-          this.referralCode = code;
-        },
-        error: (error) => {
-          console.error('❌ Error obteniendo código de referido:', error);
-          this.referralCode = '';
-        }
-      });
-
-      // 🔧 CORREGIDO: Dar puntos de bienvenida
-      this.pointsService.giveWelcomePoints().subscribe({
-        next: (success) => {
-          if (success) {
-            console.log('✅ Puntos de bienvenida otorgados');
+          },
+          error: (error) => {
+            console.error('❌ Error cargando referidos:', error);
           }
-        },
-        error: (error) => {
-          console.error('❌ Error con puntos de bienvenida:', error);
+        });
+      },
+      error: (error) => {
+        console.error('❌ Error cargando puntos:', error);
+        this.userPoints = 0;
+        this.pointsStats = {
+          puntosActuales: 0,
+          totalGanados: 0,
+          totalUsados: 0,
+          valorEnDolares: 0,
+          ultimaActividad: null,
+          totalReferidos: 0 // 🆕 AGREGAR ESTA LÍNEA
+        };
+      }
+    });
+
+    // 🔧 CORREGIDO: Obtener código de referido
+    this.pointsService.getReferralCode().subscribe({
+      next: (code) => {
+        this.referralCode = code;
+      },
+      error: (error) => {
+        console.error('❌ Error obteniendo código de referido:', error);
+        this.referralCode = '';
+      }
+    });
+
+    // 🔧 CORREGIDO: Dar puntos de bienvenida
+    this.pointsService.giveWelcomePoints().subscribe({
+      next: (success) => {
+        if (success) {
+          console.log('✅ Puntos de bienvenida otorgados');
         }
-      });
-    }
+      },
+      error: (error) => {
+        console.error('❌ Error con puntos de bienvenida:', error);
+      }
+    });
+
+    // 🆕 AGREGAR ESTA LÍNEA AL FINAL - CARGAR COMENTARIOS DEL USUARIO
+    this.loadUserComments();
   }
+}
+  loadUserComments(): void {
+  if (!this.currentUser) return;
+  
+  this.loadingUserComments = true;
+  
+  this.commentService.getUserComments(this.userCommentsCurrentPage, this.userCommentsLimit)
+    .subscribe({
+      next: (response: any) => {
+        if (response.success && response.data) {
+          this.userComments = response.data.comentarios || [];
+          this.userCommentsTotalPages = response.data.pagination?.totalPages || 1;
+          console.log('✅ Comentarios del usuario cargados:', this.userComments.length);
+        }
+        this.loadingUserComments = false;
+      },
+      error: (error: any) => {
+        console.error('❌ Error cargando comentarios del usuario:', error);
+        this.userComments = [];
+        this.loadingUserComments = false;
+        this.toastService.showError('Error al cargar comentarios');
+      }
+    });
+}
+refreshUserComments(): void {
+  this.userCommentsCurrentPage = 1;
+  this.loadUserComments();
+}
+changeUserCommentsPage(page: number): void {
+  if (page >= 1 && page <= this.userCommentsTotalPages) {
+    this.userCommentsCurrentPage = page;
+    this.loadUserComments();
+  }
+}
+trackByCommentId(index: number, comment: any): number {
+  return comment.id;
+}
+
+getCommentStatusText(estado: string): string {
+  const statusMap: { [key: string]: string } = {
+    'activo': 'Publicado',
+    'moderacion': 'En Moderación',
+    'rechazado': 'Rechazado',
+    'oculto': 'Oculto'
+  };
+  return statusMap[estado] || estado;
+}
+
 
   // 🆕 MÉTODO SIMPLE PARA OBTENER EL CONTEO CORRECTO DE FAVORITAS
   getFavoritesCount(): number {
@@ -376,13 +426,14 @@ export class ProfileComponent implements OnInit {
    * Formatear fecha para mostrar
    */
   formatDate(dateString: string): string {
-    return new Date(dateString).toLocaleDateString('es-ES', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  }
-
+  return new Date(dateString).toLocaleDateString('es-ES', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
   /**
    * Obtener puntos necesarios para la próxima recompensa
    */
