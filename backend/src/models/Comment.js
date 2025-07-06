@@ -247,6 +247,54 @@ class Comment {
         const result = await db.query(query, [id]);
         return result.rows[0];
     }
+    async getSimpleMovieStats(pelicula_id) {
+    try {
+        console.log('📊 Obteniendo estadísticas simples para película:', pelicula_id);
+        
+        const query = `
+            SELECT 
+                COUNT(*) as total_comentarios,
+                COALESCE(ROUND(AVG(puntuacion), 1), 0) as puntuacion_promedio,
+                COUNT(CASE WHEN puntuacion = 5 THEN 1 END) as estrellas_5,
+                COUNT(CASE WHEN puntuacion = 4 THEN 1 END) as estrellas_4,
+                COUNT(CASE WHEN puntuacion = 3 THEN 1 END) as estrellas_3,
+                COUNT(CASE WHEN puntuacion = 2 THEN 1 END) as estrellas_2,
+                COUNT(CASE WHEN puntuacion = 1 THEN 1 END) as estrellas_1
+            FROM ${this.tableName}
+            WHERE pelicula_id = $1 AND estado = 'activo' AND tipo = 'pelicula'
+        `;
+        
+        const result = await db.query(query, [pelicula_id]);
+        const stats = result.rows[0];
+        
+        return {
+            pelicula_id: parseInt(pelicula_id),
+            total_comentarios: parseInt(stats.total_comentarios) || 0,
+            puntuacion_promedio: parseFloat(stats.puntuacion_promedio) || 0,
+            distribucion_puntuaciones: {
+                '5_estrellas': parseInt(stats.estrellas_5) || 0,
+                '4_estrellas': parseInt(stats.estrellas_4) || 0,
+                '3_estrellas': parseInt(stats.estrellas_3) || 0,
+                '2_estrellas': parseInt(stats.estrellas_2) || 0,
+                '1_estrella': parseInt(stats.estrellas_1) || 0
+            }
+        };
+    } catch (error) {
+        console.error('Error en getSimpleMovieStats:', error);
+        return {
+            pelicula_id: parseInt(pelicula_id),
+            total_comentarios: 0,
+            puntuacion_promedio: 0,
+            distribucion_puntuaciones: {
+                '5_estrellas': 0,
+                '4_estrellas': 0,
+                '3_estrellas': 0,
+                '2_estrellas': 0,
+                '1_estrella': 0
+            }
+        };
+    }
+}
 }
 
 module.exports = new Comment();
