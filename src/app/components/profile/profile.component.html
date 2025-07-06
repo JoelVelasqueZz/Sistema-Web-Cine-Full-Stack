@@ -439,7 +439,7 @@
       </div>
     </div>
 
-    <!-- 🆕 PESTAÑA 3: MIS COMENTARIOS (CORREGIDA) -->
+    <!-- 🆕 PESTAÑA 3: MIS COMENTARIOS (ACTUALIZADA CON REACCIONES) -->
     <div class="tab-pane fade" id="comments" role="tabpanel" aria-labelledby="comments-tab">
       <div class="row mt-4">
         <div class="col-12">
@@ -453,7 +453,7 @@
             </div>
             <div class="card-body p-4">
               
-              <!-- ✅ CÓDIGO NUEVO (CORRECTO) - REEMPLAZA EL app-comments -->
+              <!-- ✅ CÓDIGO ACTUALIZADO CON REACCIONES -->
               <div class="my-comments-section">
                 <!-- Header personalizado -->
                 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -474,30 +474,41 @@
                   </div>
                 </div>
 
-                <!-- Lista de comentarios del usuario -->
+                <!-- Lista de comentarios del usuario CON REACCIONES -->
                 <div *ngIf="!loadingUserComments && userComments.length > 0">
                   <div *ngFor="let comment of userComments; trackBy: trackByCommentId" 
                        class="card mb-3 border-start border-4" 
                        [class.border-warning]="comment.tipo === 'pelicula'"
                        [class.border-info]="comment.tipo === 'sugerencia'">
                     <div class="card-body">
-                      <!-- Header del comentario -->
+                      <!-- Header del comentario CON AVATAR -->
                       <div class="d-flex justify-content-between align-items-start mb-2">
-                        <div>
-                          <h6 class="card-title mb-1">{{ comment.titulo }}</h6>
-                          <div class="d-flex align-items-center">
-                            <span class="badge me-2" 
-                                  [class.bg-warning]="comment.tipo === 'pelicula'"
-                                  [class.bg-info]="comment.tipo === 'sugerencia'">
-                              <i class="fas fa-film me-1" *ngIf="comment.tipo === 'pelicula'"></i>
-                              <i class="fas fa-lightbulb me-1" *ngIf="comment.tipo === 'sugerencia'"></i>
-                              {{ comment.tipo === 'pelicula' ? 'Reseña' : 'Sugerencia' }}
-                            </span>
-                            <small class="text-muted">{{ formatDate(comment.fecha_creacion) }}</small>
-                            <span *ngIf="comment.fecha_creacion !== comment.fecha_actualizacion"
-                                  class="badge bg-secondary ms-2">Editado</span>
+                        <div class="d-flex align-items-start">
+                          
+                          <!-- Avatar del usuario -->
+                          <img [src]="comment.usuario_avatar || currentUser?.avatar || 'assets/images/default-avatar.png'" 
+                               [alt]="comment.usuario_nombre || currentUser?.nombre"
+                               class="rounded-circle me-3"
+                               width="40" height="40"
+                               style="object-fit: cover;">
+                          
+                          <div>
+                            <h6 class="card-title mb-1">{{ comment.titulo }}</h6>
+                            <div class="d-flex align-items-center">
+                              <span class="badge me-2" 
+                                    [class.bg-warning]="comment.tipo === 'pelicula'"
+                                    [class.bg-info]="comment.tipo === 'sugerencia'">
+                                <i class="fas fa-film me-1" *ngIf="comment.tipo === 'pelicula'"></i>
+                                <i class="fas fa-lightbulb me-1" *ngIf="comment.tipo === 'sugerencia'"></i>
+                                {{ comment.tipo === 'pelicula' ? 'Reseña' : 'Sugerencia' }}
+                              </span>
+                              <small class="text-muted">{{ formatDate(comment.fecha_creacion) }}</small>
+                              <span *ngIf="comment.fecha_creacion !== comment.fecha_actualizacion"
+                                    class="badge bg-secondary ms-2">Editado</span>
+                            </div>
                           </div>
                         </div>
+                        
                         <!-- Puntuación (solo para reseñas de películas) -->
                         <div *ngIf="comment.puntuacion" class="text-end">
                           <div class="stars-small">
@@ -519,6 +530,41 @@
                           <i class="fas fa-film me-1"></i>
                           Película: <strong>{{ comment.pelicula_titulo }}</strong>
                         </small>
+                      </div>
+
+                      <!-- 🆕 NUEVA SECCIÓN: REACCIONES EN PERFIL -->
+                      <div class="comment-reactions mt-3">
+                        <div class="reaction-buttons d-flex align-items-center gap-2">
+                          
+                          <!-- Botón Like -->
+                          <button class="btn btn-sm reaction-btn" 
+                                  [class]="getReactionButtonClass(comment, 'like')"
+                                  (click)="toggleUserCommentReaction(comment.id, 'like')"
+                                  title="Me gusta">
+                            <i class="fas fa-thumbs-up me-1"
+                               [class.fa-beat]="isReactionActive(comment, 'like')"></i>
+                            <span>{{ comment.total_likes || 0 }}</span>
+                          </button>
+
+                          <!-- Botón Dislike -->
+                          <button class="btn btn-sm reaction-btn"
+                                  [class]="getReactionButtonClass(comment, 'dislike')"
+                                  (click)="toggleUserCommentReaction(comment.id, 'dislike')"
+                                  title="No me gusta">
+                            <i class="fas fa-thumbs-down me-1"
+                               [class.fa-beat]="isReactionActive(comment, 'dislike')"></i>
+                            <span>{{ comment.total_dislikes || 0 }}</span>
+                          </button>
+
+                          <!-- Estadísticas de reacciones -->
+                          <span *ngIf="(comment.total_likes || 0) + (comment.total_dislikes || 0) > 0" 
+                                class="text-muted ms-2">
+                            <small>
+                              {{ (comment.total_likes || 0) + (comment.total_dislikes || 0) }} 
+                              {{ (comment.total_likes || 0) + (comment.total_dislikes || 0) === 1 ? 'reacción' : 'reacciones' }}
+                            </small>
+                          </span>
+                        </div>
                       </div>
 
                       <!-- Estado -->
@@ -684,3 +730,78 @@
     </div>
   </div>
 </div>
+
+<!-- 🆕 ESTILOS CSS PARA REACCIONES EN PERFIL -->
+<style>
+/* Incluir los mismos estilos de reacciones que en comments.component.css */
+.comment-reactions {
+  border-top: 1px solid #e9ecef;
+  padding-top: 15px;
+  margin-top: 15px;
+}
+
+.reaction-btn {
+  min-width: 70px;
+  transition: all 0.2s ease;
+  border-radius: 20px;
+  font-weight: 500;
+}
+
+.reaction-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.reaction-btn.btn-success {
+  animation: likeAnimation 0.4s ease;
+  background: linear-gradient(45deg, #28a745, #20c997);
+  border: none;
+}
+
+.reaction-btn.btn-danger {
+  animation: dislikeAnimation 0.4s ease;
+  background: linear-gradient(45deg, #dc3545, #fd7e14);
+  border: none;
+}
+
+.reaction-btn.btn-outline-success:hover {
+  background: linear-gradient(45deg, #28a745, #20c997);
+  border-color: #28a745;
+  color: white;
+}
+
+.reaction-btn.btn-outline-danger:hover {
+  background: linear-gradient(45deg, #dc3545, #fd7e14);
+  border-color: #dc3545;
+  color: white;
+}
+
+@keyframes likeAnimation {
+  0% { transform: scale(1); }
+  25% { transform: scale(1.1) rotate(5deg); }
+  50% { transform: scale(1.15) rotate(-5deg); }
+  75% { transform: scale(1.1) rotate(2deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+@keyframes dislikeAnimation {
+  0% { transform: scale(1) rotateY(0deg); }
+  25% { transform: scale(1.1) rotateY(10deg); }
+  50% { transform: scale(1.15) rotateY(-10deg); }
+  75% { transform: scale(1.1) rotateY(5deg); }
+  100% { transform: scale(1) rotateY(0deg); }
+}
+
+.fa-beat {
+  animation: fa-beat 1s ease-in-out infinite;
+}
+
+@keyframes fa-beat {
+  0%, 90% { transform: scale(1); }
+  45% { transform: scale(1.1); }
+}
+
+.stars-small .fa-star {
+  margin-right: 1px;
+}
+</style>

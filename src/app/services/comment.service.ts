@@ -20,6 +20,9 @@ export interface Comment {
   usuario_avatar?: string;
   pelicula_titulo?: string;
   pelicula_poster?: string;
+  total_likes?: number;
+  total_dislikes?: number;
+  user_reaction?: 'like' | 'dislike' | null;
 }
 
 export interface CommentStats {
@@ -300,6 +303,52 @@ export class CommentService {
   return this.http.get<any>(`${this.apiUrl}/user/my-comments`, { params, headers });
 }
 
+addReaction(commentId: number, tipo: 'like' | 'dislike'): Observable<ApiResponse<any>> {
+  const headers = this.getAuthHeaders();
+  return this.http.post<ApiResponse<any>>(`${this.apiUrl}/${commentId}/reactions`, { tipo }, { headers });
+}
+getReactionStats(commentId: number): Observable<ApiResponse<any>> {
+  return this.http.get<ApiResponse<any>>(`${this.apiUrl}/${commentId}/reactions`);
+}
+getByMovieWithReactions(peliculaId: number, page: number = 1, limit: number = 20): Observable<ApiResponse<any>> {
+  let params = new HttpParams()
+    .set('page', page.toString())
+    .set('limit', limit.toString());
+
+  // Si hay usuario logueado, enviar token para obtener sus reacciones
+  const headers = this.isAuthenticated() ? this.getAuthHeaders() : new HttpHeaders();
+
+  return this.http.get<ApiResponse<any>>(`${this.apiUrl}/movie/${peliculaId}/with-reactions`, { 
+    params, 
+    headers 
+  });
+}
+
+getMyCommentsWithReactions(page: number = 1, limit: number = 20): Observable<ApiResponse<any>> {
+  const headers = this.getAuthHeaders();
+  
+  let params = new HttpParams()
+    .set('page', page.toString())
+    .set('limit', limit.toString());
+
+  return this.http.get<ApiResponse<any>>(`${this.apiUrl}/user/my-comments-with-reactions`, { 
+    params, 
+    headers 
+  });
+}
+getSystemFeedbackWithReactions(page: number = 1, limit: number = 10): Observable<any> {
+  const params = new HttpParams()
+    .set('page', page.toString())
+    .set('limit', limit.toString());
+
+  // Si hay usuario logueado, enviar token para obtener sus reacciones
+  const headers = this.isAuthenticated() ? this.getAuthHeaders() : new HttpHeaders();
+
+  return this.http.get<any>(`${this.apiUrl}/suggestions-with-reactions`, { 
+    params, 
+    headers 
+  });
+}
   // 🔥 MÉTODO PARA DEBUGGING
   debugAuth(): void {
     console.log('🔍 DEBUG CommentService:', {

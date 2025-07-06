@@ -394,7 +394,61 @@ class CommentController {
             });
         }
     }
+    async addReaction(req, res) {
+    try {
+        // Verificar autenticación
+        if (!req.user || !req.user.id) {
+            return res.status(401).json({
+                success: false,
+                message: 'Usuario no autenticado'
+            });
+        }
 
+        const { id: comentario_id } = req.params;
+        const { tipo } = req.body;
+        const usuario_id = req.user.id;
+
+        // Validar tipo de reacción
+        if (!tipo || !['like', 'dislike'].includes(tipo)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Tipo de reacción inválido. Debe ser "like" o "dislike"'
+            });
+        }
+
+        // Verificar que el comentario existe
+        const comentario = await Comment.findById(comentario_id);
+        if (!comentario) {
+            return res.status(404).json({
+                success: false,
+                message: 'Comentario no encontrado'
+            });
+        }
+
+        // Agregar/actualizar reacción
+        const reactionResult = await Comment.addReaction(comentario_id, usuario_id, tipo);
+        
+        // Obtener estadísticas actualizadas
+        const stats = await Comment.getReactionStats(comentario_id);
+
+        res.json({
+            success: true,
+            message: `Reacción ${reactionResult.action === 'removed' ? 'eliminada' : 'agregada'} exitosamente`,
+            data: {
+                action: reactionResult.action,
+                reaction: reactionResult.reaction,
+                stats: stats
+            }
+        });
+
+    } catch (error) {
+        console.error('Error al agregar reacción:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor'
+        });
+    }
+}
     async toggleFeatured(req, res) {
         try {
             const { id } = req.params;

@@ -88,33 +88,103 @@ class Comment {
     /**
      * Obtener comentarios de una película
      */
-    async getByMovie(pelicula_id, limit = 20, offset = 0) {
-        const query = `
-            SELECT c.*, u.nombre as usuario_nombre, u.avatar as usuario_avatar
-            FROM ${this.tableName} c
-            JOIN usuarios u ON c.usuario_id = u.id
-            WHERE c.pelicula_id = $1 AND c.estado = 'activo' AND c.tipo = 'pelicula'
-            ORDER BY c.fecha_creacion DESC
-            LIMIT $2 OFFSET $3
-        `;
+    async getByMovieWithReactions(req, res) {
+    try {
+        const { pelicula_id } = req.params;
+        const { page = 1, limit = 20 } = req.query;
+        const usuario_id = req.user?.id; // Usuario opcional 
         
-        const result = await db.query(query, [pelicula_id, limit, offset]);
-        return result.rows;
-    }
+        const offset = (page - 1) * limit;
+        
+        // Usar método con reacciones
+        const comentarios = await Comment.getByMovieWithReactions(
+            pelicula_id, 
+            usuario_id, 
+            parseInt(limit), 
+            offset
+        );
 
+        // Obtener estadísticas
+        let stats;
+        try {
+            stats = await Comment.getMovieCommentsWithStats(pelicula_id);
+        } catch (error) {
+            console.error('❌ Error con función compleja, usando método simple:', error);
+            stats = await Comment.getSimpleMovieStats(pelicula_id);
+        }
+
+        res.json({
+            success: true,
+            data: {
+                comentarios,
+                estadisticas: stats,
+                pagination: {
+                    page: parseInt(page),
+                    limit: parseInt(limit),
+                    total: stats.total_comentarios || 0
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Error al obtener comentarios de película:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor'
+        });
+    }
+}
+    async getMyCommentsWithReactions(req, res) {
+    try {
+        if (!req.user || !req.user.id) {
+            return res.status(401).json({
+                success: false,
+                message: 'Usuario no autenticado'
+            });
+        }
+
+        const usuario_id = req.user.id;
+        const { page = 1, limit = 20 } = req.query;
+        
+        const offset = (page - 1) * limit;
+        const comentarios = await Comment.getByUserWithReactions(usuario_id, parseInt(limit), offset);
+
+        res.json({
+            success: true,
+            data: {
+                comentarios,
+                pagination: {
+                    page: parseInt(page),
+                    limit: parseInt(limit),
+                    total: comentarios.length
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Error al obtener comentarios del usuario:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor'
+        });
+    }
+}
     /**
      * Obtener comentarios del usuario
      */
-    async getByUser(usuario_id, limit = 20, offset = 0) {
+    async getByUserWithReactions(usuario_id, limit = 20, offset = 0) {
     const query = `
         SELECT 
             c.*, 
             u.nombre as usuario_nombre,
-            u.avatar as usuario_avatar,  -- 🔥 AGREGAR ESTA LÍNEA
+            u.avatar as usuario_avatar,
             p.titulo as pelicula_titulo, 
-            p.poster as pelicula_poster
+            p.poster as pelicula_poster,
+            (SELECT COUNT(*) FROM comentarios_reacciones cr WHERE cr.comentario_id = c.id AND cr.tipo = 'like') as total_likes,
+            (SELECT COUNT(*) FROM comentarios_reacciones cr WHERE cr.comentario_id = c.id AND cr.tipo = 'dislike') as total_dislikes,
+            (SELECT tipo FROM comentarios_reacciones cr WHERE cr.comentario_id = c.id AND cr.usuario_id = $1) as user_reaction
         FROM ${this.tableName} c
-        LEFT JOIN usuarios u ON c.usuario_id = u.id  -- 🔥 AGREGAR ESTE JOIN
+        LEFT JOIN usuarios u ON c.usuario_id = u.id
         LEFT JOIN peliculas p ON c.pelicula_id = p.id
         WHERE c.usuario_id = $1 AND c.estado = 'activo'
         ORDER BY c.fecha_creacion DESC
@@ -128,23 +198,39 @@ class Comment {
     /**
      * Obtener sugerencias del sistema
      */
-    async getSystemFeedback(limit = 50, offset = 0) {
-    const query = `
-        SELECT 
-            c.*, 
-            u.nombre as usuario_nombre, 
-            u.avatar as usuario_avatar,  -- 🔥 CAMBIAR DE u.email A u.avatar
-            u.email as usuario_email
-        FROM ${this.tableName} c
-        JOIN usuarios u ON c.usuario_id = u.id
-        WHERE c.tipo IN ('sistema', 'sugerencia') AND c.estado = 'activo'
-        ORDER BY c.fecha_creacion DESC
-        LIMIT $1 OFFSET $2
-    `;
-    
-    const result = await db.query(query, [limit, offset]);
-    return result.rows;
+    async getSystemFeedbackWithReactions(req, res) {
+    try {
+        const { page = 1, limit = 50 } = req.query;
+        const usuario_id = req.user?.id; // Usuario opcional
+        const offset = (page - 1) * limit;
+        
+        const sugerencias = await Comment.getSystemFeedbackWithReactions(
+            usuario_id,
+            parseInt(limit), 
+            offset
+        );
+
+        res.json({
+            success: true,
+            data: {
+                sugerencias,
+                pagination: {
+                    page: parseInt(page),
+                    limit: parseInt(limit),
+                    total: sugerencias.length
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Error al obtener sugerencias:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor'
+        });
+    }
 }
+
 
     /**
      * Verificar si el usuario ya comentó la película
@@ -304,6 +390,84 @@ class Comment {
             }
         };
     }
+}
+async addReaction(comentario_id, usuario_id, tipo) {
+    const checkQuery = `
+        SELECT * FROM comentarios_reacciones 
+        WHERE comentario_id = $1 AND usuario_id = $2
+    `;
+    
+    const existingReaction = await db.query(checkQuery, [comentario_id, usuario_id]);
+    
+    if (existingReaction.rows.length > 0) {
+        // Si ya existe una reacción
+        if (existingReaction.rows[0].tipo === tipo) {
+            // Si es la misma reacción, eliminarla (toggle off)
+            const deleteQuery = `
+                DELETE FROM comentarios_reacciones 
+                WHERE comentario_id = $1 AND usuario_id = $2
+                RETURNING *
+            `;
+            const result = await db.query(deleteQuery, [comentario_id, usuario_id]);
+            return { action: 'removed', reaction: result.rows[0] };
+        } else {
+            // Si es diferente reacción, actualizarla
+            const updateQuery = `
+                UPDATE comentarios_reacciones 
+                SET tipo = $1, fecha_creacion = CURRENT_TIMESTAMP
+                WHERE comentario_id = $2 AND usuario_id = $3
+                RETURNING *
+            `;
+            const result = await db.query(updateQuery, [tipo, comentario_id, usuario_id]);
+            return { action: 'updated', reaction: result.rows[0] };
+        }
+    } else {
+        // Si no existe, crear nueva reacción
+        const insertQuery = `
+            INSERT INTO comentarios_reacciones (comentario_id, usuario_id, tipo)
+            VALUES ($1, $2, $3)
+            RETURNING *
+        `;
+        const result = await db.query(insertQuery, [comentario_id, usuario_id, tipo]);
+        return { action: 'created', reaction: result.rows[0] };
+    }
+}
+async getReactionStats(req, res) {
+    try {
+        const { id: comentario_id } = req.params;
+        const usuario_id = req.user?.id; // Opcional
+
+        const stats = await Comment.getReactionStats(comentario_id); 
+        let userReaction = null;
+
+        if (usuario_id) {
+            userReaction = await Comment.getUserReaction(comentario_id, usuario_id);
+        }
+
+        res.json({
+            success: true,
+            data: {
+                ...stats,
+                userReaction
+            }
+        });
+
+    } catch (error) {
+        console.error('Error al obtener estadísticas de reacciones:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor'
+        });
+    }
+}
+async getUserReaction(comentario_id, usuario_id) {
+    const query = `
+        SELECT tipo FROM comentarios_reacciones 
+        WHERE comentario_id = $1 AND usuario_id = $2
+    `;
+    
+    const result = await db.query(query, [comentario_id, usuario_id]);
+    return result.rows.length > 0 ? result.rows[0].tipo : null;
 }
 }
 

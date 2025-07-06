@@ -60,20 +60,22 @@ export class CommentsComponent implements OnInit {
 
  loadComments(): void {
   if (this.tipo === 'sugerencia' || this.tipo === 'sistema') {
-    this.loadSystemFeedback();
+    this.loadSystemFeedbackWithReactions();
     return;
   }
   
   if (!this.peliculaId) return;
   
   this.loading = true;
-  this.commentService.getByMovie(this.peliculaId!, this.currentPage, this.limit)
+  this.commentService.getByMovieWithReactions(this.peliculaId!, this.currentPage, this.limit)
     .subscribe({
       next: (response: any) => {
         if (response.success && response.data) {
           this.comentarios = response.data.comentarios || [];
           this.estadisticas = response.data.estadisticas;
           this.totalPages = response.data.pagination?.totalPages || 1;
+          
+          console.log('📊 Comentarios con reacciones cargados:', this.comentarios.length);
         }
         this.loading = false;
       },
@@ -83,7 +85,25 @@ export class CommentsComponent implements OnInit {
       }
     });
 }
-
+loadSystemFeedbackWithReactions(): void {
+  this.loading = true;
+  this.commentService.getSystemFeedbackWithReactions(this.currentPage, this.limit)
+    .subscribe({
+      next: (response: any) => {
+        if (response.success && response.data) {
+          this.comentarios = response.data.sugerencias || [];
+          this.totalPages = response.data.pagination?.totalPages || 1;
+          
+          console.log('📊 Sugerencias con reacciones cargadas:', this.comentarios.length);
+        }
+        this.loading = false;
+      },
+      error: (error: any) => {
+        console.error('Error cargando feedback:', error);
+        this.loading = false;
+      }
+    });
+  }
 
   loadMovieComments() {
     this.commentService.getByMovie(this.peliculaId!, this.currentPage, this.limit)
@@ -341,35 +361,129 @@ confirmDelete(comment: any): void {
       }
     });
 }
+toggleReaction(commentId: number, tipo: 'like' | 'dislike'): void {
+  if (!this.isAuthenticated()) {
+    this.toastService.showWarning('Debes iniciar sesión para reaccionar');
+    return;
+  }
 
+  // Encontrar el comentario en la lista
+  const comment = this.comentarios.find(c => c.id === commentId);
+  if (!comment) return;
+
+  // Optimistic update - actualizar UI inmediatamente
+  const wasUserReaction = comment.user_reaction === tipo;
+  const previousReaction = comment.user_reaction;
+  
+  if (wasUserReaction) {
+    // Si ya tenía esta reacción, quitarla
+    comment.user_reaction = null;
+    if (tipo === 'like') {
+      comment.total_likes = (comment.total_likes || 0) - 1;
+    } else {
+      comment.total_dislikes = (comment.total_dislikes || 0) - 1;
+    }
+  } else {
+    // Si no tenía esta reacción, agregarla
+    comment.user_reaction = tipo;
+    
+    if (previousReaction) {
+      // Si tenía la reacción opuesta, quitarla primero
+      if (previousReaction === 'like') {
+        comment.total_likes = (comment.total_likes || 0) - 1;
+      } else {
+        comment.total_dislikes = (comment.total_dislikes || 0) - 1;
+      }
+    }
+    
+    // Agregar la nueva reacción
+    if (tipo === 'like') {
+      comment.total_likes = (comment.total_likes || 0) + 1;
+    } else {
+      comment.total_dislikes = (comment.total_dislikes || 0) + 1;
+    }
+  }
+
+  // Llamar al backend
+  this.commentService.addReaction(commentId, tipo)
+    .subscribe({
+      next: (response) => {
+        if (response.success) {
+          // Actualizar con datos reales del servidor
+          comment.total_likes = response.data.stats.totalLikes;
+          comment.total_dislikes = response.data.stats.totalDislikes;
+          
+          // Mostrar mensaje de éxito sutil
+          if (response.data.action === 'removed') {
+            this.toastService.showInfo('Reacción eliminada');
+          } else {
+            this.toastService.showSuccess(`¡${tipo === 'like' ? 'Me gusta' : 'No me gusta'}!`);
+          }
+        }
+      },
+      error: (error) => {
+        // Revertir cambios optimistas si hay error
+        comment.user_reaction = previousReaction;
+        if (previousReaction === 'like') {
+          comment.total_likes = (comment.total_likes || 0) + 1;
+        } else if (previousReaction === 'dislike') {
+          comment.total_dislikes = (comment.total_dislikes || 0) + 1;
+        }
+        
+        console.error('Error al reaccionar:', error);
+        this.toastService.showError('Error al procesar reacción');
+      }
+    });
+}
+isAuthenticated(): boolean {
+  return this.commentService.isAuthenticated();
+}
+getReactionButtonClass(comment: Comment, tipo: 'like' | 'dislike'): string {
+  const isActive = comment.user_reaction === tipo;
+  
+  if (tipo === 'like') {
+    return isActive ? 'btn-success' : 'btn-outline-success';
+  } else {
+    return isActive ? 'btn-danger' : 'btn-outline-danger';
+  }
+}
+
+isReactionActive(comment: Comment, tipo: 'like' | 'dislike'): boolean {
+  return comment.user_reaction === tipo;
+}
   // ==================== ELIMINAR COMENTARIO ====================
 
   deleteComment(comment: Comment) {
-    if (!this.canEditComment(comment)) {
-      this.toastService.showWarning('No tienes permisos para eliminar este comentario');
-      return;
-    }
-
-    if (!confirm('¿Estás seguro de que quieres eliminar este comentario? Esta acción no se puede deshacer.')) {
-      return;
-    }
-
-    this.commentService.delete(comment.id)
-      .subscribe({
-        next: (response) => {
-          if (response.success) {
-            this.toastService.showSuccess('Comentario eliminado exitosamente');
-            this.loadComments();
-          } else {
-            this.toastService.showError(response.message || 'Error al eliminar comentario');
-          }
-        },
-        error: (error) => {
-          console.error('Error deleting comment:', error);
-          this.toastService.showError('Error al eliminar comentario');
-        }
-      });
+  if (!this.canEditComment(comment)) {
+    this.toastService.showWarning('No tienes permisos para eliminar este comentario');
+    return;
   }
+
+  if (!confirm('¿Estás seguro de que quieres eliminar este comentario? Esta acción no se puede deshacer.')) {
+    return;
+  }
+
+  this.commentService.delete(comment.id)
+    .subscribe({
+      next: (response) => {
+        if (response.success) {
+          this.toastService.showSuccess('Comentario eliminado exitosamente');
+          // 🔥 CORRECCIÓN: Recargar según el tipo
+          if (this.tipo === 'sugerencia' || this.tipo === 'sistema') {
+            this.loadSystemFeedback();
+          } else {
+            this.loadComments();
+          }
+        } else {
+          this.toastService.showError(response.message || 'Error al eliminar comentario');
+        }
+      },
+      error: (error) => {
+        console.error('Error deleting comment:', error);
+        this.toastService.showError('Error al eliminar comentario');
+      }
+    });
+}
 
   // ==================== PAGINACIÓN ====================
 

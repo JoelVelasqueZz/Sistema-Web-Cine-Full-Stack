@@ -135,6 +135,177 @@
   border-radius: 0 6px 6px 0;
 }
 
+/* ==================== 🆕 ESTILOS DE REACCIONES ==================== */
+.comment-reactions {
+  border-top: 1px solid #e9ecef;
+  padding-top: 15px;
+  margin-top: 15px;
+}
+
+.reaction-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.reaction-btn {
+  min-width: 70px;
+  transition: all 0.2s ease;
+  border-radius: 20px;
+  font-weight: 500;
+  position: relative;
+  overflow: hidden;
+}
+
+.reaction-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.reaction-btn:active {
+  transform: translateY(0);
+}
+
+/* Animaciones para reacciones activas */
+.reaction-btn.btn-success {
+  animation: likeAnimation 0.4s ease;
+  background: linear-gradient(45deg, #28a745, #20c997);
+  border: none;
+}
+
+.reaction-btn.btn-danger {
+  animation: dislikeAnimation 0.4s ease;
+  background: linear-gradient(45deg, #dc3545, #fd7e14);
+  border: none;
+}
+
+/* Efectos de hover mejorados */
+.reaction-btn.btn-outline-success:hover {
+  background: linear-gradient(45deg, #28a745, #20c997);
+  border-color: #28a745;
+  color: white;
+}
+
+.reaction-btn.btn-outline-danger:hover {
+  background: linear-gradient(45deg, #dc3545, #fd7e14);
+  border-color: #dc3545;
+  color: white;
+}
+
+/* Efectos para botones deshabilitados */
+.reaction-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Animaciones de reacción */
+@keyframes likeAnimation {
+  0% { 
+    transform: scale(1); 
+  }
+  25% { 
+    transform: scale(1.1) rotate(5deg); 
+  }
+  50% { 
+    transform: scale(1.15) rotate(-5deg); 
+  }
+  75% { 
+    transform: scale(1.1) rotate(2deg); 
+  }
+  100% { 
+    transform: scale(1) rotate(0deg); 
+  }
+}
+
+@keyframes dislikeAnimation {
+  0% { 
+    transform: scale(1) rotateY(0deg); 
+  }
+  25% { 
+    transform: scale(1.1) rotateY(10deg); 
+  }
+  50% { 
+    transform: scale(1.15) rotateY(-10deg); 
+  }
+  75% { 
+    transform: scale(1.1) rotateY(5deg); 
+  }
+  100% { 
+    transform: scale(1) rotateY(0deg); 
+  }
+}
+
+/* Efecto de latido para reacciones activas */
+.fa-beat {
+  animation: fa-beat 1s ease-in-out infinite;
+}
+
+@keyframes fa-beat {
+  0%, 90% { 
+    transform: scale(1); 
+  }
+  45% { 
+    transform: scale(1.1); 
+  }
+}
+
+/* Estadísticas de reacciones */
+.reaction-stats {
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.reaction-stats .text-success {
+  font-weight: 500;
+}
+
+.reaction-stats .text-danger {
+  font-weight: 500;
+}
+
+/* Efectos especiales para comentarios destacados */
+.comment-item .card.border-warning .reaction-btn {
+  box-shadow: 0 2px 4px rgba(255, 193, 7, 0.2);
+}
+
+.comment-item .card.border-info .reaction-btn {
+  box-shadow: 0 2px 4px rgba(13, 202, 240, 0.2);
+}
+
+/* Transiciones suaves para contadores */
+.reaction-btn span {
+  transition: all 0.2s ease;
+  font-weight: 600;
+}
+
+/* Efecto glow para reacciones activas */
+.reaction-btn.btn-success {
+  box-shadow: 0 0 10px rgba(40, 167, 69, 0.3);
+}
+
+.reaction-btn.btn-danger {
+  box-shadow: 0 0 10px rgba(220, 53, 69, 0.3);
+}
+
+/* Separador con estilo */
+.comment-reactions .text-muted {
+  font-weight: bold;
+  opacity: 0.5;
+}
+
+/* Estilo para enlaces en mensajes informativos */
+.comment-reactions a {
+  color: #0d6efd;
+  transition: color 0.2s ease;
+}
+
+.comment-reactions a:hover {
+  color: #0a58ca;
+  text-decoration: underline !important;
+}
+
 /* ==================== ACCIONES DEL COMENTARIO ==================== */
 .comment-actions {
   border-top: 1px solid #e9ecef;
@@ -262,6 +433,20 @@
   
   .pagination .page-link {
     padding: 6px 10px;
+    font-size: 0.9rem;
+  }
+  
+  /* Responsive para reacciones en móviles */
+  .reaction-buttons {
+    justify-content: center;
+  }
+  
+  .reaction-btn {
+    min-width: 60px;
+    font-size: 0.875rem;
+  }
+  
+  .reaction-btn i {
     font-size: 0.9rem;
   }
 }
