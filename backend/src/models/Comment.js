@@ -106,35 +106,45 @@ class Comment {
      * Obtener comentarios del usuario
      */
     async getByUser(usuario_id, limit = 20, offset = 0) {
-        const query = `
-            SELECT c.*, p.titulo as pelicula_titulo, p.poster as pelicula_poster
-            FROM ${this.tableName} c
-            LEFT JOIN peliculas p ON c.pelicula_id = p.id
-            WHERE c.usuario_id = $1 AND c.estado = 'activo'
-            ORDER BY c.fecha_creacion DESC
-            LIMIT $2 OFFSET $3
-        `;
-        
-        const result = await db.query(query, [usuario_id, limit, offset]);
-        return result.rows;
-    }
+    const query = `
+        SELECT 
+            c.*, 
+            u.nombre as usuario_nombre,
+            u.avatar as usuario_avatar,  -- 🔥 AGREGAR ESTA LÍNEA
+            p.titulo as pelicula_titulo, 
+            p.poster as pelicula_poster
+        FROM ${this.tableName} c
+        LEFT JOIN usuarios u ON c.usuario_id = u.id  -- 🔥 AGREGAR ESTE JOIN
+        LEFT JOIN peliculas p ON c.pelicula_id = p.id
+        WHERE c.usuario_id = $1 AND c.estado = 'activo'
+        ORDER BY c.fecha_creacion DESC
+        LIMIT $2 OFFSET $3
+    `;
+    
+    const result = await db.query(query, [usuario_id, limit, offset]);
+    return result.rows;
+}
 
     /**
      * Obtener sugerencias del sistema
      */
     async getSystemFeedback(limit = 50, offset = 0) {
-        const query = `
-            SELECT c.*, u.nombre as usuario_nombre, u.email as usuario_email
-            FROM ${this.tableName} c
-            JOIN usuarios u ON c.usuario_id = u.id
-            WHERE c.tipo IN ('sistema', 'sugerencia') AND c.estado = 'activo'
-            ORDER BY c.fecha_creacion DESC
-            LIMIT $1 OFFSET $2
-        `;
-        
-        const result = await db.query(query, [limit, offset]);
-        return result.rows;
-    }
+    const query = `
+        SELECT 
+            c.*, 
+            u.nombre as usuario_nombre, 
+            u.avatar as usuario_avatar,  -- 🔥 CAMBIAR DE u.email A u.avatar
+            u.email as usuario_email
+        FROM ${this.tableName} c
+        JOIN usuarios u ON c.usuario_id = u.id
+        WHERE c.tipo IN ('sistema', 'sugerencia') AND c.estado = 'activo'
+        ORDER BY c.fecha_creacion DESC
+        LIMIT $1 OFFSET $2
+    `;
+    
+    const result = await db.query(query, [limit, offset]);
+    return result.rows;
+}
 
     /**
      * Verificar si el usuario ya comentó la película
