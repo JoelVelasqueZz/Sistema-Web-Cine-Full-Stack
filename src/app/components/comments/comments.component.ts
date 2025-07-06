@@ -58,15 +58,26 @@ export class CommentsComponent implements OnInit {
 
   // ==================== CARGAR DATOS ====================
 
-  loadComments() {
-    this.loading = true;
-    
-    if (this.tipo === 'pelicula' && this.peliculaId) {
-      this.loadMovieComments();
-    } else if (this.tipo === 'sistema' || this.tipo === 'sugerencia') {
-      this.loadSystemFeedback();
-    }
-  }
+  loadComments(): void {
+  if (!this.peliculaId) return;
+  
+  this.loading = true;
+  this.commentService.getByMovie(this.peliculaId!, this.currentPage, this.limit)
+    .subscribe({
+      next: (response: any) => { // 🔥 Cambiado: agregado tipo any explícito
+        if (response.success && response.data) {
+          this.comentarios = response.data.comentarios || [];
+          this.estadisticas = response.data.estadisticas;
+          this.totalPages = response.data.pagination?.totalPages || 1;
+        }
+        this.loading = false;
+      },
+      error: (error: any) => { // 🔥 Cambiado: agregado tipo any explícito
+        console.error('Error cargando comentarios:', error);
+        this.loading = false;
+      }
+    });
+}
 
   loadMovieComments() {
     this.commentService.getByMovie(this.peliculaId!, this.currentPage, this.limit)
@@ -87,22 +98,78 @@ export class CommentsComponent implements OnInit {
       });
   }
 
-  loadSystemFeedback() {
-    this.commentService.getSystemFeedback(this.currentPage, this.limit)
-      .subscribe({
-        next: (response) => {
-          if (response.success && response.data) {
-            this.comentarios = response.data.sugerencias;
-          }
-          this.loading = false;
-        },
-        error: (error) => {
-          console.error('Error loading system feedback:', error);
-          this.toastService.showError('Error al cargar sugerencias');
-          this.loading = false;
+  loadSystemFeedback(): void {
+  this.loading = true;
+  this.commentService.getSystemFeedback(this.currentPage, this.limit)
+    .subscribe({
+      next: (response: any) => { // 🔥 Cambiado: agregado tipo any explícito
+        if (response.success && response.data) {
+          this.comentarios = response.data.sugerencias || [];
+          this.totalPages = response.data.pagination?.totalPages || 1;
         }
-      });
+        this.loading = false;
+      },
+      error: (error: any) => { // 🔥 Cambiado: agregado tipo any explícito
+        console.error('Error cargando feedback:', error);
+        this.loading = false;
+      }
+    });
+}
+submitComment(): void {
+  if (!this.nuevoComentario.titulo.trim() || !this.nuevoComentario.contenido.trim()) {
+    return;
   }
+
+  this.commentService.create(this.nuevoComentario)
+    .subscribe({
+      next: (response: any) => { // 🔥 Cambiado: agregado tipo any explícito
+        if (response.success) {
+          this.resetForm();
+          this.loadComments(); // Recargar comentarios
+          // Mostrar mensaje de éxito
+        }
+      },
+      error: (error: any) => { // 🔥 Cambiado: agregado tipo any explícito
+        console.error('Error creando comentario:', error);
+        // Mostrar mensaje de error
+      }
+    });
+  }
+  updateComment(): void {
+  if (!this.editingComment || !this.editForm.titulo?.trim() || !this.editForm.contenido?.trim()) {
+    return;
+  }
+
+  this.commentService.update(this.editingComment.id, this.editForm)
+    .subscribe({
+      next: (response: any) => { // 🔥 Cambiado: agregado tipo any explícito
+        if (response.success) {
+          this.cancelEdit();
+          this.loadComments(); // Recargar comentarios
+        }
+      },
+      error: (error: any) => { // 🔥 Cambiado: agregado tipo any explícito
+        console.error('Error actualizando comentario:', error);
+      }
+    });
+}
+confirmDelete(comment: any): void {
+  if (!confirm('¿Estás seguro de que quieres eliminar este comentario?')) {
+    return;
+  }
+
+  this.commentService.delete(comment.id)
+    .subscribe({
+      next: (response: any) => { // 🔥 Cambiado: agregado tipo any explícito
+        if (response.success) {
+          this.loadComments(); // Recargar comentarios
+        }
+      },
+      error: (error: any) => { // 🔥 Cambiado: agregado tipo any explícito
+        console.error('Error eliminando comentario:', error);
+      }
+    });
+}
 
   // ==================== CREAR COMENTARIO ====================
 
