@@ -4,6 +4,7 @@ import { AuthService, Usuario } from '../../services/auth.service';
 import { UserService, UpdateProfileData, UserStats } from '../../services/user.service';
 import { PointsService, PointsStats } from '../../services/points.service';
 import { ToastService } from '../../services/toast.service';
+import { CommentService } from '../../services/comment.service';
 
 @Component({
   selector: 'app-profile',
@@ -17,7 +18,12 @@ export class ProfileComponent implements OnInit {
   userStats: UserStats | null = null;
   pointsStats: PointsStats | null = null;
   editMode: boolean = false;
-  
+  userComments: any[] = [];
+  loadingUserComments = false;
+  userCommentsCurrentPage = 1;
+  userCommentsTotalPages = 1;
+  userCommentsLimit = 5;
+
   // 🆕 AGREGAR ESTA VARIABLE PARA CONTAR FAVORITAS REAL
   realFavoritesCount: number = 0;
   
@@ -53,7 +59,8 @@ export class ProfileComponent implements OnInit {
     private userService: UserService,
     private pointsService: PointsService,
     private toastService: ToastService,
-    private router: Router // 🆕 AGREGAR ROUTER
+    private router: Router, // 🆕 AGREGAR ROUTER
+    private commentService: CommentService // 🆕 AGREGAR COMMENT SERVICE
   ) {}
 
   ngOnInit(): void {

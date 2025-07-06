@@ -58,13 +58,18 @@ export class CommentsComponent implements OnInit {
 
   // ==================== CARGAR DATOS ====================
 
-  loadComments(): void {
+ loadComments(): void {
+  if (this.tipo === 'sugerencia' || this.tipo === 'sistema') {
+    this.loadSystemFeedback();
+    return;
+  }
+  
   if (!this.peliculaId) return;
   
   this.loading = true;
   this.commentService.getByMovie(this.peliculaId!, this.currentPage, this.limit)
     .subscribe({
-      next: (response: any) => { // 🔥 Cambiado: agregado tipo any explícito
+      next: (response: any) => {
         if (response.success && response.data) {
           this.comentarios = response.data.comentarios || [];
           this.estadisticas = response.data.estadisticas;
@@ -72,12 +77,13 @@ export class CommentsComponent implements OnInit {
         }
         this.loading = false;
       },
-      error: (error: any) => { // 🔥 Cambiado: agregado tipo any explícito
+      error: (error: any) => {
         console.error('Error cargando comentarios:', error);
         this.loading = false;
       }
     });
 }
+
 
   loadMovieComments() {
     this.commentService.getByMovie(this.peliculaId!, this.currentPage, this.limit)
@@ -122,19 +128,25 @@ submitComment(): void {
 
   this.commentService.create(this.nuevoComentario)
     .subscribe({
-      next: (response: any) => { // 🔥 Cambiado: agregado tipo any explícito
+      next: (response: any) => {
         if (response.success) {
           this.resetForm();
-          this.loadComments(); // Recargar comentarios
-          // Mostrar mensaje de éxito
+          // 🔥 CORRECCIÓN: Recargar según el tipo
+          if (this.tipo === 'sugerencia' || this.tipo === 'sistema') {
+            this.loadSystemFeedback();
+          } else {
+            this.loadComments();
+          }
+          this.toastService.showSuccess('Comentario creado exitosamente');
         }
       },
-      error: (error: any) => { // 🔥 Cambiado: agregado tipo any explícito
+      error: (error: any) => {
         console.error('Error creando comentario:', error);
-        // Mostrar mensaje de error
+        this.toastService.showError('Error al crear comentario');
       }
     });
   }
+
   updateComment(): void {
   if (!this.editingComment || !this.editForm.titulo?.trim() || !this.editForm.contenido?.trim()) {
     return;
@@ -142,14 +154,21 @@ submitComment(): void {
 
   this.commentService.update(this.editingComment.id, this.editForm)
     .subscribe({
-      next: (response: any) => { // 🔥 Cambiado: agregado tipo any explícito
+      next: (response: any) => {
         if (response.success) {
           this.cancelEdit();
-          this.loadComments(); // Recargar comentarios
+          // 🔥 CORRECCIÓN: Recargar según el tipo
+          if (this.tipo === 'sugerencia' || this.tipo === 'sistema') {
+            this.loadSystemFeedback();
+          } else {
+            this.loadComments();
+          }
+          this.toastService.showSuccess('Comentario actualizado exitosamente');
         }
       },
-      error: (error: any) => { // 🔥 Cambiado: agregado tipo any explícito
+      error: (error: any) => {
         console.error('Error actualizando comentario:', error);
+        this.toastService.showError('Error al actualizar comentario');
       }
     });
 }
@@ -160,13 +179,20 @@ confirmDelete(comment: any): void {
 
   this.commentService.delete(comment.id)
     .subscribe({
-      next: (response: any) => { // 🔥 Cambiado: agregado tipo any explícito
+      next: (response: any) => {
         if (response.success) {
-          this.loadComments(); // Recargar comentarios
+          // 🔥 CORRECCIÓN: Recargar según el tipo
+          if (this.tipo === 'sugerencia' || this.tipo === 'sistema') {
+            this.loadSystemFeedback();
+          } else {
+            this.loadComments();
+          }
+          this.toastService.showSuccess('Comentario eliminado exitosamente');
         }
       },
-      error: (error: any) => { // 🔥 Cambiado: agregado tipo any explícito
+      error: (error: any) => {
         console.error('Error eliminando comentario:', error);
+        this.toastService.showError('Error al eliminar comentario');
       }
     });
 }
@@ -185,41 +211,46 @@ confirmDelete(comment: any): void {
   }
 
   createComment() {
-    if (!this.currentUser) {
-      this.toastService.showWarning('Debes iniciar sesión para comentar');
-      return;
-    }
-
-    if (!this.validateForm()) {
-      return;
-    }
-
-    this.submitting = true;
-
-    this.commentService.create(this.nuevoComentario)
-      .subscribe({
-        next: (response) => {
-          if (response.success) {
-            this.toastService.showSuccess('Comentario creado exitosamente');
-            this.resetForm();
-            this.showForm = false;
-            this.loadComments(); // Recargar comentarios
-          } else {
-            this.toastService.showError(response.message || 'Error al crear comentario');
-          }
-          this.submitting = false;
-        },
-        error: (error) => {
-          console.error('Error creating comment:', error);
-          if (error.error?.message) {
-            this.toastService.showError(error.error.message);
-          } else {
-            this.toastService.showError('Error al crear comentario');
-          }
-          this.submitting = false;
-        }
-      });
+  if (!this.currentUser) {
+    this.toastService.showWarning('Debes iniciar sesión para comentar');
+    return;
   }
+
+  if (!this.validateForm()) {
+    return;
+  }
+
+  this.submitting = true;
+
+  this.commentService.create(this.nuevoComentario)
+    .subscribe({
+      next: (response) => {
+        if (response.success) {
+          this.toastService.showSuccess('Comentario creado exitosamente');
+          this.resetForm();
+          this.showForm = false;
+          // 🔥 CORRECCIÓN: Recargar según el tipo
+          if (this.tipo === 'sugerencia' || this.tipo === 'sistema') {
+            this.loadSystemFeedback();
+          } else {
+            this.loadComments();
+          }
+        } else {
+          this.toastService.showError(response.message || 'Error al crear comentario');
+        }
+        this.submitting = false;
+      },
+      error: (error) => {
+        console.error('Error creating comment:', error);
+        if (error.error?.message) {
+          this.toastService.showError(error.error.message);
+        } else {
+          this.toastService.showError('Error al crear comentario');
+        }
+        this.submitting = false;
+      }
+    });
+}
 
   validateForm(): boolean {
     if (!this.nuevoComentario.titulo.trim()) {
@@ -282,29 +313,34 @@ confirmDelete(comment: any): void {
   }
 
   saveEdit() {
-    if (!this.editingComment) return;
+  if (!this.editingComment) return;
 
-    this.submitting = true;
+  this.submitting = true;
 
-    this.commentService.update(this.editingComment.id, this.editForm)
-      .subscribe({
-        next: (response) => {
-          if (response.success) {
-            this.toastService.showSuccess('Comentario actualizado exitosamente');
-            this.cancelEdit();
-            this.loadComments();
+  this.commentService.update(this.editingComment.id, this.editForm)
+    .subscribe({
+      next: (response) => {
+        if (response.success) {
+          this.toastService.showSuccess('Comentario actualizado exitosamente');
+          this.cancelEdit();
+          // 🔥 CORRECCIÓN: Recargar según el tipo
+          if (this.tipo === 'sugerencia' || this.tipo === 'sistema') {
+            this.loadSystemFeedback();
           } else {
-            this.toastService.showError(response.message || 'Error al actualizar comentario');
+            this.loadComments();
           }
-          this.submitting = false;
-        },
-        error: (error) => {
-          console.error('Error updating comment:', error);
-          this.toastService.showError('Error al actualizar comentario');
-          this.submitting = false;
+        } else {
+          this.toastService.showError(response.message || 'Error al actualizar comentario');
         }
-      });
-  }
+        this.submitting = false;
+      },
+      error: (error) => {
+        console.error('Error updating comment:', error);
+        this.toastService.showError('Error al actualizar comentario');
+        this.submitting = false;
+      }
+    });
+}
 
   // ==================== ELIMINAR COMENTARIO ====================
 

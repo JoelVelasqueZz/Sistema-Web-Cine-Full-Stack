@@ -1,4 +1,4 @@
-<!-- profile.component.html - ACTUALIZADO CON PESTAÑAS Y COMENTARIOS -->
+<!-- profile.component.html - ACTUALIZADO CON PESTAÑAS Y COMENTARIOS CORREGIDOS -->
 <div class="container mt-4">
   <div class="row">
     <div class="col-12">
@@ -439,7 +439,7 @@
       </div>
     </div>
 
-    <!-- 🆕 PESTAÑA 3: MIS COMENTARIOS -->
+    <!-- 🆕 PESTAÑA 3: MIS COMENTARIOS (CORREGIDA) -->
     <div class="tab-pane fade" id="comments" role="tabpanel" aria-labelledby="comments-tab">
       <div class="row mt-4">
         <div class="col-12">
@@ -452,11 +452,131 @@
               <p class="mb-0 opacity-75">Todos tus comentarios y reseñas en un solo lugar</p>
             </div>
             <div class="card-body p-4">
-              <!-- Componente para mostrar comentarios del usuario -->
-              <app-comments 
-                [tipo]="'sistema'"
-                [showCreateForm]="false">
-              </app-comments>
+              
+              <!-- ✅ CÓDIGO NUEVO (CORRECTO) - REEMPLAZA EL app-comments -->
+              <div class="my-comments-section">
+                <!-- Header personalizado -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <h6 class="mb-0">
+                    <i class="fas fa-comments me-2"></i>
+                    Mis Comentarios y Reseñas
+                  </h6>
+                  <button class="btn btn-outline-primary btn-sm" (click)="refreshUserComments()">
+                    <i class="fas fa-sync-alt me-1"></i>
+                    Actualizar
+                  </button>
+                </div>
+
+                <!-- Loader -->
+                <div *ngIf="loadingUserComments" class="text-center py-4">
+                  <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Cargando comentarios...</span>
+                  </div>
+                </div>
+
+                <!-- Lista de comentarios del usuario -->
+                <div *ngIf="!loadingUserComments && userComments.length > 0">
+                  <div *ngFor="let comment of userComments; trackBy: trackByCommentId" 
+                       class="card mb-3 border-start border-4" 
+                       [class.border-warning]="comment.tipo === 'pelicula'"
+                       [class.border-info]="comment.tipo === 'sugerencia'">
+                    <div class="card-body">
+                      <!-- Header del comentario -->
+                      <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                          <h6 class="card-title mb-1">{{ comment.titulo }}</h6>
+                          <div class="d-flex align-items-center">
+                            <span class="badge me-2" 
+                                  [class.bg-warning]="comment.tipo === 'pelicula'"
+                                  [class.bg-info]="comment.tipo === 'sugerencia'">
+                              <i class="fas fa-film me-1" *ngIf="comment.tipo === 'pelicula'"></i>
+                              <i class="fas fa-lightbulb me-1" *ngIf="comment.tipo === 'sugerencia'"></i>
+                              {{ comment.tipo === 'pelicula' ? 'Reseña' : 'Sugerencia' }}
+                            </span>
+                            <small class="text-muted">{{ formatDate(comment.fecha_creacion) }}</small>
+                            <span *ngIf="comment.fecha_creacion !== comment.fecha_actualizacion"
+                                  class="badge bg-secondary ms-2">Editado</span>
+                          </div>
+                        </div>
+                        <!-- Puntuación (solo para reseñas de películas) -->
+                        <div *ngIf="comment.puntuacion" class="text-end">
+                          <div class="stars-small">
+                            <i *ngFor="let i of [1,2,3,4,5]" 
+                               class="fas fa-star"
+                               [class.text-warning]="i <= comment.puntuacion"
+                               [class.text-muted]="i > comment.puntuacion"></i>
+                          </div>
+                          <small class="text-muted d-block">{{ comment.puntuacion }}/5</small>
+                        </div>
+                      </div>
+
+                      <!-- Contenido -->
+                      <p class="card-text">{{ comment.contenido }}</p>
+
+                      <!-- Información de la película (si aplica) -->
+                      <div *ngIf="comment.pelicula_titulo" class="mt-2">
+                        <small class="text-muted">
+                          <i class="fas fa-film me-1"></i>
+                          Película: <strong>{{ comment.pelicula_titulo }}</strong>
+                        </small>
+                      </div>
+
+                      <!-- Estado -->
+                      <div class="mt-2">
+                        <span class="badge" 
+                              [class.bg-success]="comment.estado === 'activo'"
+                              [class.bg-warning]="comment.estado === 'moderacion'"
+                              [class.bg-danger]="comment.estado === 'rechazado'">
+                          {{ getCommentStatusText(comment.estado) }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Paginación para comentarios del usuario -->
+                  <nav *ngIf="userCommentsTotalPages > 1" aria-label="Paginación de mis comentarios">
+                    <ul class="pagination justify-content-center">
+                      <li class="page-item" [class.disabled]="userCommentsCurrentPage === 1">
+                        <button class="page-link" (click)="changeUserCommentsPage(userCommentsCurrentPage - 1)" 
+                                [disabled]="userCommentsCurrentPage === 1">
+                          <i class="fas fa-chevron-left"></i>
+                        </button>
+                      </li>
+                      
+                      <li *ngFor="let page of [].constructor(userCommentsTotalPages); let i = index" 
+                          class="page-item" 
+                          [class.active]="i + 1 === userCommentsCurrentPage">
+                        <button class="page-link" (click)="changeUserCommentsPage(i + 1)">{{ i + 1 }}</button>
+                      </li>
+                      
+                      <li class="page-item" [class.disabled]="userCommentsCurrentPage === userCommentsTotalPages">
+                        <button class="page-link" (click)="changeUserCommentsPage(userCommentsCurrentPage + 1)" 
+                                [disabled]="userCommentsCurrentPage === userCommentsTotalPages">
+                          <i class="fas fa-chevron-right"></i>
+                        </button>
+                      </li>
+                    </ul>
+                  </nav>
+                </div>
+
+                <!-- Sin comentarios -->
+                <div *ngIf="!loadingUserComments && userComments.length === 0" class="text-center py-5">
+                  <i class="fas fa-comments display-4 text-muted mb-3"></i>
+                  <h6 class="text-muted">No has escrito comentarios aún</h6>
+                  <p class="text-muted">¡Comienza escribiendo reseñas de películas o enviando sugerencias!</p>
+                  <div class="d-flex gap-2 justify-content-center">
+                    <a href="/movies" class="btn btn-outline-primary btn-sm">
+                      <i class="fas fa-film me-1"></i>
+                      Ver Películas
+                    </a>
+                    <a href="/suggestions" class="btn btn-outline-info btn-sm">
+                      <i class="fas fa-lightbulb me-1"></i>
+                      Enviar Sugerencia
+                    </a>
+                  </div>
+                </div>
+              </div>
+              
             </div>
           </div>
         </div>

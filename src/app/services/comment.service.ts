@@ -142,18 +142,13 @@ export class CommentService {
   /**
    * 🔥 OBTENER SUGERENCIAS DEL SISTEMA CON TOKEN
    */
-  getSystemFeedback(page: number = 1, limit: number = 50): Observable<ApiResponse<{
-    sugerencias: Comment[];
-    pagination: any;
-  }>> {
-    const headers = this.getAuthHeaders();
-    
-    let params = new HttpParams()
-      .set('page', page.toString())
-      .set('limit', limit.toString());
+  getSystemFeedback(page: number = 1, limit: number = 10): Observable<any> {
+  const params = new HttpParams()
+    .set('page', page.toString())
+    .set('limit', limit.toString());
 
-    return this.http.get<ApiResponse<any>>(`${this.apiUrl}/system/feedback`, { params, headers });
-  }
+  return this.http.get<any>(`${this.apiUrl}/suggestions`, { params });
+}
 
   /**
    * 🔥 ACTUALIZAR COMENTARIO CON TOKEN
@@ -290,6 +285,13 @@ export class CommentService {
     
     return !!(token && isAuth);
   }
+  getUserComments(page: number = 1, limit: number = 10): Observable<any> {
+  const params = new HttpParams()
+    .set('page', page.toString())
+    .set('limit', limit.toString());
+
+  return this.http.get<any>(`${this.apiUrl}/user/my-comments`, { params });
+}
 
   // 🔥 MÉTODO PARA DEBUGGING
   debugAuth(): void {
