@@ -53,28 +53,7 @@ const validateId = [
         .withMessage('ID inválido')
 ];
 
-// ==================== RUTAS PÚBLICAS (requieren autenticación) ====================
-
-/**
- * @route   POST /api/comments
- * @desc    Crear nuevo comentario
- * @access  Private
- */
-router.post('/', authMiddleware, validateComment, commentController.create);
-
-/**
- * @route   GET /api/comments/:id
- * @desc    Obtener comentario por ID
- * @access  Private
- */
-router.get('/:id', authMiddleware, validateId, commentController.getById);
-
-/**
- * @route   GET /api/comments/movie/:pelicula_id
- * @desc    Obtener comentarios de una película
- * @access  Public (no requiere auth)
- */
-router.get('/movie/:pelicula_id', commentController.getByMovie);
+// ==================== RUTAS ESPECÍFICAS PRIMERO ====================
 
 /**
  * @route   GET /api/comments/user/my-comments
@@ -91,20 +70,13 @@ router.get('/user/my-comments', authMiddleware, commentController.getMyComments)
 router.get('/system/feedback', authMiddleware, commentController.getSystemFeedback);
 
 /**
- * @route   PUT /api/comments/:id
- * @desc    Actualizar comentario
- * @access  Private (solo el autor)
+ * @route   GET /api/comments/movie/:pelicula_id
+ * @desc    Obtener comentarios de una película
+ * @access  Public (no requiere auth)
  */
-router.put('/:id', authMiddleware, validateId, validateUpdate, commentController.update);
+router.get('/movie/:pelicula_id', commentController.getByMovie);
 
-/**
- * @route   DELETE /api/comments/:id
- * @desc    Eliminar comentario
- * @access  Private (solo el autor)
- */
-router.delete('/:id', authMiddleware, validateId, commentController.delete);
-
-// ==================== RUTAS ADMIN ====================
+// ==================== RUTAS ADMIN ESPECÍFICAS ====================
 
 /**
  * @route   GET /api/comments/admin/all
@@ -137,5 +109,35 @@ router.put('/admin/:id/featured',
     validateId,
     commentController.toggleFeatured
 );
+
+// ==================== RUTAS GENERALES (CON PARÁMETROS AL FINAL) ====================
+
+/**
+ * @route   POST /api/comments
+ * @desc    Crear nuevo comentario
+ * @access  Private
+ */
+router.post('/', authMiddleware, validateComment, commentController.create);
+
+/**
+ * @route   GET /api/comments/:id
+ * @desc    Obtener comentario por ID
+ * @access  Private
+ */
+router.get('/:id', authMiddleware, validateId, commentController.getById);
+
+/**
+ * @route   PUT /api/comments/:id
+ * @desc    Actualizar comentario
+ * @access  Private (solo el autor)
+ */
+router.put('/:id', authMiddleware, validateId, validateUpdate, commentController.update);
+
+/**
+ * @route   DELETE /api/comments/:id
+ * @desc    Eliminar comentario
+ * @access  Private (solo el autor)
+ */
+router.delete('/:id', authMiddleware, validateId, commentController.delete);
 
 module.exports = router;
