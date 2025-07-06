@@ -496,5 +496,6 @@ module.exports = {
     delete: commentController.delete.bind(commentController),
     getAllForAdmin: commentController.getAllForAdmin.bind(commentController),
     updateStatus: commentController.updateStatus.bind(commentController),
-    toggleFeatured: commentController.toggleFeatured.bind(commentController)
+    toggleFeatured: commentController.toggleFeatured.bind(commentController),
+    addReaction: commentController.addReaction.bind(commentController)
 };
