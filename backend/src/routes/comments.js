@@ -1,28 +1,12 @@
-// backend/src/routes/comments.js - DEBUG MIDDLEWARE
+// backend/src/routes/comments.js - CORREGIDO
 const express = require('express');
 const router = express.Router();
 const { body, param } = require('express-validator');
-
-console.log('🔍 Iniciando importación del controlador...');
 const commentController = require('../controllers/comments/commentController');
-console.log('✅ Controlador importado:', typeof commentController);
 
-// 🔍 DEBUG: Verificar middleware
-console.log('🔍 Verificando middleware...');
-const authMiddleware = require('../middleware/auth');
-const adminMiddleware = require('../middleware/admin');
-
-console.log('- authMiddleware:', typeof authMiddleware);
-console.log('- adminMiddleware:', typeof adminMiddleware);
-
-// Si son objetos, mostrar las propiedades
-if (typeof authMiddleware === 'object') {
-    console.log('🚨 authMiddleware es un objeto! Propiedades:', Object.keys(authMiddleware));
-}
-
-if (typeof adminMiddleware === 'object') {
-    console.log('🚨 adminMiddleware es un objeto! Propiedades:', Object.keys(adminMiddleware));
-}
+// 🔥 IMPORTACIÓN CORRECTA DEL MIDDLEWARE
+const { authenticateToken } = require('../middleware/auth');
+const { requireAdmin } = require('../middleware/admin');
 
 // ==================== VALIDACIONES ====================
 
@@ -71,80 +55,92 @@ const validateId = [
         .withMessage('ID inválido')
 ];
 
-// ==================== RUTAS SIN MIDDLEWARE PRIMERO (PARA PROBAR) ====================
+// ==================== RUTAS ESPECÍFICAS PRIMERO ====================
 
-console.log('📝 Definiendo ruta SIN middleware: GET /movie/:pelicula_id');
+/**
+ * @route   GET /api/comments/user/my-comments
+ * @desc    Obtener comentarios del usuario actual
+ * @access  Private
+ */
+router.get('/user/my-comments', authenticateToken, commentController.getMyComments);
+
+/**
+ * @route   GET /api/comments/system/feedback
+ * @desc    Obtener sugerencias del sistema
+ * @access  Private
+ */
+router.get('/system/feedback', authenticateToken, commentController.getSystemFeedback);
+
+/**
+ * @route   GET /api/comments/movie/:pelicula_id
+ * @desc    Obtener comentarios de una película
+ * @access  Public (no requiere auth)
+ */
 router.get('/movie/:pelicula_id', commentController.getByMovie);
 
-console.log('📝 Definiendo ruta SIN middleware: POST /');
-router.post('/', validateComment, commentController.create);
+// ==================== RUTAS ADMIN ESPECÍFICAS ====================
 
-// 🔥 SOLUCIÓN TEMPORAL: Solo usar middleware si son funciones
-if (typeof authMiddleware === 'function') {
-    console.log('📝 Definiendo ruta CON authMiddleware: GET /user/my-comments');
-    router.get('/user/my-comments', authMiddleware, commentController.getMyComments);
-    
-    console.log('📝 Definiendo ruta CON authMiddleware: GET /system/feedback');
-    router.get('/system/feedback', authMiddleware, commentController.getSystemFeedback);
-    
-    console.log('📝 Definiendo ruta CON authMiddleware: GET /:id');
-    router.get('/:id', authMiddleware, validateId, commentController.getById);
-    
-    console.log('📝 Definiendo ruta CON authMiddleware: PUT /:id');
-    router.put('/:id', authMiddleware, validateId, validateUpdate, commentController.update);
-    
-    console.log('📝 Definiendo ruta CON authMiddleware: DELETE /:id');
-    router.delete('/:id', authMiddleware, validateId, commentController.delete);
-} else {
-    console.log('🚨 SALTANDO rutas con authMiddleware - no es una función');
-    
-    // Rutas temporales sin middleware para que funcione
-    console.log('📝 Definiendo ruta SIN authMiddleware: GET /user/my-comments');
-    router.get('/user/my-comments', commentController.getMyComments);
-    
-    console.log('📝 Definiendo ruta SIN authMiddleware: GET /system/feedback');
-    router.get('/system/feedback', commentController.getSystemFeedback);
-    
-    console.log('📝 Definiendo ruta SIN authMiddleware: GET /:id');
-    router.get('/:id', validateId, commentController.getById);
-    
-    console.log('📝 Definiendo ruta SIN authMiddleware: PUT /:id');
-    router.put('/:id', validateId, validateUpdate, commentController.update);
-    
-    console.log('📝 Definiendo ruta SIN authMiddleware: DELETE /:id');
-    router.delete('/:id', validateId, commentController.delete);
-}
+/**
+ * @route   GET /api/comments/admin/all
+ * @desc    Obtener todos los comentarios (admin)
+ * @access  Admin
+ */
+router.get('/admin/all', authenticateToken, requireAdmin, commentController.getAllForAdmin);
 
-// ==================== RUTAS ADMIN ====================
+/**
+ * @route   PUT /api/comments/admin/:id/status
+ * @desc    Cambiar estado del comentario
+ * @access  Admin
+ */
+router.put('/admin/:id/status', 
+    authenticateToken, 
+    requireAdmin,
+    validateId,
+    [body('estado').isIn(['activo', 'oculto', 'moderacion', 'rechazado']).withMessage('Estado inválido')],
+    commentController.updateStatus
+);
 
-if (typeof authMiddleware === 'function' && typeof adminMiddleware === 'function') {
-    console.log('📝 Definiendo rutas admin CON middleware');
-    
-    router.get('/admin/all', authMiddleware, adminMiddleware, commentController.getAllForAdmin);
-    
-    router.put('/admin/:id/status', 
-        authMiddleware, 
-        adminMiddleware,
-        validateId,
-        [body('estado').isIn(['activo', 'oculto', 'moderacion', 'rechazado']).withMessage('Estado inválido')],
-        commentController.updateStatus
-    );
-    
-    router.put('/admin/:id/featured', 
-        authMiddleware, 
-        adminMiddleware,
-        validateId,
-        commentController.toggleFeatured
-    );
-} else {
-    console.log('🚨 SALTANDO rutas admin - middleware no son funciones');
-    
-    // Rutas temporales sin middleware
-    router.get('/admin/all', commentController.getAllForAdmin);
-    router.put('/admin/:id/status', validateId, [body('estado').isIn(['activo', 'oculto', 'moderacion', 'rechazado']).withMessage('Estado inválido')], commentController.updateStatus);
-    router.put('/admin/:id/featured', validateId, commentController.toggleFeatured);
-}
+/**
+ * @route   PUT /api/comments/admin/:id/featured
+ * @desc    Destacar/quitar destaque de comentario
+ * @access  Admin
+ */
+router.put('/admin/:id/featured', 
+    authenticateToken, 
+    requireAdmin,
+    validateId,
+    commentController.toggleFeatured
+);
 
-console.log('✅ Todas las rutas definidas');
+// ==================== RUTAS GENERALES (CON PARÁMETROS AL FINAL) ====================
+
+/**
+ * 🔥 RUTA CORREGIDA: POST con autenticación
+ * @route   POST /api/comments
+ * @desc    Crear nuevo comentario
+ * @access  Private
+ */
+router.post('/', authenticateToken, validateComment, commentController.create);
+
+/**
+ * @route   GET /api/comments/:id
+ * @desc    Obtener comentario por ID
+ * @access  Private
+ */
+router.get('/:id', authenticateToken, validateId, commentController.getById);
+
+/**
+ * @route   PUT /api/comments/:id
+ * @desc    Actualizar comentario
+ * @access  Private (solo el autor)
+ */
+router.put('/:id', authenticateToken, validateId, validateUpdate, commentController.update);
+
+/**
+ * @route   DELETE /api/comments/:id
+ * @desc    Eliminar comentario
+ * @access  Private (solo el autor)
+ */
+router.delete('/:id', authenticateToken, validateId, commentController.delete);
 
 module.exports = router;
