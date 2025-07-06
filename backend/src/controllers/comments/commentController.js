@@ -391,4 +391,19 @@ class CommentController {
     }
 }
 
-module.exports = new CommentController();
+// 🔥 SOLUCIÓN: Crear instancia y hacer bind de los métodos
+const commentController = new CommentController();
+
+// 🔥 CRITICAL: Bind de todos los métodos para preservar el contexto 'this'
+module.exports = {
+    create: commentController.create.bind(commentController),
+    getById: commentController.getById.bind(commentController),
+    getByMovie: commentController.getByMovie.bind(commentController),
+    getMyComments: commentController.getMyComments.bind(commentController),
+    getSystemFeedback: commentController.getSystemFeedback.bind(commentController),
+    update: commentController.update.bind(commentController),
+    delete: commentController.delete.bind(commentController),
+    getAllForAdmin: commentController.getAllForAdmin.bind(commentController),
+    updateStatus: commentController.updateStatus.bind(commentController),
+    toggleFeatured: commentController.toggleFeatured.bind(commentController)
+};
