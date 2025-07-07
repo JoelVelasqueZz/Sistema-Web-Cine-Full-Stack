@@ -1,4 +1,4 @@
-/* frontend/src/app/components/comments/comments.component.css */
+/* frontend/src/app/components/comments/comments.component.css - CORREGIDO */
 
 /* ==================== CONTENEDOR PRINCIPAL ==================== */
 .comments-container {
@@ -168,18 +168,19 @@
   margin-top: 0.5rem;
 }
 
-/* ==================== COMENTARIOS PRINCIPALES ==================== */
+/* ==================== COMENTARIOS PRINCIPALES - CORREGIDO ==================== */
 .comment-item {
   margin-bottom: 2rem;
   animation: fadeInUp 0.6s ease-out;
 }
 
 .comment-item .card {
+  /* 🔥 FONDO CLARO CORREGIDO */
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
   border: 2px solid #e3f2fd;
   border-radius: 16px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
   transition: all 0.4s ease;
-  background: white;
   overflow: hidden;
 }
 
@@ -191,6 +192,8 @@
 
 .comment-item .card-body {
   padding: 2rem;
+  /* 🔥 FONDO TRANSPARENTE PARA MANTENER GRADIENTE */
+  background: transparent;
 }
 
 /* ==================== HEADER DEL COMENTARIO ==================== */
@@ -208,6 +211,7 @@
 }
 
 .comment-header h6 {
+  /* 🔥 COLOR OSCURO PARA MEJOR CONTRASTE */
   color: #1a1a1a;
   font-weight: 700;
   font-size: 1.1rem;
@@ -237,8 +241,9 @@
   filter: drop-shadow(0 1px 2px rgba(255, 193, 7, 0.3));
 }
 
-/* ==================== CONTENIDO DEL COMENTARIO ==================== */
+/* ==================== CONTENIDO DEL COMENTARIO - CORREGIDO ==================== */
 .comment-title {
+  /* 🔥 COLOR OSCURO PARA MEJOR LEGIBILIDAD */
   color: #1a1a1a;
   font-weight: 700;
   font-size: 1.25rem;
@@ -247,6 +252,7 @@
 }
 
 .comment-text {
+  /* 🔥 COLOR OSCURO PARA MEJOR LEGIBILIDAD */
   color: #333333;
   line-height: 1.7;
   font-size: 1rem;
@@ -267,7 +273,8 @@
   border-top: 2px solid #f1f3f4;
   padding-top: 1.5rem;
   margin-top: 1.5rem;
-  background: linear-gradient(135deg, #fafbfc, #f8f9fa);
+  /* 🔥 FONDO MÁS CLARO */
+  background: linear-gradient(135deg, #ffffff, #f8f9fa);
   margin: 1.5rem -2rem -2rem -2rem;
   padding: 1.5rem 2rem 2rem 2rem;
   border-radius: 0 0 16px 16px;
@@ -307,34 +314,34 @@
   transform: translateY(-1px);
 }
 
-/* Estados de reacciones activas */
+/* 🔥 ESTADOS DE REACCIONES ACTIVAS CORREGIDOS */
 .reaction-btn.btn-success {
-  background: linear-gradient(45deg, #28a745, #20c997);
-  border-color: #28a745;
-  color: white;
+  background: linear-gradient(45deg, #28a745, #20c997) !important;
+  border-color: #28a745 !important;
+  color: white !important;
   animation: likeAnimation 0.6s ease;
   box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
 }
 
 .reaction-btn.btn-danger {
-  background: linear-gradient(45deg, #dc3545, #fd7e14);
-  border-color: #dc3545;
-  color: white;
+  background: linear-gradient(45deg, #dc3545, #fd7e14) !important;
+  border-color: #dc3545 !important;
+  color: white !important;
   animation: dislikeAnimation 0.6s ease;
   box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4);
 }
 
 /* Hover mejorado */
 .reaction-btn.btn-outline-success:hover {
-  background: linear-gradient(45deg, #28a745, #20c997);
-  border-color: #28a745;
-  color: white;
+  background: linear-gradient(45deg, #28a745, #20c997) !important;
+  border-color: #28a745 !important;
+  color: white !important;
 }
 
 .reaction-btn.btn-outline-danger:hover {
-  background: linear-gradient(45deg, #dc3545, #fd7e14);
-  border-color: #dc3545;
-  color: white;
+  background: linear-gradient(45deg, #dc3545, #fd7e14) !important;
+  border-color: #dc3545 !important;
+  color: white !important;
 }
 
 .reaction-btn.btn-outline-primary {
@@ -343,15 +350,15 @@
 }
 
 .reaction-btn.btn-outline-primary:hover {
-  background: linear-gradient(45deg, #0d6efd, #6610f2);
-  border-color: #0d6efd;
-  color: white;
+  background: linear-gradient(45deg, #0d6efd, #6610f2) !important;
+  border-color: #0d6efd !important;
+  color: white !important;
 }
 
 .reaction-btn.btn-outline-secondary:hover {
-  background: linear-gradient(45deg, #6c757d, #495057);
-  border-color: #6c757d;
-  color: white;
+  background: linear-gradient(45deg, #6c757d, #495057) !important;
+  border-color: #6c757d !important;
+  color: white !important;
 }
 
 /* Botones deshabilitados */
@@ -384,31 +391,33 @@
   text-decoration: underline;
 }
 
-/* Estadísticas de reacciones */
+/* 🔥 ESTADÍSTICAS DE REACCIONES CORREGIDAS */
 .reaction-stats {
   font-size: 0.9rem;
   opacity: 0.9;
-  color: #6c757d;
+  /* 🔥 COLOR OSCURO PARA MEJOR LEGIBILIDAD */
+  color: #495057;
   margin-top: 0.5rem;
   padding: 0.75rem 1rem;
-  background: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.8);
   border-radius: 8px;
   border: 1px solid rgba(13, 110, 253, 0.1);
 }
 
 .reaction-stats .text-success {
   font-weight: 600;
-  color: #28a745;
+  color: #28a745 !important;
 }
 
 .reaction-stats .text-danger {
   font-weight: 600;
-  color: #dc3545;
+  color: #dc3545 !important;
 }
 
-/* ==================== FORMULARIOS DE RESPUESTA ==================== */
+/* ==================== FORMULARIOS DE RESPUESTA - CORREGIDOS ==================== */
 .reply-form {
-  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+  /* 🔥 FONDO MÁS CLARO */
+  background: linear-gradient(135deg, #ffffff, #f8f9fa);
   border: 2px solid #e3f2fd;
   border-radius: 12px;
   padding: 1.5rem;
@@ -421,7 +430,7 @@
   margin-bottom: 1rem;
 }
 
-/* ==================== RESPUESTAS ==================== */
+/* ==================== RESPUESTAS - CORREGIDAS ==================== */
 .replies-section {
   margin-top: 1.5rem;
   padding-top: 1.5rem;
@@ -451,6 +460,7 @@
 }
 
 .reply-item .card {
+  /* 🔥 FONDO CLARO PARA RESPUESTAS */
   background: linear-gradient(135deg, #ffffff, #f8f9fa);
   border: 1px solid #e9ecef;
   border-radius: 12px;
@@ -473,10 +483,12 @@
 .reply-header h6 {
   font-size: 1rem;
   font-weight: 600;
+  /* 🔥 COLOR OSCURO PARA MEJOR LEGIBILIDAD */
   color: #1a1a1a;
 }
 
 .reply-content p {
+  /* 🔥 COLOR OSCURO PARA MEJOR LEGIBILIDAD */
   color: #333333;
   line-height: 1.6;
   margin: 0;
@@ -489,7 +501,8 @@
   margin-top: 1.5rem;
   display: flex;
   gap: 12px;
-  background: linear-gradient(135deg, #fafbfc, #f8f9fa);
+  /* 🔥 FONDO MÁS CLARO */
+  background: linear-gradient(135deg, #ffffff, #f8f9fa);
   margin: 1.5rem -2rem -2rem -2rem;
   padding: 1rem 2rem 2rem 2rem;
   border-radius: 0 0 16px 16px;
@@ -735,42 +748,35 @@
   outline-offset: 2px;
 }
 
-/* ==================== MODO OSCURO MEJORADO ==================== */
+/* ==================== MODO OSCURO OPCIONAL ==================== */
 @media (prefers-color-scheme: dark) {
-  .comments-stats {
-    background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
-    border-color: #4a5568;
-    color: #e2e8f0;
-  }
-  
   .comment-item .card {
-    background: linear-gradient(135deg, #2d3748, #4a5568);
+    background: linear-gradient(135deg, #2d3748, #4a5568) !important;
     border-color: #4a5568;
     color: #e2e8f0;
   }
   
   .comment-title {
-    color: #e2e8f0;
+    color: #e2e8f0 !important;
   }
   
   .comment-text {
-    color: #cbd5e0;
+    color: #cbd5e0 !important;
   }
   
-  .movie-reference {
-    background: linear-gradient(135deg, #4a5568, #2d3748);
-    border-left-color: #63b3ed;
+  .comment-header h6 {
+    color: #e2e8f0 !important;
   }
   
-  .form-control {
-    background: #2d3748;
-    border-color: #4a5568;
-    color: #e2e8f0;
+  .reply-content p {
+    color: #cbd5e0 !important;
   }
   
-  .form-control:focus {
-    background: #2d3748;
-    border-color: #63b3ed;
-    color: #e2e8f0;
+  .reply-header h6 {
+    color: #e2e8f0 !important;
+  }
+  
+  .reaction-stats {
+    color: #cbd5e0 !important;
   }
 }
