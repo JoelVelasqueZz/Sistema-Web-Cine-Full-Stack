@@ -1,4 +1,4 @@
-// backend/src/routes/comments.js - VERSIÓN LIMPIA QUE FUNCIONA
+// backend/src/routes/comments.js - VERSIÓN CORREGIDA COMPLETA
 const express = require('express');
 const router = express.Router();
 const { body, param } = require('express-validator');
@@ -55,28 +55,55 @@ const validateId = [
         .withMessage('ID inválido')
 ];
 
+const validateReaction = [
+    body('tipo')
+        .isIn(['like', 'dislike'])
+        .withMessage('Tipo de reacción inválido')
+];
+
 // ==================== RUTAS ESPECÍFICAS PRIMERO ====================
 
 /**
  * @route   GET /api/comments/user/my-comments
- * @desc    Obtener comentarios del usuario actual
+ * @desc    Obtener comentarios del usuario actual (SIN reacciones)
  * @access  Private
  */
 router.get('/user/my-comments', authenticateToken, commentController.getMyComments);
 
 /**
- * @route   GET /api/comments/suggestions
- * @desc    Obtener sugerencias del sistema
+ * @route   GET /api/comments/user/my-comments-with-reactions
+ * @desc    Obtener comentarios del usuario actual CON reacciones
  * @access  Private
  */
-router.get('/suggestions', authenticateToken, commentController.getSystemFeedback);
+router.get('/user/my-comments-with-reactions', authenticateToken, commentController.getMyCommentsWithReactions);
+
+/**
+ * @route   GET /api/comments/suggestions
+ * @desc    Obtener sugerencias del sistema (SIN reacciones)
+ * @access  Public
+ */
+router.get('/suggestions', commentController.getSystemFeedback);
+
+/**
+ * @route   GET /api/comments/suggestions-with-reactions
+ * @desc    Obtener sugerencias del sistema CON reacciones
+ * @access  Public (pero con reacciones del usuario si está logueado)
+ */
+router.get('/suggestions-with-reactions', commentController.getSystemFeedbackWithReactions);
 
 /**
  * @route   GET /api/comments/movie/:pelicula_id
- * @desc    Obtener comentarios de una película
- * @access  Public (no requiere auth)
+ * @desc    Obtener comentarios de una película (SIN reacciones)
+ * @access  Public
  */
 router.get('/movie/:pelicula_id', commentController.getByMovie);
+
+/**
+ * @route   GET /api/comments/movie/:pelicula_id/with-reactions
+ * @desc    Obtener comentarios de una película CON reacciones
+ * @access  Public (pero con reacciones del usuario si está logueado)
+ */
+router.get('/movie/:pelicula_id/with-reactions', commentController.getByMovieWithReactions);
 
 // ==================== RUTAS ADMIN ESPECÍFICAS ====================
 
@@ -112,6 +139,27 @@ router.put('/admin/:id/featured',
     commentController.toggleFeatured
 );
 
+// ==================== RUTAS DE REACCIONES ====================
+
+/**
+ * @route   POST /api/comments/:id/reactions
+ * @desc    Agregar o cambiar reacción a comentario
+ * @access  Private
+ */
+router.post('/:id/reactions', 
+    authenticateToken,
+    validateId,
+    validateReaction,
+    commentController.addReaction
+);
+
+/**
+ * @route   GET /api/comments/:id/reactions
+ * @desc    Obtener estadísticas de reacciones de un comentario
+ * @access  Public (pero con reacción del usuario si está logueado)
+ */
+router.get('/:id/reactions', commentController.getReactionStats);
+
 // ==================== RUTAS GENERALES ====================
 
 /**
@@ -141,19 +189,5 @@ router.put('/:id', authenticateToken, validateId, validateUpdate, commentControl
  * @access  Private (solo el autor)
  */
 router.delete('/:id', authenticateToken, validateId, commentController.delete);
-
-// ==================== 🆕 RUTAS DE REACCIONES (SOLO LA QUE FUNCIONA) ====================
-
-/**
- * @route   POST /api/comments/:id/reactions
- * @desc    Agregar o cambiar reacción a comentario
- * @access  Private
- */
-router.post('/:id/reactions', 
-    authenticateToken,
-    validateId,
-    [body('tipo').isIn(['like', 'dislike']).withMessage('Tipo de reacción inválido')],
-    commentController.addReaction
-);
 
 module.exports = router;
