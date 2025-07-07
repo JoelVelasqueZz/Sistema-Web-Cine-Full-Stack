@@ -1,4 +1,4 @@
-<!-- frontend/src/app/components/comments/comments.component.html -->
+<!-- frontend/src/app/components/comments/comments.component.html - CORREGIDO -->
 <div class="comments-container">
   
   <!-- ==================== ESTADÍSTICAS (Solo para películas) ==================== -->
@@ -195,28 +195,32 @@
             </div>
           </div>
 
-          <!-- 🆕 SECCIÓN ACTUALIZADA: REACCIONES Y RESPUESTAS -->
+          <!-- 🔥 SECCIÓN DE REACCIONES Y RESPUESTAS CORREGIDA -->
           <div class="comment-reactions mt-3">
             <div class="reaction-buttons d-flex align-items-center gap-2">
               
-              <!-- Botón Like -->
+              <!-- 🔥 BOTÓN LIKE CORREGIDO -->
               <button class="btn btn-sm reaction-btn" 
                       [class]="getReactionButtonClass(comentario, 'like')"
                       (click)="toggleReaction(comentario.id, 'like')"
-                      [disabled]="!isAuthenticated()"
+                      [disabled]="!isAuthenticated() || isReactionProcessing(comentario.id)"
                       title="{{ isAuthenticated() ? 'Me gusta' : 'Inicia sesión para reaccionar' }}">
-                <i class="fas fa-thumbs-up me-1"
+                <span *ngIf="reactionStates[comentario.id]?.isLiking" class="spinner-border spinner-border-sm me-1"></span>
+                <i *ngIf="!reactionStates[comentario.id]?.isLiking" 
+                   class="fas fa-thumbs-up me-1"
                    [class.fa-beat]="isReactionActive(comentario, 'like')"></i>
                 <span>{{ comentario.total_likes || 0 }}</span>
               </button>
 
-              <!-- Botón Dislike -->
+              <!-- 🔥 BOTÓN DISLIKE CORREGIDO -->
               <button class="btn btn-sm reaction-btn"
                       [class]="getReactionButtonClass(comentario, 'dislike')"
                       (click)="toggleReaction(comentario.id, 'dislike')"
-                      [disabled]="!isAuthenticated()"
+                      [disabled]="!isAuthenticated() || isReactionProcessing(comentario.id)"
                       title="{{ isAuthenticated() ? 'No me gusta' : 'Inicia sesión para reaccionar' }}">
-                <i class="fas fa-thumbs-down me-1"
+                <span *ngIf="reactionStates[comentario.id]?.isDisliking" class="spinner-border spinner-border-sm me-1"></span>
+                <i *ngIf="!reactionStates[comentario.id]?.isDisliking" 
+                   class="fas fa-thumbs-down me-1"
                    [class.fa-beat]="isReactionActive(comentario, 'dislike')"></i>
                 <span>{{ comentario.total_dislikes || 0 }}</span>
               </button>
@@ -224,7 +228,7 @@
               <!-- Separador -->
               <span class="text-muted mx-2">•</span>
 
-              <!-- 🆕 BOTÓN RESPONDER (FUNCIONAL) -->
+              <!-- 🆕 BOTÓN RESPONDER -->
               <button class="btn btn-sm btn-outline-primary"
                       (click)="toggleReplyForm(comentario.id)"
                       [disabled]="!isAuthenticated()"
@@ -253,7 +257,7 @@
               </small>
             </div>
 
-            <!-- Estadísticas de reacciones (si hay) -->
+            <!-- 🔥 ESTADÍSTICAS DE REACCIONES CORREGIDAS -->
             <div *ngIf="(comentario.total_likes || 0) + (comentario.total_dislikes || 0) > 0" 
                  class="reaction-stats mt-2">
               <small class="text-muted">
@@ -261,11 +265,11 @@
                   {{ (comentario.total_likes || 0) + (comentario.total_dislikes || 0) }} 
                   {{ (comentario.total_likes || 0) + (comentario.total_dislikes || 0) === 1 ? 'reacción' : 'reacciones' }}
                 </span>
-                <span *ngIf="comentario.total_likes && comentario.total_dislikes" class="mx-1">•</span>
+                <span *ngIf="(comentario.total_likes || 0) > 0 && (comentario.total_dislikes || 0) > 0" class="mx-1">•</span>
                 <span *ngIf="(comentario.total_likes || 0) > 0" class="text-success">
                   {{ comentario.total_likes }} positiva{{ comentario.total_likes !== 1 ? 's' : '' }}
                 </span>
-                <span *ngIf="comentario.total_likes && comentario.total_dislikes" class="mx-1">•</span>
+                <span *ngIf="(comentario.total_likes || 0) > 0 && (comentario.total_dislikes || 0) > 0" class="mx-1">•</span>
                 <span *ngIf="(comentario.total_dislikes || 0) > 0" class="text-danger">
                   {{ comentario.total_dislikes }} negativa{{ comentario.total_dislikes !== 1 ? 's' : '' }}
                 </span>
@@ -274,7 +278,7 @@
           </div>
 
           <!-- 🆕 FORMULARIO DE RESPUESTA -->
-          <div *ngIf="showReplyForm[comentario.id]" class="reply-form mt-3 p-3 bg-light rounded">
+          <div *ngIf="showReplyForm[comentario.id]" class="reply-form mt-3">
             <h6 class="mb-2">
               <i class="fas fa-reply me-2"></i>
               Responder a {{ comentario.usuario_nombre }}

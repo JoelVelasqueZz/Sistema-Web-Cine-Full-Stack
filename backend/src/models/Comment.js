@@ -177,32 +177,44 @@ class Comment {
      * 🆕 MÉTODO ACTUALIZADO: Obtener comentarios de película con reacciones Y respuestas
      */
     async getByMovieWithReactionsAndReplies(pelicula_id, usuario_id = null, limit = 20, offset = 0) {
-        const query = `
-            SELECT 
-                c.*, 
-                u.nombre as usuario_nombre,
-                u.avatar as usuario_avatar,
-                p.titulo as pelicula_titulo, 
-                p.poster as pelicula_poster,
-                (SELECT COUNT(*) FROM comentarios_reacciones cr WHERE cr.comentario_id = c.id AND cr.tipo = 'like') as total_likes,
-                (SELECT COUNT(*) FROM comentarios_reacciones cr WHERE cr.comentario_id = c.id AND cr.tipo = 'dislike') as total_dislikes,
-                (SELECT COUNT(*) FROM ${this.repliesTableName} r WHERE r.comentario_id = c.id) as total_replies,
-                ${usuario_id ? 
-                    `(SELECT tipo FROM comentarios_reacciones cr WHERE cr.comentario_id = c.id AND cr.usuario_id = $4) as user_reaction` : 
-                    'NULL as user_reaction'
-                }
-            FROM ${this.tableName} c
-            LEFT JOIN usuarios u ON c.usuario_id = u.id
-            LEFT JOIN peliculas p ON c.pelicula_id = p.id
-            WHERE c.pelicula_id = $1 AND c.estado = 'activo'
-            ORDER BY c.fecha_creacion DESC
-            LIMIT $2 OFFSET $3
-        `;
-        
-        const params = usuario_id ? [pelicula_id, limit, offset, usuario_id] : [pelicula_id, limit, offset];
-        const result = await db.query(query, params);
-        return result.rows;
-    }
+    const query = `
+        SELECT 
+            c.*, 
+            u.nombre as usuario_nombre,
+            u.avatar as usuario_avatar,
+            p.titulo as pelicula_titulo, 
+            p.poster as pelicula_poster,
+            -- 🔥 SUBCONSULTAS CORREGIDAS PARA CONTEO EXACTO
+            (SELECT COUNT(*) FROM comentarios_reacciones cr 
+             WHERE cr.comentario_id = c.id AND cr.tipo = 'like') as total_likes,
+            (SELECT COUNT(*) FROM comentarios_reacciones cr 
+             WHERE cr.comentario_id = c.id AND cr.tipo = 'dislike') as total_dislikes,
+            (SELECT COUNT(*) FROM ${this.repliesTableName} r 
+             WHERE r.comentario_id = c.id) as total_replies,
+            ${usuario_id ? 
+                `(SELECT tipo FROM comentarios_reacciones cr 
+                  WHERE cr.comentario_id = c.id AND cr.usuario_id = $4) as user_reaction` : 
+                'NULL as user_reaction'
+            }
+        FROM ${this.tableName} c
+        LEFT JOIN usuarios u ON c.usuario_id = u.id
+        LEFT JOIN peliculas p ON c.pelicula_id = p.id
+        WHERE c.pelicula_id = $1 AND c.estado = 'activo'
+        ORDER BY c.fecha_creacion DESC
+        LIMIT $2 OFFSET $3
+    `;
+    
+    const params = usuario_id ? [pelicula_id, limit, offset, usuario_id] : [pelicula_id, limit, offset];
+    const result = await db.query(query, params);
+    
+    // 🔥 DEBUG: Log para verificar resultados
+    console.log('🔍 Comentarios obtenidos:', result.rows.length);
+    result.rows.forEach(row => {
+        console.log(`Comentario ${row.id}: ${row.total_likes} likes, ${row.total_dislikes} dislikes, user_reaction: ${row.user_reaction}`);
+    });
+    
+    return result.rows;
+}
 
     async getByMovieWithReactions(pelicula_id, usuario_id = null, limit = 20, offset = 0) {
         const query = `
@@ -393,62 +405,76 @@ class Comment {
     // ==================== MÉTODOS DE REACCIONES ====================
 
     async addReaction(comentario_id, usuario_id, tipo) {
-        const checkQuery = `
-            SELECT * FROM comentarios_reacciones 
-            WHERE comentario_id = $1 AND usuario_id = $2
-        `;
+    console.log(`🔄 Procesando reacción: comentario ${comentario_id}, usuario ${usuario_id}, tipo ${tipo}`);
+    
+    // 🔥 VERIFICAR REACCIÓN EXISTENTE
+    const checkQuery = `
+        SELECT * FROM comentarios_reacciones 
+        WHERE comentario_id = $1 AND usuario_id = $2
+    `;
+    
+    const existingReaction = await db.query(checkQuery, [comentario_id, usuario_id]);
+    
+    if (existingReaction.rows.length > 0) {
+        const currentReaction = existingReaction.rows[0];
         
-        const existingReaction = await db.query(checkQuery, [comentario_id, usuario_id]);
-        
-        if (existingReaction.rows.length > 0) {
-            if (existingReaction.rows[0].tipo === tipo) {
-                const deleteQuery = `
-                    DELETE FROM comentarios_reacciones 
-                    WHERE comentario_id = $1 AND usuario_id = $2
-                    RETURNING *
-                `;
-                const result = await db.query(deleteQuery, [comentario_id, usuario_id]);
-                return { action: 'removed', reaction: result.rows[0] };
-            } else {
-                const updateQuery = `
-                    UPDATE comentarios_reacciones 
-                    SET tipo = $1, fecha_creacion = CURRENT_TIMESTAMP
-                    WHERE comentario_id = $2 AND usuario_id = $3
-                    RETURNING *
-                `;
-                const result = await db.query(updateQuery, [tipo, comentario_id, usuario_id]);
-                return { action: 'updated', reaction: result.rows[0] };
-            }
-        } else {
-            const insertQuery = `
-                INSERT INTO comentarios_reacciones (comentario_id, usuario_id, tipo)
-                VALUES ($1, $2, $3)
+        if (currentReaction.tipo === tipo) {
+            // 🔥 ELIMINAR REACCIÓN EXISTENTE (toggle off)
+            const deleteQuery = `
+                DELETE FROM comentarios_reacciones 
+                WHERE comentario_id = $1 AND usuario_id = $2
                 RETURNING *
             `;
-            const result = await db.query(insertQuery, [comentario_id, usuario_id, tipo]);
-            return { action: 'created', reaction: result.rows[0] };
+            const result = await db.query(deleteQuery, [comentario_id, usuario_id]);
+            console.log(`❌ Reacción eliminada: ${tipo}`);
+            return { action: 'removed', reaction: result.rows[0] };
+        } else {
+            // 🔥 CAMBIAR TIPO DE REACCIÓN (like <-> dislike)
+            const updateQuery = `
+                UPDATE comentarios_reacciones 
+                SET tipo = $1, fecha_creacion = CURRENT_TIMESTAMP
+                WHERE comentario_id = $2 AND usuario_id = $3
+                RETURNING *
+            `;
+            const result = await db.query(updateQuery, [tipo, comentario_id, usuario_id]);
+            console.log(`🔄 Reacción cambiada de ${currentReaction.tipo} a ${tipo}`);
+            return { action: 'updated', reaction: result.rows[0] };
         }
+    } else {
+        // 🔥 CREAR NUEVA REACCIÓN
+        const insertQuery = `
+            INSERT INTO comentarios_reacciones (comentario_id, usuario_id, tipo)
+            VALUES ($1, $2, $3)
+            RETURNING *
+        `;
+        const result = await db.query(insertQuery, [comentario_id, usuario_id, tipo]);
+        console.log(`✅ Nueva reacción creada: ${tipo}`);
+        return { action: 'created', reaction: result.rows[0] };
     }
+}
 
     async getReactionStats(comentario_id) {
-        const query = `
-            SELECT 
-                COUNT(CASE WHEN tipo = 'like' THEN 1 END) as totalLikes,
-                COUNT(CASE WHEN tipo = 'dislike' THEN 1 END) as totalDislikes,
-                COUNT(*) as totalReactions
-            FROM comentarios_reacciones 
-            WHERE comentario_id = $1
-        `;
-        
-        const result = await db.query(query, [comentario_id]);
-        const stats = result.rows[0];
-        
-        return {
-            totalLikes: parseInt(stats.totallikes) || 0,
-            totalDislikes: parseInt(stats.totaldislikes) || 0,
-            totalReactions: parseInt(stats.totalreactions) || 0
-        };
-    }
+    const query = `
+        SELECT 
+            COUNT(CASE WHEN tipo = 'like' THEN 1 END) as totalLikes,
+            COUNT(CASE WHEN tipo = 'dislike' THEN 1 END) as totalDislikes,
+            COUNT(*) as totalReactions
+        FROM comentarios_reacciones 
+        WHERE comentario_id = $1
+    `;
+    
+    const result = await db.query(query, [comentario_id]);
+    const stats = result.rows[0];
+    
+    const finalStats = {
+        totalLikes: parseInt(stats.totallikes) || 0,
+        totalDislikes: parseInt(stats.totaldislikes) || 0,
+        totalReactions: parseInt(stats.totalreactions) || 0
+    };
+    
+    console.log(`📊 Stats para comentario ${comentario_id}:`, finalStats);
+    return finalStats;
+}
 
     async getUserReaction(comentario_id, usuario_id) {
         const query = `
