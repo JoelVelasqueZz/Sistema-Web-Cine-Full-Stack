@@ -1,4 +1,4 @@
-// frontend/src/app/services/comment.service.ts - CON AUTENTICACIÓN
+// frontend/src/app/services/comment.service.ts - COMPLETO CON RESPUESTAS
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -22,7 +22,19 @@ export interface Comment {
   pelicula_poster?: string;
   total_likes?: number;
   total_dislikes?: number;
+  total_replies?: number; // 🆕 CONTADOR DE RESPUESTAS
   user_reaction?: 'like' | 'dislike' | null;
+}
+
+// 🆕 INTERFAZ PARA RESPUESTAS
+export interface CommentReply {
+  id: number;
+  comentario_id: number;
+  usuario_id: number;
+  contenido: string;
+  fecha_creacion: string;
+  usuario_nombre: string;
+  usuario_avatar?: string;
 }
 
 export interface CommentStats {
@@ -43,6 +55,11 @@ export interface CreateCommentData {
   titulo: string;
   contenido: string;
   puntuacion?: number;
+}
+
+// 🆕 INTERFAZ PARA CREAR RESPUESTA
+export interface CreateReplyData {
+  contenido: string;
 }
 
 export interface UpdateCommentData {
@@ -146,16 +163,16 @@ export class CommentService {
    * 🔥 OBTENER SUGERENCIAS DEL SISTEMA CON TOKEN
    */
   getSystemFeedback(page: number = 1, limit: number = 10): Observable<any> {
-  // 🔥 AGREGAR HEADERS CON TOKEN
-  const headers = this.getAuthHeaders();
-  
-  const params = new HttpParams()
-    .set('page', page.toString())
-    .set('limit', limit.toString());
+    // 🔥 AGREGAR HEADERS CON TOKEN
+    const headers = this.getAuthHeaders();
+    
+    const params = new HttpParams()
+      .set('page', page.toString())
+      .set('limit', limit.toString());
 
-  // ✅ Ruta correcta: /suggestions (ya coincide con backend)
-  return this.http.get<any>(`${this.apiUrl}/suggestions`, { params, headers });
-}
+    // ✅ Ruta correcta: /suggestions (ya coincide con backend)
+    return this.http.get<any>(`${this.apiUrl}/suggestions`, { params, headers });
+  }
 
   /**
    * 🔥 ACTUALIZAR COMENTARIO CON TOKEN
@@ -171,6 +188,50 @@ export class CommentService {
   delete(id: number): Observable<ApiResponse<any>> {
     const headers = this.getAuthHeaders();
     return this.http.delete<ApiResponse<any>>(`${this.apiUrl}/${id}`, { headers });
+  }
+
+  // ==================== 🆕 MÉTODOS DE RESPUESTAS ====================
+
+  /**
+   * 🆕 CREAR RESPUESTA A COMENTARIO
+   */
+  createReply(commentId: number, replyData: CreateReplyData): Observable<ApiResponse<CommentReply>> {
+    const headers = this.getAuthHeaders();
+    
+    console.log('💬 Enviando respuesta:', {
+      commentId,
+      contenido: replyData.contenido?.substring(0, 30),
+      hasToken: headers.has('Authorization')
+    });
+    
+    return this.http.post<ApiResponse<CommentReply>>(
+      `${this.apiUrl}/${commentId}/replies`, 
+      replyData, 
+      { headers }
+    );
+  }
+
+  /**
+   * 🆕 OBTENER RESPUESTAS DE UN COMENTARIO
+   */
+  getReplies(commentId: number, page: number = 1, limit: number = 10): Observable<ApiResponse<{
+    respuestas: CommentReply[];
+    pagination: any;
+  }>> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('limit', limit.toString());
+
+    // Público, no necesita token
+    return this.http.get<ApiResponse<any>>(`${this.apiUrl}/${commentId}/replies`, { params });
+  }
+
+  /**
+   * 🆕 ELIMINAR RESPUESTA
+   */
+  deleteReply(replyId: number): Observable<ApiResponse<any>> {
+    const headers = this.getAuthHeaders();
+    return this.http.delete<ApiResponse<any>>(`${this.apiUrl}/replies/${replyId}`, { headers });
   }
 
   // ==================== MÉTODOS ADMIN CON TOKEN ====================
@@ -292,63 +353,68 @@ export class CommentService {
     
     return !!(token && isAuth);
   }
+
   getUserComments(page: number = 1, limit: number = 10): Observable<any> {
-  // 🔥 AGREGAR HEADERS CON TOKEN
-  const headers = this.getAuthHeaders();
-  
-  const params = new HttpParams()
-    .set('page', page.toString())
-    .set('limit', limit.toString());
+    // 🔥 AGREGAR HEADERS CON TOKEN
+    const headers = this.getAuthHeaders();
+    
+    const params = new HttpParams()
+      .set('page', page.toString())
+      .set('limit', limit.toString());
 
-  return this.http.get<any>(`${this.apiUrl}/user/my-comments`, { params, headers });
-}
+    return this.http.get<any>(`${this.apiUrl}/user/my-comments`, { params, headers });
+  }
 
-addReaction(commentId: number, tipo: 'like' | 'dislike'): Observable<ApiResponse<any>> {
-  const headers = this.getAuthHeaders();
-  return this.http.post<ApiResponse<any>>(`${this.apiUrl}/${commentId}/reactions`, { tipo }, { headers });
-}
-getReactionStats(commentId: number): Observable<ApiResponse<any>> {
-  return this.http.get<ApiResponse<any>>(`${this.apiUrl}/${commentId}/reactions`);
-}
-getByMovieWithReactions(peliculaId: number, page: number = 1, limit: number = 20): Observable<ApiResponse<any>> {
-  let params = new HttpParams()
-    .set('page', page.toString())
-    .set('limit', limit.toString());
+  addReaction(commentId: number, tipo: 'like' | 'dislike'): Observable<ApiResponse<any>> {
+    const headers = this.getAuthHeaders();
+    return this.http.post<ApiResponse<any>>(`${this.apiUrl}/${commentId}/reactions`, { tipo }, { headers });
+  }
 
-  // Si hay usuario logueado, enviar token para obtener sus reacciones
-  const headers = this.isAuthenticated() ? this.getAuthHeaders() : new HttpHeaders();
+  getReactionStats(commentId: number): Observable<ApiResponse<any>> {
+    return this.http.get<ApiResponse<any>>(`${this.apiUrl}/${commentId}/reactions`);
+  }
 
-  return this.http.get<ApiResponse<any>>(`${this.apiUrl}/movie/${peliculaId}/with-reactions`, { 
-    params, 
-    headers 
-  });
-}
+  getByMovieWithReactions(peliculaId: number, page: number = 1, limit: number = 20): Observable<ApiResponse<any>> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('limit', limit.toString());
 
-getMyCommentsWithReactions(page: number = 1, limit: number = 20): Observable<ApiResponse<any>> {
-  const headers = this.getAuthHeaders();
-  
-  let params = new HttpParams()
-    .set('page', page.toString())
-    .set('limit', limit.toString());
+    // Si hay usuario logueado, enviar token para obtener sus reacciones
+    const headers = this.isAuthenticated() ? this.getAuthHeaders() : new HttpHeaders();
 
-  return this.http.get<ApiResponse<any>>(`${this.apiUrl}/user/my-comments-with-reactions`, { 
-    params, 
-    headers 
-  });
-}
-getSystemFeedbackWithReactions(page: number = 1, limit: number = 10): Observable<any> {
-  const params = new HttpParams()
-    .set('page', page.toString())
-    .set('limit', limit.toString());
+    return this.http.get<ApiResponse<any>>(`${this.apiUrl}/movie/${peliculaId}/with-reactions`, { 
+      params, 
+      headers 
+    });
+  }
 
-  // Si hay usuario logueado, enviar token para obtener sus reacciones
-  const headers = this.isAuthenticated() ? this.getAuthHeaders() : new HttpHeaders();
+  getMyCommentsWithReactions(page: number = 1, limit: number = 20): Observable<ApiResponse<any>> {
+    const headers = this.getAuthHeaders();
+    
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('limit', limit.toString());
 
-  return this.http.get<any>(`${this.apiUrl}/suggestions-with-reactions`, { 
-    params, 
-    headers 
-  });
-}
+    return this.http.get<ApiResponse<any>>(`${this.apiUrl}/user/my-comments-with-reactions`, { 
+      params, 
+      headers 
+    });
+  }
+
+  getSystemFeedbackWithReactions(page: number = 1, limit: number = 10): Observable<any> {
+    const params = new HttpParams()
+      .set('page', page.toString())
+      .set('limit', limit.toString());
+
+    // Si hay usuario logueado, enviar token para obtener sus reacciones
+    const headers = this.isAuthenticated() ? this.getAuthHeaders() : new HttpHeaders();
+
+    return this.http.get<any>(`${this.apiUrl}/suggestions-with-reactions`, { 
+      params, 
+      headers 
+    });
+  }
+
   // 🔥 MÉTODO PARA DEBUGGING
   debugAuth(): void {
     console.log('🔍 DEBUG CommentService:', {

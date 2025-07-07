@@ -1,16 +1,14 @@
-// backend/src/models/Comment.js - VERSIÓN COMPLETA CORREGIDA
+// backend/src/models/Comment.js - CON RESPUESTAS
 const db = require('../config/database');
 
 class Comment {
     constructor() {
         this.tableName = 'comentarios';
+        this.repliesTableName = 'respuestas_comentarios';
     }
 
     // ==================== CRUD BÁSICO ====================
     
-    /**
-     * Crear nuevo comentario
-     */
     async create(comentarioData) {
         const {
             usuario_id,
@@ -33,9 +31,6 @@ class Comment {
         return result.rows[0];
     }
 
-    /**
-     * Obtener comentario por ID
-     */
     async findById(id) {
         const query = `
             SELECT c.*, u.nombre as usuario_nombre, u.avatar as usuario_avatar,
@@ -50,9 +45,6 @@ class Comment {
         return result.rows[0];
     }
 
-    /**
-     * Actualizar comentario
-     */
     async update(id, usuario_id, updateData) {
         const { titulo, contenido, puntuacion } = updateData;
         
@@ -69,9 +61,6 @@ class Comment {
         return result.rows[0];
     }
 
-    /**
-     * Eliminar comentario (hard delete)
-     */
     async delete(id, usuario_id) {
         const query = `
             DELETE FROM ${this.tableName} 
@@ -83,11 +72,91 @@ class Comment {
         return result.rows[0];
     }
 
-    // ==================== MÉTODOS ESPECÍFICOS ====================
+    // ==================== MÉTODOS DE RESPUESTAS ====================
 
     /**
-     * 🔥 MÉTODO BÁSICO: Obtener comentarios de una película (SIN REACCIONES)
+     * 🆕 CREAR RESPUESTA A COMENTARIO
      */
+    async createReply(replyData) {
+        const { comentario_id, usuario_id, contenido } = replyData;
+
+        const query = `
+            INSERT INTO ${this.repliesTableName} 
+            (comentario_id, usuario_id, contenido)
+            VALUES ($1, $2, $3)
+            RETURNING *
+        `;
+
+        const values = [comentario_id, usuario_id, contenido];
+        const result = await db.query(query, values);
+        
+        // Obtener la respuesta con información del usuario
+        const fullReply = await this.getReplyById(result.rows[0].id);
+        return fullReply;
+    }
+
+    /**
+     * 🆕 OBTENER RESPUESTA POR ID CON INFORMACIÓN DEL USUARIO
+     */
+    async getReplyById(replyId) {
+        const query = `
+            SELECT r.*, u.nombre as usuario_nombre, u.avatar as usuario_avatar
+            FROM ${this.repliesTableName} r
+            LEFT JOIN usuarios u ON r.usuario_id = u.id
+            WHERE r.id = $1
+        `;
+        
+        const result = await db.query(query, [replyId]);
+        return result.rows[0];
+    }
+
+    /**
+     * 🆕 OBTENER RESPUESTAS DE UN COMENTARIO
+     */
+    async getReplies(comentario_id, limit = 10, offset = 0) {
+        const query = `
+            SELECT r.*, u.nombre as usuario_nombre, u.avatar as usuario_avatar
+            FROM ${this.repliesTableName} r
+            LEFT JOIN usuarios u ON r.usuario_id = u.id
+            WHERE r.comentario_id = $1
+            ORDER BY r.fecha_creacion ASC
+            LIMIT $2 OFFSET $3
+        `;
+        
+        const result = await db.query(query, [comentario_id, limit, offset]);
+        return result.rows;
+    }
+
+    /**
+     * 🆕 ELIMINAR RESPUESTA
+     */
+    async deleteReply(replyId, usuario_id) {
+        const query = `
+            DELETE FROM ${this.repliesTableName} 
+            WHERE id = $1 AND usuario_id = $2
+            RETURNING *
+        `;
+        
+        const result = await db.query(query, [replyId, usuario_id]);
+        return result.rows[0];
+    }
+
+    /**
+     * 🆕 CONTAR RESPUESTAS DE UN COMENTARIO
+     */
+    async getReplyCount(comentario_id) {
+        const query = `
+            SELECT COUNT(*) as count
+            FROM ${this.repliesTableName}
+            WHERE comentario_id = $1
+        `;
+        
+        const result = await db.query(query, [comentario_id]);
+        return parseInt(result.rows[0].count) || 0;
+    }
+
+    // ==================== MÉTODOS ESPECÍFICOS ACTUALIZADOS ====================
+
     async getByMovie(pelicula_id, limit = 20, offset = 0) {
         const query = `
             SELECT c.*, u.nombre as usuario_nombre, u.avatar as usuario_avatar,
@@ -105,9 +174,9 @@ class Comment {
     }
 
     /**
-     * 🆕 MÉTODO CON REACCIONES: Obtener comentarios de película con reacciones
+     * 🆕 MÉTODO ACTUALIZADO: Obtener comentarios de película con reacciones Y respuestas
      */
-    async getByMovieWithReactions(pelicula_id, usuario_id = null, limit = 20, offset = 0) {
+    async getByMovieWithReactionsAndReplies(pelicula_id, usuario_id = null, limit = 20, offset = 0) {
         const query = `
             SELECT 
                 c.*, 
@@ -117,6 +186,7 @@ class Comment {
                 p.poster as pelicula_poster,
                 (SELECT COUNT(*) FROM comentarios_reacciones cr WHERE cr.comentario_id = c.id AND cr.tipo = 'like') as total_likes,
                 (SELECT COUNT(*) FROM comentarios_reacciones cr WHERE cr.comentario_id = c.id AND cr.tipo = 'dislike') as total_dislikes,
+                (SELECT COUNT(*) FROM ${this.repliesTableName} r WHERE r.comentario_id = c.id) as total_replies,
                 ${usuario_id ? 
                     `(SELECT tipo FROM comentarios_reacciones cr WHERE cr.comentario_id = c.id AND cr.usuario_id = $4) as user_reaction` : 
                     'NULL as user_reaction'
@@ -134,9 +204,34 @@ class Comment {
         return result.rows;
     }
 
-    /**
-     * 🔥 MÉTODO BÁSICO: Obtener comentarios del usuario (SIN REACCIONES)
-     */
+    async getByMovieWithReactions(pelicula_id, usuario_id = null, limit = 20, offset = 0) {
+        const query = `
+            SELECT 
+                c.*, 
+                u.nombre as usuario_nombre,
+                u.avatar as usuario_avatar,
+                p.titulo as pelicula_titulo, 
+                p.poster as pelicula_poster,
+                (SELECT COUNT(*) FROM comentarios_reacciones cr WHERE cr.comentario_id = c.id AND cr.tipo = 'like') as total_likes,
+                (SELECT COUNT(*) FROM comentarios_reacciones cr WHERE cr.comentario_id = c.id AND cr.tipo = 'dislike') as total_dislikes,
+                (SELECT COUNT(*) FROM ${this.repliesTableName} r WHERE r.comentario_id = c.id) as total_replies,
+                ${usuario_id ? 
+                    `(SELECT tipo FROM comentarios_reacciones cr WHERE cr.comentario_id = c.id AND cr.usuario_id = $4) as user_reaction` : 
+                    'NULL as user_reaction'
+                }
+            FROM ${this.tableName} c
+            LEFT JOIN usuarios u ON c.usuario_id = u.id
+            LEFT JOIN peliculas p ON c.pelicula_id = p.id
+            WHERE c.pelicula_id = $1 AND c.estado = 'activo'
+            ORDER BY c.fecha_creacion DESC
+            LIMIT $2 OFFSET $3
+        `;
+        
+        const params = usuario_id ? [pelicula_id, limit, offset, usuario_id] : [pelicula_id, limit, offset];
+        const result = await db.query(query, params);
+        return result.rows;
+    }
+
     async getByUser(usuario_id, limit = 20, offset = 0) {
         const query = `
             SELECT c.*, u.nombre as usuario_nombre, u.avatar as usuario_avatar,
@@ -153,9 +248,6 @@ class Comment {
         return result.rows;
     }
 
-    /**
-     * 🆕 MÉTODO CON REACCIONES: Obtener comentarios del usuario con reacciones
-     */
     async getByUserWithReactions(usuario_id, limit = 20, offset = 0) {
         const query = `
             SELECT 
@@ -166,6 +258,7 @@ class Comment {
                 p.poster as pelicula_poster,
                 (SELECT COUNT(*) FROM comentarios_reacciones cr WHERE cr.comentario_id = c.id AND cr.tipo = 'like') as total_likes,
                 (SELECT COUNT(*) FROM comentarios_reacciones cr WHERE cr.comentario_id = c.id AND cr.tipo = 'dislike') as total_dislikes,
+                (SELECT COUNT(*) FROM ${this.repliesTableName} r WHERE r.comentario_id = c.id) as total_replies,
                 (SELECT tipo FROM comentarios_reacciones cr WHERE cr.comentario_id = c.id AND cr.usuario_id = $1) as user_reaction
             FROM ${this.tableName} c
             LEFT JOIN usuarios u ON c.usuario_id = u.id
@@ -179,9 +272,6 @@ class Comment {
         return result.rows;
     }
 
-    /**
-     * 🔥 MÉTODO BÁSICO: Obtener sugerencias del sistema (SIN REACCIONES)
-     */
     async getSystemFeedback(limit = 50, offset = 0) {
         const query = `
             SELECT c.*, u.nombre as usuario_nombre, u.avatar as usuario_avatar
@@ -196,9 +286,6 @@ class Comment {
         return result.rows;
     }
 
-    /**
-     * 🆕 MÉTODO CON REACCIONES: Obtener sugerencias del sistema con reacciones
-     */
     async getSystemFeedbackWithReactions(usuario_id = null, limit = 50, offset = 0) {
         const query = `
             SELECT 
@@ -207,6 +294,7 @@ class Comment {
                 u.avatar as usuario_avatar,
                 (SELECT COUNT(*) FROM comentarios_reacciones cr WHERE cr.comentario_id = c.id AND cr.tipo = 'like') as total_likes,
                 (SELECT COUNT(*) FROM comentarios_reacciones cr WHERE cr.comentario_id = c.id AND cr.tipo = 'dislike') as total_dislikes,
+                (SELECT COUNT(*) FROM ${this.repliesTableName} r WHERE r.comentario_id = c.id) as total_replies,
                 ${usuario_id ? 
                     `(SELECT tipo FROM comentarios_reacciones cr WHERE cr.comentario_id = c.id AND cr.usuario_id = $3) as user_reaction` : 
                     'NULL as user_reaction'
@@ -223,9 +311,6 @@ class Comment {
         return result.rows;
     }
 
-    /**
-     * Verificar si el usuario ya comentó la película
-     */
     async hasUserCommented(usuario_id, pelicula_id) {
         const query = `
             SELECT COUNT(*) as count
@@ -237,9 +322,6 @@ class Comment {
         return parseInt(result.rows[0].count) > 0;
     }
 
-    /**
-     * 🔥 MÉTODO SIMPLE PARA ESTADÍSTICAS DE PELÍCULA
-     */
     async getSimpleMovieStats(pelicula_id) {
         try {
             console.log('📊 Obteniendo estadísticas simples para película:', pelicula_id);
@@ -289,9 +371,6 @@ class Comment {
         }
     }
 
-    /**
-     * Obtener estadísticas generales (para admin)
-     */
     async getStats() {
         try {
             const query = `
@@ -313,9 +392,6 @@ class Comment {
 
     // ==================== MÉTODOS DE REACCIONES ====================
 
-    /**
-     * 🆕 AGREGAR/ACTUALIZAR/ELIMINAR REACCIÓN
-     */
     async addReaction(comentario_id, usuario_id, tipo) {
         const checkQuery = `
             SELECT * FROM comentarios_reacciones 
@@ -325,9 +401,7 @@ class Comment {
         const existingReaction = await db.query(checkQuery, [comentario_id, usuario_id]);
         
         if (existingReaction.rows.length > 0) {
-            // Si ya existe una reacción
             if (existingReaction.rows[0].tipo === tipo) {
-                // Si es la misma reacción, eliminarla (toggle off)
                 const deleteQuery = `
                     DELETE FROM comentarios_reacciones 
                     WHERE comentario_id = $1 AND usuario_id = $2
@@ -336,7 +410,6 @@ class Comment {
                 const result = await db.query(deleteQuery, [comentario_id, usuario_id]);
                 return { action: 'removed', reaction: result.rows[0] };
             } else {
-                // Si es diferente reacción, actualizarla
                 const updateQuery = `
                     UPDATE comentarios_reacciones 
                     SET tipo = $1, fecha_creacion = CURRENT_TIMESTAMP
@@ -347,7 +420,6 @@ class Comment {
                 return { action: 'updated', reaction: result.rows[0] };
             }
         } else {
-            // Si no existe, crear nueva reacción
             const insertQuery = `
                 INSERT INTO comentarios_reacciones (comentario_id, usuario_id, tipo)
                 VALUES ($1, $2, $3)
@@ -358,9 +430,6 @@ class Comment {
         }
     }
 
-    /**
-     * 🆕 OBTENER ESTADÍSTICAS DE REACCIONES
-     */
     async getReactionStats(comentario_id) {
         const query = `
             SELECT 
@@ -381,9 +450,6 @@ class Comment {
         };
     }
 
-    /**
-     * 🆕 OBTENER REACCIÓN ESPECÍFICA DEL USUARIO
-     */
     async getUserReaction(comentario_id, usuario_id) {
         const query = `
             SELECT tipo FROM comentarios_reacciones 
@@ -396,15 +462,11 @@ class Comment {
 
     // ==================== MÉTODOS ADMIN ====================
 
-    /**
-     * Obtener todos los comentarios (para admin)
-     */
     async getAllForAdmin(filters = {}, limit = 50, offset = 0) {
         let whereConditions = [];
         let params = [];
         let paramIndex = 1;
 
-        // Filtros opcionales
         if (filters.tipo) {
             whereConditions.push(`c.tipo = ${paramIndex}`);
             params.push(filters.tipo);
@@ -443,9 +505,6 @@ class Comment {
         return result.rows;
     }
 
-    /**
-     * Cambiar estado del comentario (admin)
-     */
     async updateStatus(id, estado) {
         const query = `
             UPDATE ${this.tableName} 
@@ -458,9 +517,6 @@ class Comment {
         return result.rows[0];
     }
 
-    /**
-     * Destacar/quitar destaque de comentario (admin)
-     */
     async toggleFeatured(id) {
         const query = `
             UPDATE ${this.tableName} 

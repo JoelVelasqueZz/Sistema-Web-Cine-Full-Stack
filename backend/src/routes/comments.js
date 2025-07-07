@@ -1,10 +1,9 @@
-// backend/src/routes/comments.js - VERSIÓN CORREGIDA COMPLETA
+// backend/src/routes/comments.js - CON RESPUESTAS
 const express = require('express');
 const router = express.Router();
 const { body, param } = require('express-validator');
 const commentController = require('../controllers/comments/commentController');
 
-// 🔥 IMPORTACIÓN CORRECTA DEL MIDDLEWARE
 const { authenticateToken } = require('../middleware/auth');
 const { requireAdmin } = require('../middleware/admin');
 
@@ -61,6 +60,26 @@ const validateReaction = [
         .withMessage('Tipo de reacción inválido')
 ];
 
+// 🆕 VALIDACIÓN PARA RESPUESTAS
+const validateReply = [
+    body('contenido')
+        .trim()
+        .isLength({ min: 5, max: 1000 })
+        .withMessage('La respuesta debe tener entre 5 y 1000 caracteres')
+];
+
+const validateCommentId = [
+    param('comentario_id')
+        .isInt({ min: 1 })
+        .withMessage('ID de comentario inválido')
+];
+
+const validateReplyId = [
+    param('reply_id')
+        .isInt({ min: 1 })
+        .withMessage('ID de respuesta inválido')
+];
+
 // ==================== RUTAS ESPECÍFICAS PRIMERO ====================
 
 /**
@@ -104,6 +123,41 @@ router.get('/movie/:pelicula_id', commentController.getByMovie);
  * @access  Public (pero con reacciones del usuario si está logueado)
  */
 router.get('/movie/:pelicula_id/with-reactions', commentController.getByMovieWithReactions);
+
+// ==================== 🆕 RUTAS DE RESPUESTAS ====================
+
+/**
+ * @route   POST /api/comments/:comentario_id/replies
+ * @desc    Crear respuesta a un comentario
+ * @access  Private
+ */
+router.post('/:comentario_id/replies', 
+    authenticateToken,
+    validateCommentId,
+    validateReply,
+    commentController.createReply
+);
+
+/**
+ * @route   GET /api/comments/:comentario_id/replies
+ * @desc    Obtener respuestas de un comentario
+ * @access  Public
+ */
+router.get('/:comentario_id/replies', 
+    validateCommentId,
+    commentController.getReplies
+);
+
+/**
+ * @route   DELETE /api/comments/replies/:reply_id
+ * @desc    Eliminar una respuesta
+ * @access  Private (solo el autor)
+ */
+router.delete('/replies/:reply_id', 
+    authenticateToken,
+    validateReplyId,
+    commentController.deleteReply
+);
 
 // ==================== RUTAS ADMIN ESPECÍFICAS ====================
 
@@ -158,7 +212,7 @@ router.post('/:id/reactions',
  * @desc    Obtener estadísticas de reacciones de un comentario
  * @access  Public (pero con reacción del usuario si está logueado)
  */
-router.get('/:id/reactions', commentController.getReactionStats);
+router.get('/:id/reactions', validateId, commentController.getReactionStats);
 
 // ==================== RUTAS GENERALES ====================
 

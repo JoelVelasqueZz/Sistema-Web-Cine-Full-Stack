@@ -1,4 +1,4 @@
-// backend/src/controllers/comments/commentController.js - CORREGIDO COMPLETO
+// backend/src/controllers/comments/commentController.js - CON RESPUESTAS
 const Comment = require('../../models/Comment');
 const { validationResult } = require('express-validator');
 
@@ -11,7 +11,6 @@ class CommentController {
      */
     async create(req, res) {
         try {
-            // 🔥 VERIFICAR AUTENTICACIÓN PRIMERO
             if (!req.user || !req.user.id) {
                 console.error('❌ Usuario no autenticado:', {
                     hasReqUser: !!req.user,
@@ -24,7 +23,6 @@ class CommentController {
                 });
             }
 
-            // Validar errores de entrada
             const errors = validationResult(req);
             if (!errors.isEmpty()) {
                 return res.status(400).json({
@@ -45,7 +43,6 @@ class CommentController {
                 puntuacion
             });
 
-            // Validar que si es comentario de película, incluya puntuación
             if (tipo === 'pelicula' && (!puntuacion || puntuacion < 1 || puntuacion > 5)) {
                 return res.status(400).json({
                     success: false,
@@ -53,7 +50,6 @@ class CommentController {
                 });
             }
 
-            // Verificar si ya comentó esta película
             if (tipo === 'pelicula') {
                 const hasCommented = await Comment.hasUserCommented(usuario_id, pelicula_id);
                 if (hasCommented) {
@@ -91,8 +87,138 @@ class CommentController {
     }
 
     /**
-     * Obtener comentarios de una película - SIN REACCIONES (MÉTODO SIMPLE)
+     * 🆕 CREAR RESPUESTA A COMENTARIO
      */
+    async createReply(req, res) {
+        try {
+            if (!req.user || !req.user.id) {
+                return res.status(401).json({
+                    success: false,
+                    message: 'Usuario no autenticado'
+                });
+            }
+
+            const errors = validationResult(req);
+            if (!errors.isEmpty()) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Datos inválidos',
+                    errors: errors.array()
+                });
+            }
+
+            const { comentario_id } = req.params;
+            const { contenido } = req.body;
+            const usuario_id = req.user.id;
+
+            console.log('💬 Creando respuesta:', {
+                comentario_id,
+                usuario_id,
+                contenido: contenido?.substring(0, 50)
+            });
+
+            // Verificar que el comentario padre existe
+            const comentarioPadre = await Comment.findById(comentario_id);
+            if (!comentarioPadre) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Comentario no encontrado'
+                });
+            }
+
+            const nuevaRespuesta = await Comment.createReply({
+                comentario_id: parseInt(comentario_id),
+                usuario_id,
+                contenido
+            });
+
+            res.status(201).json({
+                success: true,
+                message: 'Respuesta creada exitosamente',
+                data: nuevaRespuesta
+            });
+
+        } catch (error) {
+            console.error('Error al crear respuesta:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error interno del servidor'
+            });
+        }
+    }
+
+    /**
+     * 🆕 OBTENER RESPUESTAS DE UN COMENTARIO
+     */
+    async getReplies(req, res) {
+        try {
+            const { comentario_id } = req.params;
+            const { page = 1, limit = 10 } = req.query;
+            
+            const offset = (page - 1) * limit;
+            const respuestas = await Comment.getReplies(comentario_id, parseInt(limit), offset);
+
+            res.json({
+                success: true,
+                data: {
+                    respuestas,
+                    pagination: {
+                        page: parseInt(page),
+                        limit: parseInt(limit),
+                        total: respuestas.length
+                    }
+                }
+            });
+
+        } catch (error) {
+            console.error('Error al obtener respuestas:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error interno del servidor'
+            });
+        }
+    }
+
+    /**
+     * 🆕 ELIMINAR RESPUESTA
+     */
+    async deleteReply(req, res) {
+        try {
+            if (!req.user || !req.user.id) {
+                return res.status(401).json({
+                    success: false,
+                    message: 'Usuario no autenticado'
+                });
+            }
+
+            const { reply_id } = req.params;
+            const usuario_id = req.user.id;
+
+            const respuestaEliminada = await Comment.deleteReply(reply_id, usuario_id);
+
+            if (!respuestaEliminada) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Respuesta no encontrada o no tienes permisos para eliminarla'
+                });
+            }
+
+            res.json({
+                success: true,
+                message: 'Respuesta eliminada exitosamente'
+            });
+
+        } catch (error) {
+            console.error('Error al eliminar respuesta:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error interno del servidor'
+            });
+        }
+    }
+
+    // ==================== MÉTODOS EXISTENTES (sin cambios) ====================
+
     async getByMovie(req, res) {
         try {
             const { pelicula_id } = req.params;
@@ -101,7 +227,6 @@ class CommentController {
             const offset = (page - 1) * limit;
             const comentarios = await Comment.getByMovie(pelicula_id, parseInt(limit), offset);
 
-            // 🔥 USAR MÉTODO SIMPLE SOLAMENTE
             let stats;
             try {
                 stats = await Comment.getSimpleMovieStats(pelicula_id);
@@ -142,26 +267,22 @@ class CommentController {
         }
     }
 
-    /**
-     * 🆕 OBTENER COMENTARIOS DE PELÍCULA CON REACCIONES
-     */
     async getByMovieWithReactions(req, res) {
         try {
             const { pelicula_id } = req.params;
             const { page = 1, limit = 20 } = req.query;
-            const usuario_id = req.user?.id; // Usuario opcional 
+            const usuario_id = req.user?.id;
             
             const offset = (page - 1) * limit;
             
-            // Usar método con reacciones
-            const comentarios = await Comment.getByMovieWithReactions(
+            // 🔥 ACTUALIZADO: Ahora incluye conteo de respuestas
+            const comentarios = await Comment.getByMovieWithReactionsAndReplies(
                 pelicula_id, 
                 usuario_id, 
                 parseInt(limit), 
                 offset
             );
 
-            // Obtener estadísticas
             let stats;
             try {
                 stats = await Comment.getSimpleMovieStats(pelicula_id);
@@ -192,9 +313,6 @@ class CommentController {
         }
     }
 
-    /**
-     * 🆕 OBTENER MIS COMENTARIOS CON REACCIONES
-     */
     async getMyCommentsWithReactions(req, res) {
         try {
             if (!req.user || !req.user.id) {
@@ -231,13 +349,10 @@ class CommentController {
         }
     }
 
-    /**
-     * 🆕 OBTENER SUGERENCIAS CON REACCIONES
-     */
     async getSystemFeedbackWithReactions(req, res) {
         try {
             const { page = 1, limit = 50 } = req.query;
-            const usuario_id = req.user?.id; // Usuario opcional
+            const usuario_id = req.user?.id;
             const offset = (page - 1) * limit;
             
             const sugerencias = await Comment.getSystemFeedbackWithReactions(
@@ -267,8 +382,6 @@ class CommentController {
         }
     }
 
-    // ==================== RESTO DE MÉTODOS ====================
-    
     async getById(req, res) {
         try {
             const { id } = req.params;
@@ -444,12 +557,8 @@ class CommentController {
         }
     }
 
-    /**
-     * 🆕 AGREGAR REACCIÓN A COMENTARIO
-     */
     async addReaction(req, res) {
         try {
-            // Verificar autenticación
             if (!req.user || !req.user.id) {
                 return res.status(401).json({
                     success: false,
@@ -461,7 +570,6 @@ class CommentController {
             const { tipo } = req.body;
             const usuario_id = req.user.id;
 
-            // Validar tipo de reacción
             if (!tipo || !['like', 'dislike'].includes(tipo)) {
                 return res.status(400).json({
                     success: false,
@@ -469,7 +577,6 @@ class CommentController {
                 });
             }
 
-            // Verificar que el comentario existe
             const comentario = await Comment.findById(comentario_id);
             if (!comentario) {
                 return res.status(404).json({
@@ -478,10 +585,7 @@ class CommentController {
                 });
             }
 
-            // Agregar/actualizar reacción
             const reactionResult = await Comment.addReaction(comentario_id, usuario_id, tipo);
-            
-            // Obtener estadísticas actualizadas
             const stats = await Comment.getReactionStats(comentario_id);
 
             res.json({
@@ -503,13 +607,10 @@ class CommentController {
         }
     }
 
-    /**
-     * 🆕 OBTENER ESTADÍSTICAS DE REACCIONES
-     */
     async getReactionStats(req, res) {
         try {
             const { id: comentario_id } = req.params;
-            const usuario_id = req.user?.id; // Opcional
+            const usuario_id = req.user?.id;
 
             const stats = await Comment.getReactionStats(comentario_id); 
             let userReaction = null;
@@ -549,7 +650,6 @@ class CommentController {
             const offset = (page - 1) * limit;
             const comentarios = await Comment.getAllForAdmin(filters, parseInt(limit), offset);
 
-            // Usar método simple para stats
             let stats;
             try {
                 stats = await Comment.getStats();
@@ -649,10 +749,9 @@ class CommentController {
     }
 }
 
-// 🔥 SOLUCIÓN: Crear instancia y hacer bind de los métodos
+// Crear instancia y exportar métodos
 const commentController = new CommentController();
 
-// 🔥 CRITICAL: Bind de todos los métodos para preservar el contexto 'this'
 module.exports = {
     // Métodos básicos
     create: commentController.create.bind(commentController),
@@ -663,12 +762,17 @@ module.exports = {
     update: commentController.update.bind(commentController),
     delete: commentController.delete.bind(commentController),
     
-    // 🆕 Métodos con reacciones
+    // Métodos con reacciones
     getByMovieWithReactions: commentController.getByMovieWithReactions.bind(commentController),
     getMyCommentsWithReactions: commentController.getMyCommentsWithReactions.bind(commentController),
     getSystemFeedbackWithReactions: commentController.getSystemFeedbackWithReactions.bind(commentController),
     addReaction: commentController.addReaction.bind(commentController),
     getReactionStats: commentController.getReactionStats.bind(commentController),
+    
+    // 🆕 Métodos de respuestas
+    createReply: commentController.createReply.bind(commentController),
+    getReplies: commentController.getReplies.bind(commentController),
+    deleteReply: commentController.deleteReply.bind(commentController),
     
     // Métodos admin
     getAllForAdmin: commentController.getAllForAdmin.bind(commentController),

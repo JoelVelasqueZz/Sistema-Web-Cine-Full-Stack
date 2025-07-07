@@ -195,7 +195,7 @@
             </div>
           </div>
 
-          <!-- 🆕 NUEVA SECCIÓN: REACCIONES -->
+          <!-- 🆕 SECCIÓN ACTUALIZADA: REACCIONES Y RESPUESTAS -->
           <div class="comment-reactions mt-3">
             <div class="reaction-buttons d-flex align-items-center gap-2">
               
@@ -224,18 +224,32 @@
               <!-- Separador -->
               <span class="text-muted mx-2">•</span>
 
-              <!-- 🔮 FUTURO: Botón Responder (placeholder) -->
+              <!-- 🆕 BOTÓN RESPONDER (FUNCIONAL) -->
               <button class="btn btn-sm btn-outline-primary"
-                      disabled
-                      title="Próximamente: Responder a comentarios">
+                      (click)="toggleReplyForm(comentario.id)"
+                      [disabled]="!isAuthenticated()"
+                      title="{{ isAuthenticated() ? 'Responder comentario' : 'Inicia sesión para responder' }}">
                 <i class="fas fa-reply me-1"></i>
                 Responder
+              </button>
+
+              <!-- 🆕 BOTÓN VER RESPUESTAS (SI HAY) -->
+              <button *ngIf="(comentario.total_replies || 0) > 0"
+                      class="btn btn-sm btn-outline-secondary"
+                      (click)="toggleReplies(comentario.id)"
+                      [disabled]="loadingReplies[comentario.id]">
+                <span *ngIf="loadingReplies[comentario.id]" class="spinner-border spinner-border-sm me-1"></span>
+                <i *ngIf="!loadingReplies[comentario.id]" 
+                   class="fas me-1"
+                   [class.fa-chevron-down]="!repliesVisible[comentario.id]"
+                   [class.fa-chevron-up]="repliesVisible[comentario.id]"></i>
+                {{ repliesVisible[comentario.id] ? 'Ocultar' : 'Ver' }} respuestas ({{ comentario.total_replies }})
               </button>
 
               <!-- Información para usuarios no logueados -->
               <small class="text-muted ms-auto" *ngIf="!isAuthenticated()">
                 <i class="fas fa-info-circle me-1"></i>
-                <a href="/login" class="text-decoration-none">Inicia sesión</a> para reaccionar
+                <a href="/login" class="text-decoration-none">Inicia sesión</a> para reaccionar y responder
               </small>
             </div>
 
@@ -256,6 +270,110 @@
                   {{ comentario.total_dislikes }} negativa{{ comentario.total_dislikes !== 1 ? 's' : '' }}
                 </span>
               </small>
+            </div>
+          </div>
+
+          <!-- 🆕 FORMULARIO DE RESPUESTA -->
+          <div *ngIf="showReplyForm[comentario.id]" class="reply-form mt-3 p-3 bg-light rounded">
+            <h6 class="mb-2">
+              <i class="fas fa-reply me-2"></i>
+              Responder a {{ comentario.usuario_nombre }}
+            </h6>
+            
+            <form (ngSubmit)="createReply(comentario.id)" #replyFormRef="ngForm">
+              <div class="mb-3">
+                <textarea class="form-control" 
+                          [(ngModel)]="replyForm[comentario.id].contenido"
+                          [name]="'replyContent' + comentario.id"
+                          rows="3"
+                          placeholder="Escribe tu respuesta..."
+                          maxlength="1000"
+                          required></textarea>
+                <div class="form-text">{{ (replyForm[comentario.id].contenido || '').length }}/1000 caracteres</div>
+              </div>
+
+              <div class="d-flex gap-2">
+                <button type="submit" 
+                        class="btn btn-primary btn-sm"
+                        [disabled]="submittingReply[comentario.id] || !replyFormRef.valid || !(replyForm[comentario.id].contenido.trim())">
+                  <span *ngIf="submittingReply[comentario.id]" class="spinner-border spinner-border-sm me-2"></span>
+                  <i *ngIf="!submittingReply[comentario.id]" class="fas fa-paper-plane me-2"></i>
+                  {{ submittingReply[comentario.id] ? 'Enviando...' : 'Enviar respuesta' }}
+                </button>
+                <button type="button" 
+                        class="btn btn-secondary btn-sm"
+                        (click)="toggleReplyForm(comentario.id)"
+                        [disabled]="submittingReply[comentario.id]">
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- 🆕 LISTA DE RESPUESTAS -->
+          <div *ngIf="repliesVisible[comentario.id]" class="replies-section mt-3">
+            
+            <!-- Loading respuestas -->
+            <div *ngIf="loadingReplies[comentario.id]" class="text-center py-2">
+              <div class="spinner-border spinner-border-sm" role="status">
+                <span class="visually-hidden">Cargando respuestas...</span>
+              </div>
+            </div>
+
+            <!-- Lista de respuestas -->
+            <div *ngIf="!loadingReplies[comentario.id] && repliesData[comentario.id]" 
+                 class="replies-list border-start border-2 border-primary ps-3 ms-3">
+              
+              <!-- Sin respuestas -->
+              <div *ngIf="repliesData[comentario.id].length === 0" class="text-muted py-2">
+                <i class="fas fa-comment-slash me-2"></i>
+                No hay respuestas aún
+              </div>
+
+              <!-- Respuestas -->
+              <div *ngFor="let respuesta of repliesData[comentario.id]; trackBy: trackByReplyId" 
+                   class="reply-item mb-3">
+                <div class="card border-0 bg-light">
+                  <div class="card-body py-2 px-3">
+                    
+                    <!-- Header de la respuesta -->
+                    <div class="reply-header d-flex justify-content-between align-items-start mb-2">
+                      <div class="user-info d-flex align-items-center">
+                        <img [src]="respuesta.usuario_avatar || 'assets/images/default-avatar.png'" 
+                             [alt]="respuesta.usuario_nombre"
+                             class="rounded-circle me-2"
+                             width="30" height="30">
+                        <div>
+                          <h6 class="mb-0 fs-6">{{ respuesta.usuario_nombre }}</h6>
+                          <small class="text-muted">{{ formatDate(respuesta.fecha_creacion) }}</small>
+                        </div>
+                      </div>
+                      
+                      <!-- Acciones de respuesta -->
+                      <div *ngIf="canEditReply(respuesta)" class="reply-actions">
+                        <button class="btn btn-sm btn-outline-danger"
+                                (click)="deleteReply(respuesta.id, comentario.id)"
+                                title="Eliminar respuesta">
+                          <i class="fas fa-trash"></i>
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- Contenido de la respuesta -->
+                    <div class="reply-content">
+                      <p class="mb-0">{{ respuesta.contenido }}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Botón cargar más respuestas (futuro) -->
+              <div *ngIf="repliesData[comentario.id].length >= 10" class="text-center mt-2">
+                <button class="btn btn-sm btn-outline-primary" disabled>
+                  <i class="fas fa-plus me-1"></i>
+                  Cargar más respuestas (Próximamente)
+                </button>
+              </div>
             </div>
           </div>
 
