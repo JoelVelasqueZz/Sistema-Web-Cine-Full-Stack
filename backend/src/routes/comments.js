@@ -42,10 +42,20 @@ const validateUpdate = [
         .trim()
         .isLength({ min: 10, max: 2000 })
         .withMessage('El contenido debe tener entre 10 y 2000 caracteres'),
+    // 🔥 CORREGIDO: puntuacion es opcional y solo se valida si está presente
     body('puntuacion')
-        .optional()
-        .isInt({ min: 1, max: 5 })
-        .withMessage('La puntuación debe ser entre 1 y 5')
+        .optional({ nullable: true, checkFalsy: false })
+        .custom((value, { req }) => {
+            // Si no hay puntuación, está bien (para sugerencias)
+            if (value === null || value === undefined || value === '') {
+                return true;
+            }
+            // Si hay puntuación, debe ser válida
+            if (!Number.isInteger(Number(value)) || Number(value) < 1 || Number(value) > 5) {
+                throw new Error('La puntuación debe ser entre 1 y 5');
+            }
+            return true;
+        })
 ];
 
 const validateId = [

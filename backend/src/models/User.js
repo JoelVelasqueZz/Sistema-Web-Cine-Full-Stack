@@ -222,7 +222,7 @@ class User {
   static async search(searchTerm) {
     const sql = `
       SELECT id, nombre, email, role, avatar, is_active, fecha_registro, oauth_provider
-      FROM usuarios 
+      FROM usuarios   
       WHERE is_active = true 
       AND (nombre ILIKE $1 OR email ILIKE $1)
       ORDER BY nombre

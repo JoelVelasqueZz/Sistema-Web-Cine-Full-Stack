@@ -473,54 +473,101 @@ class CommentController {
     }
 
     async update(req, res) {
-        try {
-            if (!req.user || !req.user.id) {
-                return res.status(401).json({
-                    success: false,
-                    message: 'Usuario no autenticado'
-                });
-            }
-
-            const errors = validationResult(req);
-            if (!errors.isEmpty()) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Datos inválidos',
-                    errors: errors.array()
-                });
-            }
-
-            const { id } = req.params;
-            const { titulo, contenido, puntuacion } = req.body;
-            const usuario_id = req.user.id;
-
-            const comentarioActualizado = await Comment.update(id, usuario_id, {
-                titulo,
-                contenido,
-                puntuacion
-            });
-
-            if (!comentarioActualizado) {
-                return res.status(404).json({
-                    success: false,
-                    message: 'Comentario no encontrado o no tienes permisos para editarlo'
-                });
-            }
-
-            res.json({
-                success: true,
-                message: 'Comentario actualizado exitosamente',
-                data: comentarioActualizado
-            });
-
-        } catch (error) {
-            console.error('Error al actualizar comentario:', error);
-            res.status(500).json({
+    try {
+        if (!req.user || !req.user.id) {
+            return res.status(401).json({
                 success: false,
-                message: 'Error interno del servidor'
+                message: 'Usuario no autenticado'
             });
         }
+
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            console.log('❌ Errores de validación:', errors.array());
+            return res.status(400).json({
+                success: false,
+                message: 'Datos inválidos',
+                errors: errors.array()
+            });
+        }
+
+        const { id } = req.params;
+        const { titulo, contenido, puntuacion } = req.body;
+        const usuario_id = req.user.id;
+
+        console.log('📝 Actualizando comentario:', {
+            id,
+            usuario_id,
+            titulo: titulo?.substring(0, 30),
+            contenido: contenido?.substring(0, 50),
+            puntuacion,
+            puntuacionType: typeof puntuacion
+        });
+
+        // 🔥 OBTENER EL COMENTARIO EXISTENTE PARA VERIFICAR TIPO
+        const comentarioExistente = await Comment.findById(id);
+        if (!comentarioExistente) {
+            return res.status(404).json({
+                success: false,
+                message: 'Comentario no encontrado'
+            });
+        }
+
+        // 🔥 VERIFICAR PERMISOS DE EDICIÓN
+        if (comentarioExistente.usuario_id !== usuario_id) {
+            return res.status(403).json({
+                success: false,
+                message: 'No tienes permisos para editar este comentario'
+            });
+        }
+
+        // 🔥 PREPARAR DATOS DE ACTUALIZACIÓN SEGÚN EL TIPO
+        const updateData = {
+            titulo,
+            contenido
+        };
+
+        // 🔥 SOLO AGREGAR PUNTUACIÓN SI ES PELÍCULA
+        if (comentarioExistente.tipo === 'pelicula') {
+            // Para películas, la puntuación es requerida
+            if (!puntuacion || puntuacion < 1 || puntuacion > 5) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Las reseñas de películas requieren puntuación entre 1 y 5 estrellas'
+                });
+            }
+            updateData.puntuacion = puntuacion;
+        } else {
+            // Para sugerencias/sistema, puntuación siempre es null
+            updateData.puntuacion = null;
+        }
+
+        console.log('🔄 Datos finales para actualización:', updateData);
+
+        const comentarioActualizado = await Comment.update(id, usuario_id, updateData);
+
+        if (!comentarioActualizado) {
+            return res.status(404).json({
+                success: false,
+                message: 'Error al actualizar el comentario'
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Comentario actualizado exitosamente',
+            data: comentarioActualizado
+        });
+
+    } catch (error) {
+        console.error('❌ Error al actualizar comentario:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
+}
 
     async delete(req, res) {
         try {
