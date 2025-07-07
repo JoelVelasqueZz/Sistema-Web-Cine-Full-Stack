@@ -70,43 +70,47 @@ export class CommentsComponent implements OnInit {
   // ==================== CARGAR DATOS ====================
 
   loadComments(): void {
-    if (this.tipo === 'sugerencia' || this.tipo === 'sistema') {
-      this.loadSystemFeedbackWithReactions();
-      return;
-    }
-    
-    if (!this.peliculaId) return;
-    
-    this.loading = true;
-    this.commentService.getByMovieWithReactions(this.peliculaId!, this.currentPage, this.limit)
-      .subscribe({
-        next: (response: any) => {
-          if (response.success && response.data) {
-            this.comentarios = response.data.comentarios || [];
-            this.estadisticas = response.data.estadisticas;
-            this.totalPages = response.data.pagination?.totalPages || 1;
-            
-            console.log('📊 Comentarios con reacciones cargados:', this.comentarios.length);
-            
-            // 🔥 DEBUG: Verificar datos de reacciones
-            this.comentarios.forEach(comment => {
-              console.log(`Comentario ${comment.id}:`, {
-                likes: comment.total_likes,
-                dislikes: comment.total_dislikes,
-                userReaction: comment.user_reaction,
-                totalSum: (comment.total_likes || 0) + (comment.total_dislikes || 0)
-              });
-            });
-          }
-          this.loading = false;
-        },
-        error: (error: any) => {
-          console.error('Error cargando comentarios:', error);
-          this.loading = false;
-        }
-      });
+  if (this.tipo === 'sugerencia' || this.tipo === 'sistema') {
+    this.loadSystemFeedbackWithReactions();
+    return;
   }
-
+  
+  if (!this.peliculaId) return;
+  
+  this.loading = true;
+  this.commentService.getByMovieWithReactions(this.peliculaId!, this.currentPage, this.limit)
+    .subscribe({
+      next: (response: any) => {
+        if (response.success && response.data) {
+          this.comentarios = response.data.comentarios || [];
+          this.estadisticas = response.data.estadisticas;
+          this.totalPages = response.data.pagination?.totalPages || 1;
+          
+          // 🔥 PROCESAR COMENTARIOS PARA ASEGURAR TIPOS CORRECTOS
+          this.comentarios = this.comentarios.map(comment => ({
+            ...comment,
+            total_likes: parseInt(comment.total_likes as any) || 0,
+            total_dislikes: parseInt(comment.total_dislikes as any) || 0,
+            total_replies: parseInt(comment.total_replies as any) || 0,
+            user_reaction: comment.user_reaction || null
+          }));
+          
+          console.log('📊 Comentarios procesados:', this.comentarios.length);
+          
+          // 🔥 DEBUG MEJORADO
+          this.comentarios.forEach(comment => {
+            const total = (comment.total_likes || 0) + (comment.total_dislikes || 0);
+            console.log(`✅ Comentario ${comment.id}: ${comment.total_likes} likes + ${comment.total_dislikes} dislikes = ${total} total, user: ${comment.user_reaction}`);
+          });
+        }
+        this.loading = false;
+      },
+      error: (error: any) => {
+        console.error('❌ Error cargando comentarios:', error);
+        this.loading = false;
+      }
+    });
+}
   loadSystemFeedbackWithReactions(): void {
     this.loading = true;
     this.commentService.getSystemFeedbackWithReactions(this.currentPage, this.limit)
@@ -130,95 +134,85 @@ export class CommentsComponent implements OnInit {
   // ==================== 🔥 MÉTODOS DE REACCIONES CORREGIDOS ====================
 
   toggleReaction(commentId: number, tipo: 'like' | 'dislike'): void {
-    if (!this.isAuthenticated()) {
-      this.toastService.showWarning('Debes iniciar sesión para reaccionar');
-      return;
-    }
-
-    // 🔥 PREVENIR MÚLTIPLES CLICS
-    if (this.reactionStates[commentId]?.isLiking || this.reactionStates[commentId]?.isDisliking) {
-      console.log('⚠️ Reacción en progreso, ignorando clic');
-      return;
-    }
-
-    // 🔥 INICIALIZAR ESTADO DE REACCIÓN
-    if (!this.reactionStates[commentId]) {
-      this.reactionStates[commentId] = { isLiking: false, isDisliking: false };
-    }
-
-    // 🔥 MARCAR COMO EN PROGRESO
-    if (tipo === 'like') {
-      this.reactionStates[commentId].isLiking = true;
-    } else {
-      this.reactionStates[commentId].isDisliking = true;
-    }
-
-    const comment = this.comentarios.find(c => c.id === commentId);
-    if (!comment) {
-      this.resetReactionState(commentId, tipo);
-      return;
-    }
-
-    // 🔥 GUARDAR ESTADO ANTERIOR PARA ROLLBACK - TIPADO CORREGIDO
-    const previousReaction: 'like' | 'dislike' | null = comment.user_reaction || null;
-    const previousLikes = comment.total_likes || 0;
-    const previousDislikes = comment.total_dislikes || 0;
-
-    console.log('🔄 Estado antes de reacción:', {
-      commentId,
-      tipo,
-      previousReaction,
-      previousLikes,
-      previousDislikes
-    });
-
-    // 🔥 ACTUALIZACIÓN OPTIMISTA CORREGIDA
-    this.updateCommentReactionOptimistic(comment, tipo, previousReaction);
-
-    // 🔥 ENVIAR AL SERVIDOR
-    this.commentService.addReaction(commentId, tipo)
-      .subscribe({
-        next: (response) => {
-          if (response.success && response.data) {
-            // 🔥 ACTUALIZAR CON DATOS REALES DEL SERVIDOR
-            comment.total_likes = response.data.stats.totalLikes;
-            comment.total_dislikes = response.data.stats.totalDislikes;
-            
-            // 🔥 DETERMINAR NUEVA REACCIÓN BASADA EN LA ACCIÓN
-            if (response.data.action === 'removed') {
-              comment.user_reaction = null;
-              this.toastService.showInfo('Reacción eliminada');
-            } else if (response.data.action === 'created') {
-              comment.user_reaction = tipo;
-              this.toastService.showSuccess(`¡${tipo === 'like' ? 'Me gusta' : 'No me gusta'}!`);
-            } else if (response.data.action === 'updated') {
-              comment.user_reaction = tipo;
-              this.toastService.showInfo(`Cambiado a ${tipo === 'like' ? 'me gusta' : 'no me gusta'}`);
-            }
-
-            console.log('✅ Reacción actualizada:', {
-              commentId,
-              action: response.data.action,
-              newLikes: comment.total_likes,
-              newDislikes: comment.total_dislikes,
-              newReaction: comment.user_reaction,
-              totalSum: (comment.total_likes || 0) + (comment.total_dislikes || 0)
-            });
-          }
-          this.resetReactionState(commentId, tipo);
-        },
-        error: (error) => {
-          // 🔥 ROLLBACK EN CASO DE ERROR
-          comment.user_reaction = previousReaction;
-          comment.total_likes = previousLikes;
-          comment.total_dislikes = previousDislikes;
-          
-          console.error('❌ Error al reaccionar:', error);
-          this.toastService.showError('Error al procesar reacción');
-          this.resetReactionState(commentId, tipo);
-        }
-      });
+  if (!this.isAuthenticated()) {
+    this.toastService.showWarning('Debes iniciar sesión para reaccionar');
+    return;
   }
+
+  // 🔥 PREVENIR MÚLTIPLES CLICS
+  if (this.reactionStates[commentId]?.isLiking || this.reactionStates[commentId]?.isDisliking) {
+    console.log('⚠️ Reacción en progreso, ignorando clic');
+    return;
+  }
+
+  const comment = this.comentarios.find(c => c.id === commentId);
+  if (!comment) return;
+
+  // 🔥 INICIALIZAR ESTADO DE REACCIÓN
+  if (!this.reactionStates[commentId]) {
+    this.reactionStates[commentId] = { isLiking: false, isDisliking: false };
+  }
+
+  // 🔥 MARCAR COMO EN PROGRESO
+  if (tipo === 'like') {
+    this.reactionStates[commentId].isLiking = true;
+  } else {
+    this.reactionStates[commentId].isDisliking = true;
+  }
+
+  // 🔥 GUARDAR ESTADO ANTERIOR
+  const previousReaction: 'like' | 'dislike' | null = comment.user_reaction || null;
+  const previousLikes = parseInt(comment.total_likes as any) || 0;
+  const previousDislikes = parseInt(comment.total_dislikes as any) || 0;
+
+  console.log('🔄 Enviando reacción:', {
+    commentId,
+    tipo,
+    previousReaction,
+    previousLikes,
+    previousDislikes
+  });
+
+  // 🔥 ENVIAR AL SERVIDOR (SIN ACTUALIZACIÓN OPTIMISTA)
+  this.commentService.addReaction(commentId, tipo)
+    .subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          // 🔥 ACTUALIZAR CON DATOS REALES DEL SERVIDOR
+          comment.total_likes = parseInt(response.data.stats.totalLikes) || 0;
+          comment.total_dislikes = parseInt(response.data.stats.totalDislikes) || 0;
+          
+          // 🔥 DETERMINAR NUEVA REACCIÓN
+          if (response.data.action === 'removed') {
+            comment.user_reaction = null;
+            this.toastService.showInfo('Reacción eliminada');
+          } else if (response.data.action === 'created') {
+            comment.user_reaction = tipo;
+            this.toastService.showSuccess(`¡${tipo === 'like' ? 'Me gusta' : 'No me gusta'}!`);
+          } else if (response.data.action === 'updated') {
+            comment.user_reaction = tipo;
+            this.toastService.showInfo(`Cambiado a ${tipo === 'like' ? 'me gusta' : 'no me gusta'}`);
+          }
+
+          const newTotal = (comment.total_likes || 0) + (comment.total_dislikes || 0);
+          console.log('✅ Reacción actualizada:', {
+            commentId,
+            action: response.data.action,
+            newLikes: comment.total_likes,
+            newDislikes: comment.total_dislikes,
+            newTotal,
+            newReaction: comment.user_reaction
+          });
+        }
+        this.resetReactionState(commentId, tipo);
+      },
+      error: (error) => {
+        console.error('❌ Error al reaccionar:', error);
+        this.toastService.showError('Error al procesar reacción');
+        this.resetReactionState(commentId, tipo);
+      }
+    });
+}
 
   // 🔥 MÉTODO PARA ACTUALIZACIÓN OPTIMISTA CORREGIDA
   private updateCommentReactionOptimistic(comment: Comment, tipo: 'like' | 'dislike', previousReaction: 'like' | 'dislike' | null): void {
@@ -255,39 +249,39 @@ export class CommentsComponent implements OnInit {
 
   // 🔥 MÉTODO PARA RESETEAR ESTADO DE REACCIÓN
   private resetReactionState(commentId: number, tipo: 'like' | 'dislike'): void {
-    if (this.reactionStates[commentId]) {
-      if (tipo === 'like') {
-        this.reactionStates[commentId].isLiking = false;
-      } else {
-        this.reactionStates[commentId].isDisliking = false;
-      }
+  if (this.reactionStates[commentId]) {
+    if (tipo === 'like') {
+      this.reactionStates[commentId].isLiking = false;
+    } else {
+      this.reactionStates[commentId].isDisliking = false;
     }
   }
+}
 
   // 🔥 MÉTODOS AUXILIARES PARA REACCIONES CORREGIDOS
   getReactionButtonClass(comment: Comment, tipo: 'like' | 'dislike'): string {
-    const isActive = comment.user_reaction === tipo;
-    const isProcessing = this.reactionStates[comment.id]?.isLiking || this.reactionStates[comment.id]?.isDisliking;
-    
-    if (isProcessing) {
-      return tipo === 'like' ? 'btn-outline-success' : 'btn-outline-danger';
-    }
-    
-    if (tipo === 'like') {
-      return isActive ? 'btn-success' : 'btn-outline-success';
-    } else {
-      return isActive ? 'btn-danger' : 'btn-outline-danger';
-    }
+  const isActive = comment.user_reaction === tipo;
+  const isProcessing = this.isReactionProcessing(comment.id);
+  
+  if (isProcessing) {
+    return tipo === 'like' ? 'btn-outline-success' : 'btn-outline-danger';
   }
-
+  
+  if (tipo === 'like') {
+    return isActive ? 'btn-success' : 'btn-outline-success';
+  } else {
+    return isActive ? 'btn-danger' : 'btn-outline-danger';
+  }
+}
   isReactionActive(comment: Comment, tipo: 'like' | 'dislike'): boolean {
-    return comment.user_reaction === tipo && !this.isReactionProcessing(comment.id);
-  }
+  return comment.user_reaction === tipo && !this.isReactionProcessing(comment.id);
+}
 
   // 🔥 MÉTODO PARA VERIFICAR SI UNA REACCIÓN ESTÁ EN PROGRESO
   isReactionProcessing(commentId: number): boolean {
-    return this.reactionStates[commentId]?.isLiking || this.reactionStates[commentId]?.isDisliking || false;
-  }
+  return this.reactionStates[commentId]?.isLiking || this.reactionStates[commentId]?.isDisliking || false;
+}
+
 
   // ==================== 🆕 MÉTODOS DE RESPUESTAS ====================
 

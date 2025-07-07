@@ -177,6 +177,7 @@ class Comment {
      * 🆕 MÉTODO ACTUALIZADO: Obtener comentarios de película con reacciones Y respuestas
      */
     async getByMovieWithReactionsAndReplies(pelicula_id, usuario_id = null, limit = 20, offset = 0) {
+    // 🔥 CONSULTA SQL CORREGIDA - CONTEO EXACTO
     const query = `
         SELECT 
             c.*, 
@@ -184,16 +185,16 @@ class Comment {
             u.avatar as usuario_avatar,
             p.titulo as pelicula_titulo, 
             p.poster as pelicula_poster,
-            -- 🔥 SUBCONSULTAS CORREGIDAS PARA CONTEO EXACTO
-            (SELECT COUNT(*) FROM comentarios_reacciones cr 
-             WHERE cr.comentario_id = c.id AND cr.tipo = 'like') as total_likes,
-            (SELECT COUNT(*) FROM comentarios_reacciones cr 
-             WHERE cr.comentario_id = c.id AND cr.tipo = 'dislike') as total_dislikes,
-            (SELECT COUNT(*) FROM ${this.repliesTableName} r 
-             WHERE r.comentario_id = c.id) as total_replies,
+            -- 🔥 SUBCONSULTAS CORREGIDAS - CAST A INTEGER
+            COALESCE((SELECT COUNT(*)::INTEGER FROM comentarios_reacciones cr 
+                     WHERE cr.comentario_id = c.id AND cr.tipo = 'like'), 0) as total_likes,
+            COALESCE((SELECT COUNT(*)::INTEGER FROM comentarios_reacciones cr 
+                     WHERE cr.comentario_id = c.id AND cr.tipo = 'dislike'), 0) as total_dislikes,
+            COALESCE((SELECT COUNT(*)::INTEGER FROM ${this.repliesTableName} r 
+                     WHERE r.comentario_id = c.id), 0) as total_replies,
             ${usuario_id ? 
                 `(SELECT tipo FROM comentarios_reacciones cr 
-                  WHERE cr.comentario_id = c.id AND cr.usuario_id = $4) as user_reaction` : 
+                  WHERE cr.comentario_id = c.id AND cr.usuario_id = $4 LIMIT 1) as user_reaction` : 
                 'NULL as user_reaction'
             }
         FROM ${this.tableName} c
@@ -207,13 +208,25 @@ class Comment {
     const params = usuario_id ? [pelicula_id, limit, offset, usuario_id] : [pelicula_id, limit, offset];
     const result = await db.query(query, params);
     
-    // 🔥 DEBUG: Log para verificar resultados
-    console.log('🔍 Comentarios obtenidos:', result.rows.length);
-    result.rows.forEach(row => {
-        console.log(`Comentario ${row.id}: ${row.total_likes} likes, ${row.total_dislikes} dislikes, user_reaction: ${row.user_reaction}`);
+    // 🔥 PROCESAR RESULTADOS - ASEGURAR TIPOS CORRECTOS
+    const processedRows = result.rows.map(row => ({
+        ...row,
+        total_likes: parseInt(row.total_likes) || 0,
+        total_dislikes: parseInt(row.total_dislikes) || 0,
+        total_replies: parseInt(row.total_replies) || 0,
+        user_reaction: row.user_reaction || null
+    }));
+    
+    // 🔥 DEBUG MEJORADO
+    console.log('🔍 Query ejecutada para película:', pelicula_id);
+    console.log('📊 Comentarios procesados:', processedRows.length);
+    
+    processedRows.forEach(row => {
+        const totalReactions = row.total_likes + row.total_dislikes;
+        console.log(`Comentario ${row.id}: ${row.total_likes} likes + ${row.total_dislikes} dislikes = ${totalReactions} total, user: ${row.user_reaction}`);
     });
     
-    return result.rows;
+    return processedRows;
 }
 
     async getByMovieWithReactions(pelicula_id, usuario_id = null, limit = 20, offset = 0) {
@@ -299,29 +312,50 @@ class Comment {
     }
 
     async getSystemFeedbackWithReactions(usuario_id = null, limit = 50, offset = 0) {
-        const query = `
-            SELECT 
-                c.*, 
-                u.nombre as usuario_nombre,
-                u.avatar as usuario_avatar,
-                (SELECT COUNT(*) FROM comentarios_reacciones cr WHERE cr.comentario_id = c.id AND cr.tipo = 'like') as total_likes,
-                (SELECT COUNT(*) FROM comentarios_reacciones cr WHERE cr.comentario_id = c.id AND cr.tipo = 'dislike') as total_dislikes,
-                (SELECT COUNT(*) FROM ${this.repliesTableName} r WHERE r.comentario_id = c.id) as total_replies,
-                ${usuario_id ? 
-                    `(SELECT tipo FROM comentarios_reacciones cr WHERE cr.comentario_id = c.id AND cr.usuario_id = $3) as user_reaction` : 
-                    'NULL as user_reaction'
-                }
-            FROM ${this.tableName} c
-            LEFT JOIN usuarios u ON c.usuario_id = u.id
-            WHERE c.tipo IN ('sistema', 'sugerencia') AND c.estado = 'activo'
-            ORDER BY c.fecha_creacion DESC
-            LIMIT $1 OFFSET $2
-        `;
-        
-        const params = usuario_id ? [limit, offset, usuario_id] : [limit, offset];
-        const result = await db.query(query, params);
-        return result.rows;
-    }
+    const query = `
+        SELECT 
+            c.*, 
+            u.nombre as usuario_nombre,
+            u.avatar as usuario_avatar,
+            -- 🔥 CONTEO EXACTO CON CAST A INTEGER
+            COALESCE((SELECT COUNT(*)::INTEGER FROM comentarios_reacciones cr 
+                     WHERE cr.comentario_id = c.id AND cr.tipo = 'like'), 0) as total_likes,
+            COALESCE((SELECT COUNT(*)::INTEGER FROM comentarios_reacciones cr 
+                     WHERE cr.comentario_id = c.id AND cr.tipo = 'dislike'), 0) as total_dislikes,
+            COALESCE((SELECT COUNT(*)::INTEGER FROM ${this.repliesTableName} r 
+                     WHERE r.comentario_id = c.id), 0) as total_replies,
+            ${usuario_id ? 
+                `(SELECT tipo FROM comentarios_reacciones cr 
+                  WHERE cr.comentario_id = c.id AND cr.usuario_id = $3 LIMIT 1) as user_reaction` : 
+                'NULL as user_reaction'
+            }
+        FROM ${this.tableName} c
+        LEFT JOIN usuarios u ON c.usuario_id = u.id
+        WHERE c.tipo IN ('sistema', 'sugerencia') AND c.estado = 'activo'
+        ORDER BY c.fecha_creacion DESC
+        LIMIT $1 OFFSET $2
+    `;
+    
+    const params = usuario_id ? [limit, offset, usuario_id] : [limit, offset];
+    const result = await db.query(query, params);
+    
+    // 🔥 PROCESAR RESULTADOS
+    const processedRows = result.rows.map(row => ({
+        ...row,
+        total_likes: parseInt(row.total_likes) || 0,
+        total_dislikes: parseInt(row.total_dislikes) || 0,
+        total_replies: parseInt(row.total_replies) || 0,
+        user_reaction: row.user_reaction || null
+    }));
+    
+    console.log('🔍 Sugerencias procesadas:', processedRows.length);
+    processedRows.forEach(row => {
+        const totalReactions = row.total_likes + row.total_dislikes;
+        console.log(`Sugerencia ${row.id}: ${row.total_likes} + ${row.total_dislikes} = ${totalReactions} total`);
+    });
+    
+    return processedRows;
+}
 
     async hasUserCommented(usuario_id, pelicula_id) {
         const query = `
@@ -456,9 +490,9 @@ class Comment {
     async getReactionStats(comentario_id) {
     const query = `
         SELECT 
-            COUNT(CASE WHEN tipo = 'like' THEN 1 END) as totalLikes,
-            COUNT(CASE WHEN tipo = 'dislike' THEN 1 END) as totalDislikes,
-            COUNT(*) as totalReactions
+            COALESCE(COUNT(CASE WHEN tipo = 'like' THEN 1 END)::INTEGER, 0) as totalLikes,
+            COALESCE(COUNT(CASE WHEN tipo = 'dislike' THEN 1 END)::INTEGER, 0) as totalDislikes,
+            COALESCE(COUNT(*)::INTEGER, 0) as totalReactions
         FROM comentarios_reacciones 
         WHERE comentario_id = $1
     `;
@@ -472,10 +506,9 @@ class Comment {
         totalReactions: parseInt(stats.totalreactions) || 0
     };
     
-    console.log(`📊 Stats para comentario ${comentario_id}:`, finalStats);
+    console.log(`📊 Stats EXACTAS para comentario ${comentario_id}:`, finalStats);
     return finalStats;
 }
-
     async getUserReaction(comentario_id, usuario_id) {
         const query = `
             SELECT tipo FROM comentarios_reacciones 

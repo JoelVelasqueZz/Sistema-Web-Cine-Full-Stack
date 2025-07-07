@@ -763,7 +763,7 @@
   .comment-text {
     color: #cbd5e0 !important;
   }
-  
+   
   .comment-header h6 {
     color: #e2e8f0 !important;
   }
@@ -779,4 +779,33 @@
   .reaction-stats {
     color: #cbd5e0 !important;
   }
+}
+/* 🔥 FIX TEMPORAL URGENTE - FONDO CLARO FORZADO */
+.comment-item .card {
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%) !important;
+  color: #333333 !important;
+}
+
+.comment-title {
+  color: #1a1a1a !important;
+}
+
+.comment-text {
+  color: #333333 !important;
+}
+
+.comment-header h6 {
+  color: #1a1a1a !important;
+}
+
+.comment-header small {
+  color: #6c757d !important;
+}
+
+.reply-content p {
+  color: #333333 !important;
+}
+
+.reply-header h6 {
+  color: #1a1a1a !important;
 }
