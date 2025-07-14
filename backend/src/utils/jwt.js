@@ -29,7 +29,7 @@ class JWTUtils {
         issuer: 'parkyfilms-api',
         audience: 'parkyfilms-app'
       });
-    } catch (error) {
+    } catch (error) {   
       throw new Error('Token inválido o expirado');
     }
   }

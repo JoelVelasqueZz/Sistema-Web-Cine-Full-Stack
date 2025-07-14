@@ -1,9 +1,9 @@
-// frontend/src/app/app.module.ts - ACTUALIZADO CON COMENTARIOS
+// frontend/src/app/app.module.ts - ACTUALIZADO CON INTERCEPTOR
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
-import { HttpClientModule } from '@angular/common/http';
+import { HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http'; // ✅ AGREGADO HTTP_INTERCEPTORS
 
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
@@ -33,6 +33,9 @@ import { SystemService } from './services/system.service';
 
 // 🆕 NUEVO SERVICIO DE COMENTARIOS
 import { CommentService } from './services/comment.service';
+
+// ✅ IMPORTAR EL INTERCEPTOR
+import { AuthInterceptor } from './interceptors/auth.interceptor';
 
 // Componentes principales
 import { TicketPurchaseComponent } from './components/ticket-purchase/ticket-purchase.component';
@@ -195,7 +198,14 @@ import { SuggestionsComponent } from './components/suggestions/suggestions.compo
     SystemService,
     
     // 🆕 NUEVO SERVICIO DE COMENTARIOS
-    CommentService
+    CommentService,
+    
+    // ✅ AGREGAR EL INTERCEPTOR AQUÍ
+    {
+      provide: HTTP_INTERCEPTORS,
+      useClass: AuthInterceptor,
+      multi: true
+    }
   ],
   bootstrap: [AppComponent]
 })
