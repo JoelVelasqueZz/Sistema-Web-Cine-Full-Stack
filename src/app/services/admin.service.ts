@@ -1,3 +1,4 @@
+// admin.service.ts - CORREGIDO SIN LOGS EXCESIVOS
 import { Injectable } from '@angular/core';
 import { Observable, BehaviorSubject, of, forkJoin } from 'rxjs';
 import { map, catchError, tap } from 'rxjs/operators';
@@ -8,12 +9,10 @@ import { AuthService, Usuario } from './auth.service';
 import { BarService } from './bar.service';
 import { OrderService } from './order.service';
 import { environment } from '../../environments/environment';
-
-// 🆕 IMPORTACIONES PARA PDF
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-// ==================== INTERFACES ====================
+// Interfaces (mantener todas las existentes)
 export interface AdminStats {
   totalPeliculas: number;
   totalUsuarios: number;
@@ -24,7 +23,6 @@ export interface AdminStats {
   ventasRecientes: VentaReciente[];
   generosMasPopulares: GeneroStats[];
   actividadReciente: ActividadReciente[];
-  // Campos adicionales
   ratingPromedio?: number;
   totalGeneros?: number;
   ordenesCompletadas?: number;
@@ -134,7 +132,6 @@ export class AdminService {
   
   private readonly API_URL = environment.apiUrl;
   
-  // 🆕 SUBJECT PARA NOTIFICAR CAMBIOS
   private peliculasSubject = new BehaviorSubject<Pelicula[]>([]);
   public peliculas$ = this.peliculasSubject.asObservable();
   
@@ -145,6 +142,11 @@ export class AdminService {
   private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
   private updatingBarStats: boolean = false;
 
+  // 🔧 FIX: Flags para controlar logs
+  private debugMode: boolean = false;
+  private logCount: number = 0;
+  private maxLogs: number = 10;
+
   constructor(
     private http: HttpClient,
     private movieService: MovieService,
@@ -153,38 +155,59 @@ export class AdminService {
     private barService: BarService,
     private orderService: OrderService
   ) {
-    console.log('🔧 AdminService inicializado - Diagnosticando conexión...');
+    // 🔧 FIX: Solo un log inicial
+    console.log('🔧 AdminService inicializado');
     this.diagnosticarConexion();
   }
 
-  // ==================== DIAGNÓSTICO DE CONEXIÓN ====================
+  // ==================== MÉTODOS DE LOG CONTROLADOS ====================
+
+  private logDebug(message: string, data?: any): void {
+    if (this.debugMode && this.logCount < this.maxLogs) {
+      console.log(message, data || '');
+      this.logCount++;
+    }
+  }
+
+  private logInfo(message: string): void {
+    if (this.logCount < this.maxLogs) {
+      console.log(message);
+      this.logCount++;
+    }
+  }
+
+  enableDebugMode(): void {
+    this.debugMode = true;
+    this.logCount = 0;
+    console.log('🔧 AdminService: Modo debug activado');
+  }
+
+  disableDebugMode(): void {
+    this.debugMode = false;
+    console.log('🔧 AdminService: Modo debug desactivado');
+  }
+
+  // ==================== DIAGNÓSTICO DE CONEXIÓN (SIMPLIFICADO) ====================
   
-  /**
-   * 🔍 NUEVO: Diagnosticar problemas de conexión
-   */
   private diagnosticarConexion(): void {
-    console.log('🔍 Iniciando diagnóstico de conexión...');
-    console.log(`📡 API URL configurada: ${this.API_URL}`);
+    this.logDebug('🔍 Iniciando diagnóstico de conexión...');
+    this.logDebug(`📡 API URL configurada: ${this.API_URL}`);
     
-    // Verificar si el backend está ejecutándose
     this.verificarBackend().subscribe({
       next: (disponible) => {
         if (disponible) {
-          console.log('✅ Backend disponible - Conexión OK');
+          this.logInfo('✅ Backend disponible - Conexión OK');
         } else {
-          console.warn('⚠️ Backend no disponible - Usando fallback');
+          this.logInfo('⚠️ Backend no disponible - Usando fallback');
         }
       },
       error: (error) => {
-        console.error('❌ Error en diagnóstico:', error);
+        this.logInfo('❌ Error en diagnóstico');
         this.mostrarSolucionesPosibles(error);
       }
     });
   }
 
-  /**
-   * 🔍 NUEVO: Verificar si el backend está disponible
-   */
   private verificarBackend(): Observable<boolean> {
     const headers = new HttpHeaders({
       'Content-Type': 'application/json'
@@ -192,50 +215,44 @@ export class AdminService {
 
     return this.http.get<any>(`${this.API_URL}/health`, { headers }).pipe(
       map(response => {
-        console.log('✅ Backend responde:', response);
+        this.logDebug('✅ Backend responde:', response);
         return true;
       }),
       catchError(error => {
-        console.warn('⚠️ Backend no disponible:', error.message);
+        this.logDebug('⚠️ Backend no disponible:', error.message);
         return of(false);
       })
     );
   }
 
-  /**
-   * 🔍 NUEVO: Mostrar posibles soluciones
-   */
   private mostrarSolucionesPosibles(error: any): void {
-    console.log('🛠️ POSIBLES SOLUCIONES:');
-    
-    if (error.status === 0) {
-      console.log('1. ❌ El backend no está ejecutándose en localhost:3000');
-      console.log('   Solución: cd backend && npm start');
-      console.log('2. ❌ Problema de CORS');
-      console.log('   Solución: Verificar configuración CORS en backend');
+    if (this.debugMode) {
+      console.log('🛠️ POSIBLES SOLUCIONES:');
+      
+      if (error.status === 0) {
+        console.log('1. ❌ El backend no está ejecutándose en localhost:3000');
+        console.log('2. ❌ Problema de CORS');
+      }
+      
+      if (error.status === 404) {
+        console.log('3. ❌ Ruta /api/admin/stats no existe');
+      }
+      
+      console.log('4. ℹ️ Usando datos de servicios locales como fallback');
     }
-    
-    if (error.status === 404) {
-      console.log('3. ❌ Ruta /api/admin/stats no existe');
-      console.log('   Solución: Verificar que routes/admin.js esté configurado');
-    }
-    
-    console.log('4. ℹ️ Usando datos de servicios locales como fallback');
   }
 
   // ==================== DASHBOARD STATS CON FALLBACK INTELIGENTE ====================
   
-  /**
-   * 🔥 ACTUALIZADO: Obtener estadísticas con fallback inteligente
-   */
   getAdminStats(): Observable<AdminStats> {
     // Verificar cache
     if (this.statsCache && (Date.now() - this.lastStatsUpdate) < this.CACHE_DURATION) {
-      console.log('📊 Usando estadísticas desde cache');
+      // 🔧 FIX: No log repetitivo - solo en debug
+      this.logDebug('📊 Usando estadísticas desde cache');
       return of(this.statsCache);
     }
 
-    console.log('📊 Intentando obtener estadísticas desde API...');
+    this.logDebug('📊 Intentando obtener estadísticas desde API...');
     const headers = this.getAuthHeaders();
     
     return this.http.get<any>(`${this.API_URL}/admin/stats`, { headers }).pipe(
@@ -243,23 +260,20 @@ export class AdminService {
         if (response.success && response.source === 'database') {
           this.statsCache = response.data;
           this.lastStatsUpdate = Date.now();
-          console.log('✅ Estadísticas REALES obtenidas de PostgreSQL');
+          this.logInfo('✅ Estadísticas REALES obtenidas de PostgreSQL');
           return response.data;
         }
         throw new Error('Respuesta inválida del servidor');
       }),
       catchError(error => {
-        console.warn('⚠️ API no disponible, usando fallback con servicios locales:', error.message);
+        this.logInfo('⚠️ API no disponible, usando fallback con servicios locales');
         return this.getAdminStatsFromLocalServices();
       })
     );
   }
 
-  /**
-   * 🔄 NUEVO: Obtener estadísticas desde servicios locales como fallback
-   */
   private getAdminStatsFromLocalServices(): Observable<AdminStats> {
-    console.log('📊 Obteniendo estadísticas desde servicios locales...');
+    this.logDebug('📊 Obteniendo estadísticas desde servicios locales...');
     
     return forkJoin({
       peliculas: this.movieService.getPeliculas().pipe(catchError(() => of([]))),
@@ -290,66 +304,61 @@ export class AdminService {
           ticketPromedio: ordenesCompletadas > 0 ? ingresosMes / ordenesCompletadas : 0,
           ratingPromedio: this.calcularRatingPromedio(peliculas),
           totalGeneros: this.getGeneroStats(peliculas).length,
-          totalFavoritas: 0 // No tenemos este dato en servicios locales
+          totalFavoritas: 0
         };
 
         this.statsCache = stats;
         this.lastStatsUpdate = Date.now();
-        console.log('✅ Estadísticas obtenidas desde servicios locales');
+        this.logInfo('✅ Estadísticas obtenidas desde servicios locales');
         
         return stats;
       })
     );
   }
 
-  /**
-   * 🔄 ACTUALIZADO: Obtener estadísticas del bar con fallback
-   */
+  // ==================== MÉTODOS DEL BAR (CORREGIDOS) ====================
+
   getBarStats(): BarStats {
-  // Si hay cache válido, devolverlo
-  if (this.barStatsCache && (Date.now() - this.lastStatsUpdate) < this.CACHE_DURATION) {
-    console.log('📊 Usando estadísticas del bar desde cache');
-    return this.barStatsCache;
-  }
-
-  // Si no hay cache, usar datos del BarService como fallback INMEDIATO
-  console.log('📊 Obteniendo estadísticas del bar desde BarService (fallback)');
-  const fallbackStats = this.getBarStatsFromBarService();
-  
-  // Intentar actualizar el cache EN SEGUNDO PLANO (sin bloquear)
-  this.updateBarStatsCacheAsync();
-  
-  return fallbackStats;
-}
-private updateBarStatsCacheAsync(): void {
-  // Evitar múltiples llamadas simultáneas
-  if (this.updatingBarStats) {
-    return;
-  }
-  
-  this.updatingBarStats = true;
-  
-  this.getBarStatsObservable().subscribe({
-    next: (stats) => {
-      this.barStatsCache = stats;
-      this.lastStatsUpdate = Date.now();
-      console.log('✅ Cache del bar actualizado en segundo plano');
-      this.updatingBarStats = false;
-    },
-    error: (error) => {
-      console.warn('⚠️ No se pudo actualizar cache del bar desde API, usando BarService');
-      this.barStatsCache = this.getBarStatsFromBarService();
-      this.lastStatsUpdate = Date.now();
-      this.updatingBarStats = false;
+    // 🔧 FIX: Verificar cache SIN log repetitivo
+    if (this.barStatsCache && (Date.now() - this.lastStatsUpdate) < this.CACHE_DURATION) {
+      return this.barStatsCache;
     }
-  });
-}
 
-  /**
-   * 🔄 ACTUALIZADO: Obtener estadísticas del bar como Observable con fallback
-   */
+    // 🔧 FIX: Solo log una vez cuando se actualiza
+    this.logDebug('📊 Obteniendo estadísticas del bar desde BarService (fallback)');
+    const fallbackStats = this.getBarStatsFromBarService();
+    
+    // Actualizar cache en segundo plano sin logs
+    this.updateBarStatsCacheAsync();
+    
+    return fallbackStats;
+  }
+
+  private updateBarStatsCacheAsync(): void {
+    if (this.updatingBarStats) {
+      return;
+    }
+    
+    this.updatingBarStats = true;
+    
+    this.getBarStatsObservable().subscribe({
+      next: (stats) => {
+        this.barStatsCache = stats;
+        this.lastStatsUpdate = Date.now();
+        this.logDebug('✅ Cache del bar actualizado en segundo plano');
+        this.updatingBarStats = false;
+      },
+      error: (error) => {
+        this.logDebug('⚠️ No se pudo actualizar cache del bar desde API, usando BarService');
+        this.barStatsCache = this.getBarStatsFromBarService();
+        this.lastStatsUpdate = Date.now();
+        this.updatingBarStats = false;
+      }
+    });
+  }
+
   getBarStatsObservable(): Observable<BarStats> {
-    console.log('🍿 Intentando obtener estadísticas del bar desde API...');
+    this.logDebug('🍿 Intentando obtener estadísticas del bar desde API...');
     const headers = this.getAuthHeaders();
     
     return this.http.get<any>(`${this.API_URL}/admin/bar-stats`, { headers }).pipe(
@@ -357,24 +366,19 @@ private updateBarStatsCacheAsync(): void {
         if (response.success && response.source === 'database') {
           this.barStatsCache = response.data;
           this.lastStatsUpdate = Date.now();
-          console.log('✅ Estadísticas del bar REALES obtenidas de PostgreSQL');
+          this.logInfo('✅ Estadísticas del bar REALES obtenidas de PostgreSQL');
           return response.data;
         }
         throw new Error('Respuesta inválida del servidor');
       }),
       catchError(error => {
-        console.warn('⚠️ API del bar no disponible, usando BarService:', error.message);
+        this.logDebug('⚠️ API del bar no disponible, usando BarService');
         const barStats = this.getBarStatsFromBarService();
         return of(barStats);
       })
     );
   }
 
-  // ==================== MÉTODOS AUXILIARES ====================
-  
-  /**
-   * 🔄 ACTUALIZADO: Obtener estadísticas del bar desde BarService
-   */
   private getBarStatsFromBarService(): BarStats {
     const productos = this.barService.getProductos();
     
@@ -399,7 +403,7 @@ private updateBarStatsCacheAsync(): void {
       ahorroTotalCombos: combos.reduce((sum, c) => sum + (c.descuento || 0), 0),
       productosPorCategoria: this.getProductosPorCategoria(),
       productosPopularesBar: this.getProductosPopularesBar(),
-      ventasSimuladasBar: [], // Sin ventas en servicios locales
+      ventasSimuladasBar: [],
       tendenciasBar: {
         ventasUltimos7Dias: 0,
         ingresoUltimos7Dias: 0,
@@ -413,6 +417,8 @@ private updateBarStatsCacheAsync(): void {
     };
   }
 
+  // ==================== MÉTODOS AUXILIARES ====================
+  
   private getPeliculasPopulares(peliculas: Pelicula[]): PeliculaPopular[] {
     return peliculas
       .map(p => ({
@@ -462,7 +468,7 @@ private updateBarStatsCacheAsync(): void {
     orders.slice(0, 3).forEach(order => {
       actividad.push({
         tipo: 'orden',
-        descripcion: `Nueva orden por $${order.total.toFixed(2)}`,
+        descripcion: `Nueva orden por ${order.total.toFixed(2)}`,
         fecha: order.fecha_creacion,
         icono: 'fas fa-shopping-cart',
         color: 'primary'
@@ -523,14 +529,11 @@ private updateBarStatsCacheAsync(): void {
       precio: p.precio,
       esCombo: p.es_combo,
       disponible: p.disponible,
-      ventasSimuladas: 0, // Sin datos reales en servicios locales
+      ventasSimuladas: 0,
       ingresoSimulado: 0
     })).slice(0, 10);
   }
 
-  /**
-   * 🔄 ACTUALIZADO: Actualizar cache del bar con fallback
-   */
   private updateBarStatsCache(): void {
     this.getBarStatsObservable().subscribe({
       next: (stats) => {
@@ -538,20 +541,17 @@ private updateBarStatsCacheAsync(): void {
         this.lastStatsUpdate = Date.now();
       },
       error: (error) => {
-        console.warn('⚠️ No se pudo actualizar cache del bar desde API, usando BarService');
+        this.logDebug('⚠️ No se pudo actualizar cache del bar desde API, usando BarService');
         this.barStatsCache = this.getBarStatsFromBarService();
       }
     });
   }
 
-  /**
-   * 🔄 ACTUALIZADO: Invalidar cache
-   */
   private invalidateCache(): void {
     this.statsCache = null;
     this.barStatsCache = null;
     this.lastStatsUpdate = 0;
-    console.log('🔄 Cache invalidado');
+    this.logDebug('🔄 Cache invalidado');
   }
 
   // ==================== RESTO DE MÉTODOS ORIGINALES ====================
@@ -629,15 +629,14 @@ private updateBarStatsCacheAsync(): void {
   // ==================== REPORTES CON FALLBACK ====================
   
   generateSalesReport(): void {
-    console.log('📊 Generando reporte de ventas...');
+    this.logDebug('📊 Generando reporte de ventas...');
     
     forkJoin({
       stats: this.getAdminStats(),
       orders: this.orderService.getAllOrders(1, 100)
     }).subscribe({
       next: ({ stats, orders }) => {
-        // Lógica del reporte...
-        console.log('✅ Reporte generado con datos disponibles');
+        this.logInfo('✅ Reporte generado con datos disponibles');
       },
       error: (error) => {
         console.error('❌ Error generando reporte:', error);
@@ -646,12 +645,11 @@ private updateBarStatsCacheAsync(): void {
   }
 
   generateBarReport(): void {
-    console.log('🍿 Generando reporte del bar...');
+    this.logDebug('🍿 Generando reporte del bar...');
     
     this.getBarStatsObservable().subscribe({
       next: (barStats) => {
-        // Lógica del reporte...
-        console.log('✅ Reporte del bar generado');
+        this.logInfo('✅ Reporte del bar generado');
       },
       error: (error) => {
         console.error('❌ Error generando reporte del bar:', error);
@@ -671,7 +669,7 @@ private updateBarStatsCacheAsync(): void {
         throw new Error('No se pudo obtener el reporte');
       }),
       catchError(error => {
-        console.warn('⚠️ Reporte no disponible desde API:', error.message);
+        this.logDebug('⚠️ Reporte no disponible desde API');
         return of({
           totalVentas: 0,
           entradasVendidas: 0,
@@ -700,7 +698,7 @@ private updateBarStatsCacheAsync(): void {
   getDataStatus(): Observable<any> {
     return this.getAdminStats().pipe(
       map(stats => ({
-        realData: false, // Será true solo si viene de la API
+        realData: false,
         dbConnected: false,
         totalPeliculas: stats.totalPeliculas,
         totalUsuarios: stats.totalUsuarios,
@@ -715,7 +713,7 @@ private updateBarStatsCacheAsync(): void {
     const token = this.authService.getToken();
     
     if (!token) {
-      console.warn('⚠️ No hay token de autenticación');
+      this.logDebug('⚠️ No hay token de autenticación');
       return new HttpHeaders({
         'Content-Type': 'application/json'
       });
