@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 
 // Clave secreta para firmar tokens (en producción usar variable de entorno)
 const JWT_SECRET = process.env.JWT_SECRET || 'tu_clave_secreta_muy_segura_parkyfilms_2024';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '2h';
 
 class JWTUtils {
   

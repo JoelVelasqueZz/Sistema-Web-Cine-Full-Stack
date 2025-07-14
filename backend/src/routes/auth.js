@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { authenticateToken } = require('../middleware/auth');
 const passport = require('passport');
 const {
   register,
@@ -23,8 +24,6 @@ const {
   handleOAuthError
 } = require('../controllers/auth/oauthController');
 
-const { authenticateToken } = require('../middleware/auth');
-
 // ==================== RUTAS PÚBLICAS ====================
 
 // POST /api/auth/register - Registrar nuevo usuario
@@ -32,9 +31,6 @@ router.post('/register', register);
 
 // POST /api/auth/login - Iniciar sesión
 router.post('/login', login);
-
-// POST /api/auth/refresh - Refrescar token
-router.post('/refresh', refreshToken);
 
 // 🆕 RUTAS DE RECUPERACIÓN DE CONTRASEÑA (PÚBLICAS)
 // POST /api/auth/forgot-password - Solicitar recuperación de contraseña
@@ -94,6 +90,9 @@ router.get('/github/callback',
 
 // GET /api/auth/verify - Verificar token y obtener info del usuario
 router.get('/verify', authenticateToken, verifyToken);
+
+// POST /api/auth/refresh - Refrescar token ✅ CORREGIDO
+router.post('/refresh', authenticateToken, refreshToken);
 
 // POST /api/auth/logout - Cerrar sesión
 router.post('/logout', authenticateToken, logout);

@@ -24,9 +24,148 @@ export class AuthService {
   private currentUserSubject = new BehaviorSubject<Usuario | null>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
 
+  // 🆕 Variable para el intervalo de monitoreo
+  private tokenMonitorInterval: any = null;
+
   constructor(private http: HttpClient) {
     console.log('🔐 AuthService conectado a API:', this.API_URL);
     this.loadAuthFromStorage();
+    
+    // 🆕 INICIAR MONITOREO AUTOMÁTICO SI HAY SESIÓN
+    if (this.isLoggedIn()) {
+      this.startTokenMonitoring();
+    }
+  }
+
+  // ==================== 🆕 MÉTODOS DE RENOVACIÓN AUTOMÁTICA ====================
+
+  /**
+   * 🆕 Verificar si el token está próximo a expirar (30 minutos antes)
+   */
+  private isTokenExpiringSoon(): boolean {
+    const token = this.getToken();
+    if (!token) return false;
+
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const exp = payload.exp * 1000; // Convertir a millisegundos
+      const now = Date.now();
+      const thirtyMinutes = 30 * 60 * 1000; // 30 minutos en ms
+      
+      return (exp - now) < thirtyMinutes;
+    } catch (error) {
+      console.error('Error al verificar expiración:', error);
+      return true; // Si hay error, asumir que expira
+    }
+  }
+
+  /**
+   * 🆕 Obtener tiempo restante del token en minutos
+   */
+  getTokenTimeRemaining(): number {
+    const token = this.getToken();
+    if (!token) return 0;
+
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const exp = payload.exp * 1000;
+      const now = Date.now();
+      const minutesRemaining = Math.floor((exp - now) / (1000 * 60));
+      
+      return Math.max(0, minutesRemaining);
+    } catch (error) {
+      return 0;
+    }
+  }
+
+  /**
+   * 🆕 Iniciar monitoreo automático del token
+   */
+  private startTokenMonitoring(): void {
+    // Limpiar cualquier intervalo existente
+    if (this.tokenMonitorInterval) {
+      clearInterval(this.tokenMonitorInterval);
+    }
+
+    // Verificar cada 5 minutos
+    this.tokenMonitorInterval = setInterval(() => {
+      if (this.isLoggedIn()) {
+        const minutesLeft = this.getTokenTimeRemaining();
+        
+        console.log(`⏰ Token expira en ${minutesLeft} minutos`);
+        
+        if (minutesLeft <= 30 && minutesLeft > 0) {
+          console.log('⚠️ Token próximo a expirar, renovando...');
+          this.refreshTokenAutomatically();
+        } else if (minutesLeft <= 0) {
+          console.log('❌ Token expirado, cerrando sesión...');
+          this.logout();
+        }
+      } else {
+        // Si no hay sesión, detener el monitoreo
+        this.stopTokenMonitoring();
+      }
+    }, 5 * 60 * 1000); // Cada 5 minutos
+
+    console.log('🔄 Monitoreo automático de token iniciado');
+  }
+
+  /**
+   * 🆕 Detener monitoreo del token
+   */
+  private stopTokenMonitoring(): void {
+    if (this.tokenMonitorInterval) {
+      clearInterval(this.tokenMonitorInterval);
+      this.tokenMonitorInterval = null;
+      console.log('⏹️ Monitoreo automático de token detenido');
+    }
+  }
+
+  /**
+   * 🆕 Renovar token automáticamente
+   */
+  private refreshTokenAutomatically(): void {
+    this.refreshToken().subscribe({
+      next: (response) => {
+        if (response.success && response.data?.token) {
+          // Actualizar el token
+          this.authToken = response.data.token;
+          this.saveAuthToStorage();
+          console.log('✅ Token renovado automáticamente');
+        } else {
+          console.log('❌ No se pudo renovar el token');
+          this.logout();
+        }
+      },
+      error: (error) => {
+        console.error('❌ Error al renovar token:', error);
+        this.logout();
+      }
+    });
+  }
+
+  /**
+   * 🆕 Método mejorado de refreshToken que retorna el nuevo token
+   */
+  refreshToken(): Observable<{success: boolean, data?: {token: string}, message?: string}> {
+    const token = this.getToken();
+    if (!token) return of({success: false, message: 'No hay token para renovar'});
+
+    const headers = this.getAuthHeaders();
+
+    return this.http.post<any>(`${this.API_URL}/auth/refresh`, {}, { headers }).pipe(
+      map(response => {
+        console.log('🔍 Respuesta de refresh:', response);
+        return response;
+      }),
+      catchError(error => {
+        console.error('❌ Error en refresh token:', error);
+        return of({
+          success: false,
+          message: error.error?.error || 'Error al renovar token'
+        });
+      })
+    );
   }
 
   // ==================== MÉTODOS DE AUTENTICACIÓN TRADICIONAL ====================
@@ -152,6 +291,9 @@ export class AuthService {
       // Actualizar observables
       this.updateAuthState();
 
+      // 🆕 INICIAR MONITOREO AUTOMÁTICO
+      this.startTokenMonitoring();
+
       // Verificar token con el servidor si no tenemos datos completos
       if (!this.currentUser) {
         this.verifyToken().subscribe();
@@ -275,6 +417,9 @@ export class AuthService {
    * Cerrar sesión
    */
   logout(): void {
+    // 🆕 DETENER MONITOREO AUTOMÁTICO
+    this.stopTokenMonitoring();
+
     // Llamar al endpoint de logout (opcional)
     const headers = this.getAuthHeaders();
     this.http.post(`${this.API_URL}/auth/logout`, {}, { headers }).subscribe({
@@ -395,6 +540,9 @@ export class AuthService {
     // Actualizar observables
     this.updateAuthState();
 
+    // 🆕 INICIAR MONITOREO AUTOMÁTICO
+    this.startTokenMonitoring();
+
     console.log('✅ Autenticación exitosa:', this.currentUser.nombre);
   }
 
@@ -487,6 +635,9 @@ export class AuthService {
     this.currentUser = null;
     this.authToken = null;
     this.isAuthenticated = false;
+
+    // 🆕 DETENER MONITOREO
+    this.stopTokenMonitoring();
 
     // Limpiar localStorage
     localStorage.removeItem('auth_token');

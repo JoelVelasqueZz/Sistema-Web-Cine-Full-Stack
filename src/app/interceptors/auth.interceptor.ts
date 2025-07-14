@@ -21,7 +21,7 @@ export class AuthInterceptor implements HttpInterceptor {
     const token = this.authService.getToken();
     
     if (token) {
-      // 🔍 MOSTRAR TOKEN EN CONSOLA
+      //MOSTRAR TOKEN EN CONSOLA
       console.log('🔑 TOKEN DETECTADO:', {
         token: token,
         usuario: this.authService.getCurrentUserName(),

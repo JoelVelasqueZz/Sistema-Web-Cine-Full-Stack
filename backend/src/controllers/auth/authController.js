@@ -176,31 +176,46 @@ const verifyToken = async (req, res) => {
 // Refrescar token
 const refreshToken = async (req, res) => {
   try {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    // El middleware ya verificó el token y agregó req.user
+    const user = req.user;
 
-    if (!token) {
+    if (!user) {
       return res.status(401).json({
         success: false,
-        error: 'Token requerido'
+        error: 'Usuario no autenticado'
       });
     }
 
-    // Generar nuevo token
-    const newToken = JWTUtils.refreshToken(token);
+    // Generar nuevo token con la misma información
+    const newToken = JWTUtils.generateToken({
+      id: user.id,
+      email: user.email,
+      nombre: user.nombre,
+      role: user.role
+    });
+
+    console.log(`✅ Token refrescado para usuario: ${user.nombre}`);
 
     res.json({
       success: true,
+      message: 'Token refrescado exitosamente',
       data: {
-        token: newToken
+        token: newToken,
+        user: {
+          id: user.id,
+          nombre: user.nombre,
+          email: user.email,
+          role: user.role,
+          avatar: user.avatar
+        }
       }
     });
 
   } catch (error) {
     console.error('Error al refrescar token:', error);
-    res.status(401).json({
+    res.status(500).json({
       success: false,
-      error: 'No se pudo refrescar el token'
+      error: 'Error interno del servidor'
     });
   }
 };
