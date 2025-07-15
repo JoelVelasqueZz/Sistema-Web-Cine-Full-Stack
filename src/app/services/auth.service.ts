@@ -287,24 +287,35 @@ export class AuthService {
       const expirationTime = payload.exp * 1000;
       const now = Date.now();
       const timeUntilExpiration = expirationTime - now;
-      const thirtyMinutes = 30 * 60 * 1000;
+      
+      // 🔧 FIX: Ajustar umbral dinámicamente según duración del token
+      const tokenDuration = (payload.exp - payload.iat) * 1000; // Duración total del token
+      let cleanupThreshold;
+      
+      if (tokenDuration <= 300000) { // 5 minutos o menos
+        cleanupThreshold = Math.min(60000, tokenDuration * 0.3); // 1 minuto o 30% del token
+      } else if (tokenDuration <= 600000) { // 10 minutos o menos
+        cleanupThreshold = Math.min(120000, tokenDuration * 0.4); // 2 minutos o 40% del token
+      } else {
+        cleanupThreshold = 30 * 60 * 1000; // 30 minutos para tokens largos
+      }
 
-      // Si queda menos de 30 minutos, limpiar ahora
-      if (timeUntilExpiration <= thirtyMinutes) {
-        console.log('⚠️ Token expira en menos de 30 minutos - limpiando ahora');
+      // Si queda menos del umbral dinámico, limpiar ahora
+      if (timeUntilExpiration <= cleanupThreshold) {
+        console.log(`⚠️ Token expira en ${Math.round(timeUntilExpiration/60000)} minutos (umbral: ${Math.round(cleanupThreshold/60000)}min) - limpiando ahora`);
         this.handleTokenExpiration();
         return;
       }
 
-      // Configurar limpieza automática 30 minutos antes
-      const timeoutDuration = timeUntilExpiration - thirtyMinutes;
+      // Configurar limpieza automática antes del umbral
+      const timeoutDuration = timeUntilExpiration - cleanupThreshold;
       
       setTimeout(() => {
         console.log('⏰ Token próximo a expirar - ejecutando limpieza automática');
         this.handleTokenExpiration();
       }, timeoutDuration);
 
-      console.log(`⏰ Auto-limpieza programada en ${Math.round(timeoutDuration / 1000 / 60)} minutos`);
+      console.log(`⏰ Auto-limpieza programada en ${Math.round(timeoutDuration / 1000 / 60)} minutos (expira en ${Math.round(timeUntilExpiration / 1000 / 60)}min)`);
 
     } catch (error) {
       console.error('❌ Error configurando auto-limpieza:', error);
