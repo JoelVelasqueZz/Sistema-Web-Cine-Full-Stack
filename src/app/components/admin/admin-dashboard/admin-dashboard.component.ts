@@ -374,7 +374,10 @@ INSERT INTO alertas_sistema (tipo, mensaje, severidad) VALUES
         this.ultimaActualizacion = new Date().toLocaleTimeString('es-ES');
         
         // 🆕 Marcar que la carga inicial está completa
-        this.initialLoadCompleted = true;
+        setTimeout(() => {
+          this.initialLoadCompleted = true;
+          console.log('✅ Carga inicial completada - cache activado');
+        }, 2000); // Dar tiempo para que se rendericen los datos
         
         if (stats.totalUsuarios > 0 || stats.totalPeliculas > 0) {
           this.datosRealesDisponibles = true;
@@ -444,26 +447,30 @@ INSERT INTO alertas_sistema (tipo, mensaje, severidad) VALUES
   getBarStats(): any {
     const now = Date.now();
     
-    // 🆕 Si es la primera carga, no usar cache
-    if (!this.initialLoadCompleted) {
-      console.log('🔄 Primera carga del bar - obteniendo datos frescos');
-      return this.fetchBarStatsFromService();
+    // 🆕 SIEMPRE obtener datos frescos en la primera carga O si no hay cache
+    if (!this.initialLoadCompleted || !this.barStatsCache) {
+      console.log('🔄 Obteniendo datos frescos del bar...');
+      const freshData = this.fetchBarStatsFromService();
+      console.log('📊 Datos del bar obtenidos:', freshData);
+      return freshData;
     }
     
-    // Si tenemos cache válido y no es la primera carga, devolverlo
+    // Si tenemos cache válido y ya pasó la primera carga, usar cache
     if (this.barStatsCache && (now - this.lastBarStatsUpdate) < this.BAR_CACHE_DURATION) {
       return this.barStatsCache;
     }
 
-    // Actualizar cache
+    // Actualizar cache para cargas posteriores
     return this.fetchBarStatsFromService();
   }
 
   // 🆕 Método auxiliar para obtener datos del bar
   private fetchBarStatsFromService(): any {
     const barStats = this.adminService.getBarStats();
+    console.log('🔍 AdminService.getBarStats() devolvió:', barStats);
     
     if (!barStats || barStats.totalProductos === 0) {
+      console.log('⚠️ No hay productos en el bar o respuesta vacía');
       this.barStatsCache = {
         totalProductos: 0,
         productosDisponibles: 0,
@@ -477,6 +484,7 @@ INSERT INTO alertas_sistema (tipo, mensaje, severidad) VALUES
         mensaje: 'No hay productos en el bar'
       };
     } else {
+      console.log('✅ Productos encontrados:', barStats.totalProductos);
       const ventasReales = barStats.ventasSimuladasBar || [];
       const productosPopulares = barStats.productosPopularesBar || [];
       
@@ -495,6 +503,7 @@ INSERT INTO alertas_sistema (tipo, mensaje, severidad) VALUES
     }
 
     this.lastBarStatsUpdate = Date.now();
+    console.log('💾 Cache del bar actualizado:', this.barStatsCache);
     return this.barStatsCache;
   }
 
@@ -502,17 +511,20 @@ INSERT INTO alertas_sistema (tipo, mensaje, severidad) VALUES
   getActividadRecienteCombinada(): any[] {
     const now = Date.now();
     
-    // 🆕 Si es la primera carga, no usar cache
-    if (!this.initialLoadCompleted) {
-      return this.fetchActivityFromService();
+    // 🆕 SIEMPRE obtener datos frescos en la primera carga O si no hay cache
+    if (!this.initialLoadCompleted || this.actividadCache.length === 0) {
+      console.log('🔄 Obteniendo actividad fresca...');
+      const freshActivity = this.fetchActivityFromService();
+      console.log('📊 Actividad obtenida:', freshActivity.length, 'items');
+      return freshActivity;
     }
     
-    // Si tenemos cache válido, devolverlo
+    // Si tenemos cache válido, usar cache
     if (this.actividadCache.length > 0 && (now - this.lastActivityUpdate) < this.ACTIVITY_CACHE_DURATION) {
       return this.actividadCache;
     }
 
-    // Actualizar cache
+    // Actualizar cache para cargas posteriores
     return this.fetchActivityFromService();
   }
 
