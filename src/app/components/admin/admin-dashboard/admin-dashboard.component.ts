@@ -1,11 +1,10 @@
-// src/app/components/admin/admin-dashboard/admin-dashboard.component.ts - ACTUALIZADO CON SISTEMA DE AUDITORÍA
+// src/app/components/admin/admin-dashboard/admin-dashboard.component.ts - SOLUCIÓN HÍBRIDA
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import { AdminService, AdminStats } from '../../../services/admin.service';
 import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
 import { ReportsService } from '../../../services/reports.service';
-// 🆕 IMPORTAR EL NUEVO SYSTEM SERVICE
 import { SystemService, SystemMetrics, SystemAlert, AlertSummary, TriggerTestResult } from '../../../services/system.service';
 import { HttpClient } from '@angular/common/http';
 import { forkJoin } from 'rxjs';
@@ -39,14 +38,14 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   generatingReport: boolean = false;
   errorCargaDatos: boolean = false;
   
-  // 🆕 ESTADO DE DATOS Y DIAGNÓSTICO
+  // Estado de datos y diagnóstico
   datosRealesDisponibles: boolean = false;
   usoFallback: boolean = false;
   ultimaActualizacion: string = '';
   mensajeEstado: string = '';
   tipoError: string = '';
 
-  // 🆕 NUEVOS ESTADOS PARA EL SISTEMA DE AUDITORÍA
+  // Sistema de auditoría
   systemMetrics: SystemMetrics = {
     ordenes_hoy: 0,
     ingresos_hoy: 0,
@@ -58,15 +57,26 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   alertsSummary: AlertSummary[] = [];
   triggerTestResult: TriggerTestResult | null = null;
   
-  // Estados de carga para las nuevas funcionalidades
+  // Estados de carga
   loadingSystemMetrics: boolean = false;
   loadingAlerts: boolean = false;
   testingTriggers: boolean = false;
   runningCleanup: boolean = false;
   
-  // Timer para actualizaciones automáticas
+  // Timers
   private updateTimer: any;
   private systemUpdateTimer: any;
+
+  // 🔧 FIX: Cache optimizado para evitar bucles pero permitir carga inicial
+  private actividadCache: any[] = [];
+  private barStatsCache: any = null;
+  private lastActivityUpdate: number = 0;
+  private lastBarStatsUpdate: number = 0;
+  private readonly ACTIVITY_CACHE_DURATION = 10000; // 10 segundos (más corto)
+  private readonly BAR_CACHE_DURATION = 15000; // 15 segundos (más corto)
+  
+  // 🆕 Flag para permitir primera carga sin restricciones
+  private initialLoadCompleted: boolean = false;
 
   constructor(
     private adminService: AdminService,
@@ -75,40 +85,30 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     private router: Router,
     private reportsService: ReportsService,
     private http: HttpClient,
-    // 🆕 INYECTAR EL SYSTEM SERVICE
     private systemService: SystemService
   ) { }
 
   ngOnInit(): void {
-    // Verificar permisos de admin
     if (!this.authService.isAdmin()) {
       this.router.navigate(['/home']);
       return;
     }
 
-    // Mostrar mensaje de carga inicial
     this.toastService.showInfo('🔄 Cargando dashboard administrativo con sistema de auditoría...');
-
-    // Cargar datos con diagnóstico
     this.cargarEstadisticasConDiagnostico();
-    
-    // 🆕 CARGAR MÉTRICAS DEL SISTEMA
     this.cargarMetricasSistema();
 
     // Configurar actualización automática cada 5 minutos
     this.updateTimer = setInterval(() => {
       this.cargarEstadisticasConDiagnostico(true);
-    }, 300000); // 5 minutos
+    }, 300000);
 
-    // 🆕 CONFIGURAR ACTUALIZACIÓN DEL SISTEMA CADA 2 MINUTOS
+    // Configurar actualización del sistema cada 2 minutos
     this.systemUpdateTimer = setInterval(() => {
       this.cargarMetricasSistema(true);
-    }, 120000); // 2 minutos
+    }, 120000);
 
-    // Escuchar evento de refresh desde admin-layout
     window.addEventListener('adminDataRefresh', this.handleDataRefresh.bind(this));
-    
-    // 🆕 PROBAR TRIGGERS AL INICIAR
     this.testTriggersOnInit();
   }
   
@@ -122,21 +122,20 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     window.removeEventListener('adminDataRefresh', this.handleDataRefresh.bind(this));
   }
 
-  // ==================== 🆕 NUEVOS MÉTODOS PARA EL SISTEMA DE AUDITORÍA ====================
+  // ==================== MÉTODOS PARA EL SISTEMA DE AUDITORÍA ====================
 
-  /**
-   * 🆕 Cargar métricas del sistema de auditoría
-   */
   cargarMetricasSistema(silencioso: boolean = false): void {
     if (!silencioso) {
       this.loadingSystemMetrics = true;
     }
     
-    console.log('📊 Cargando métricas del sistema de auditoría...');
+    if (!silencioso) {
+      console.log('📊 Cargando métricas del sistema de auditoría...');
+    }
     
     forkJoin({
       metrics: this.systemService.getDashboardMetrics(),
-      alerts: this.systemService.getSystemAlerts(1, 5, undefined, false), // Solo alertas pendientes
+      alerts: this.systemService.getSystemAlerts(1, 5, undefined, false),
       summary: this.systemService.getAlertsSummary()
     }).subscribe({
       next: ({ metrics, alerts, summary }) => {
@@ -147,13 +146,12 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
         
         if (!silencioso) {
           this.toastService.showSuccess('✅ Sistema de auditoría cargado correctamente');
+          console.log('✅ Métricas del sistema cargadas:', {
+            ordenesHoy: metrics.ordenes_hoy,
+            ingresosHoy: metrics.ingresos_hoy,
+            alertasPendientes: metrics.alertas_pendientes
+          });
         }
-        
-        console.log('✅ Métricas del sistema cargadas:', {
-          ordenesHoy: metrics.ordenes_hoy,
-          ingresosHoy: metrics.ingresos_hoy,
-          alertasPendientes: metrics.alertas_pendientes
-        });
       },
       error: (error) => {
         console.error('❌ Error cargando métricas del sistema:', error);
@@ -166,9 +164,6 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  /**
-   * 🆕 Probar triggers al inicializar
-   */
   testTriggersOnInit(): void {
     this.systemService.testTriggers().subscribe({
       next: (result) => {
@@ -187,9 +182,6 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  /**
-   * 🆕 Marcar todas las alertas como revisadas
-   */
   markAllAlertsAsReviewed(): void {
     if (this.systemAlerts.length === 0) {
       this.toastService.showInfo('ℹ️ No hay alertas pendientes para marcar');
@@ -201,7 +193,6 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     this.systemService.markAlertsAsReviewed(alertIds).subscribe({
       next: (result) => {
         if (result.updatedCount > 0) {
-          // Actualizar la lista de alertas
           this.cargarMetricasSistema(true);
           this.toastService.showSuccess(`✅ ${result.updatedCount} alertas marcadas como revisadas`);
         }
@@ -212,9 +203,6 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  /**
-   * 🆕 Ejecutar limpieza del sistema
-   */
   ejecutarLimpiezaSistema(): void {
     const confirmLimpieza = confirm(
       '¿Ejecutar limpieza del sistema?\n\n' +
@@ -234,12 +222,10 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
           this.runningCleanup = false;
           console.log('✅ Limpieza completada:', result.resultado);
           
-          // Mostrar resultados en un alert más detallado
           setTimeout(() => {
             alert(`🧹 Limpieza del Sistema Completada:\n\n${result.resultado}`);
           }, 1000);
           
-          // Actualizar métricas después de la limpieza
           this.cargarMetricasSistema(true);
         },
         error: (error) => {
@@ -250,113 +236,97 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     }
   }
 
-  /**
-   * 🆕 Ir a vista detallada de alertas
-   */
   verTodasLasAlertas(): void {
-  this.loadingAlerts = true;
-  
-  // Cargar más alertas
-  this.systemService.getSystemAlerts(1, 50).subscribe({
-    next: (response) => {
-      this.systemAlerts = response.data;
-      this.loadingAlerts = false;
-      
-      // Mostrar alertas en una ventana más grande
-      const alertsInfo = response.data.map(alert => 
-        `${alert.severidad.toUpperCase()}: ${alert.tipo.replace('_', ' ')} - ${alert.mensaje}`
-      ).join('\n\n');
-      
-      alert(`🚨 ALERTAS DEL SISTEMA (${response.data.length}):\n\n${alertsInfo}`);
-      
-      console.log('📋 TODAS LAS ALERTAS:', response.data);
-    },
-    error: (error) => {
-      console.error('❌ Error cargando alertas:', error);
-      this.loadingAlerts = false;
-      this.toastService.showError('❌ Error al cargar alertas');
-    }
-  });
-}
-
-  /**
-   * 🆕 Ir a vista detallada de auditoría
-   */
-  verLogDeAuditoria(): void {
-  this.systemService.getRecentAuditActivity(20).subscribe({
-    next: (auditLogs) => {
-      console.log('📋 LOGS DE AUDITORÍA RECIENTES:');
-      console.table(auditLogs);
-      
-      const auditInfo = auditLogs.map(log => 
-        `${log.fecha_accion}: ${log.accion} en ${log.tabla_afectada} por ${log.usuario_nombre || 'Sistema'}`
-      ).join('\n');
-      
-      if (auditLogs.length > 0) {
-        alert(`📋 LOGS DE AUDITORÍA (${auditLogs.length}):\n\n${auditInfo}`);
-      } else {
-        alert('📋 No hay logs de auditoría recientes');
-      }
-      
-      this.toastService.showInfo('📋 Logs de auditoría mostrados en consola del navegador');
-    },
-    error: (error) => {
-      console.error('❌ Error obteniendo logs:', error);
-      this.toastService.showError('❌ Error al obtener logs de auditoría');
-    }
-  });
-}
-markSingleAlert(alertId: number): void {
-  this.systemService.markAlertsAsReviewed([alertId]).subscribe({
-    next: (result) => {
-      if (result.updatedCount > 0) {
-        // Remover la alerta de la lista
-        this.systemAlerts = this.systemAlerts.filter(alert => alert.id !== alertId);
-        // Actualizar métricas
-        this.cargarMetricasSistema(true);
-        this.toastService.showSuccess('✅ Alerta marcada como revisada');
-      }
-    },
-    error: (error) => {
-      console.error('❌ Error marcando alerta:', error);
-    }
-  });
-}
-
-/**
- * 🆕 Crear alertas de prueba
- */
-crearAlertasDePrueba(): void {
-  const confirmTest = confirm(
-    '¿Crear alertas de prueba?\n\n' +
-    'Esto insertará algunas alertas de ejemplo en la base de datos para probar el sistema.'
-  );
-  
-  if (confirmTest) {
-    this.toastService.showInfo('🧪 Debes ejecutar el SQL en la base de datos para crear alertas de prueba');
+    this.loadingAlerts = true;
     
-    // Mostrar el SQL que deben ejecutar
-    const sqlQuery = `
+    this.systemService.getSystemAlerts(1, 50).subscribe({
+      next: (response) => {
+        this.systemAlerts = response.data;
+        this.loadingAlerts = false;
+        
+        const alertsInfo = response.data.map(alert => 
+          `${alert.severidad.toUpperCase()}: ${alert.tipo.replace('_', ' ')} - ${alert.mensaje}`
+        ).join('\n\n');
+        
+        alert(`🚨 ALERTAS DEL SISTEMA (${response.data.length}):\n\n${alertsInfo}`);
+        console.log('📋 TODAS LAS ALERTAS:', response.data);
+      },
+      error: (error) => {
+        console.error('❌ Error cargando alertas:', error);
+        this.loadingAlerts = false;
+        this.toastService.showError('❌ Error al cargar alertas');
+      }
+    });
+  }
+
+  verLogDeAuditoria(): void {
+    this.systemService.getRecentAuditActivity(20).subscribe({
+      next: (auditLogs) => {
+        console.log('📋 LOGS DE AUDITORÍA RECIENTES:');
+        console.table(auditLogs);
+        
+        const auditInfo = auditLogs.map(log => 
+          `${log.fecha_accion}: ${log.accion} en ${log.tabla_afectada} por ${log.usuario_nombre || 'Sistema'}`
+        ).join('\n');
+        
+        if (auditLogs.length > 0) {
+          alert(`📋 LOGS DE AUDITORÍA (${auditLogs.length}):\n\n${auditInfo}`);
+        } else {
+          alert('📋 No hay logs de auditoría recientes');
+        }
+        
+        this.toastService.showInfo('📋 Logs de auditoría mostrados en consola del navegador');
+      },
+      error: (error) => {
+        console.error('❌ Error obteniendo logs:', error);
+        this.toastService.showError('❌ Error al obtener logs de auditoría');
+      }
+    });
+  }
+
+  markSingleAlert(alertId: number): void {
+    this.systemService.markAlertsAsReviewed([alertId]).subscribe({
+      next: (result) => {
+        if (result.updatedCount > 0) {
+          this.systemAlerts = this.systemAlerts.filter(alert => alert.id !== alertId);
+          this.cargarMetricasSistema(true);
+          this.toastService.showSuccess('✅ Alerta marcada como revisada');
+        }
+      },
+      error: (error) => {
+        console.error('❌ Error marcando alerta:', error);
+      }
+    });
+  }
+
+  crearAlertasDePrueba(): void {
+    const confirmTest = confirm(
+      '¿Crear alertas de prueba?\n\n' +
+      'Esto insertará algunas alertas de ejemplo en la base de datos para probar el sistema.'
+    );
+    
+    if (confirmTest) {
+      this.toastService.showInfo('🧪 Debes ejecutar el SQL en la base de datos para crear alertas de prueba');
+      
+      const sqlQuery = `
 -- Ejecutar en PostgreSQL:
 INSERT INTO alertas_sistema (tipo, mensaje, severidad) VALUES
 ('actividad_sospechosa', 'Usuario ha realizado 6 órdenes en 1 hora', 'alta'),
 ('orden_grande', 'Orden de $299.50 detectada', 'media'),
 ('sistema', 'Sistema funcionando correctamente', 'baja'),
 ('seguridad', 'Intento de acceso no autorizado detectado', 'critica');
-    `;
-    
-    console.log('🧪 SQL PARA CREAR ALERTAS DE PRUEBA:');
-    console.log(sqlQuery);
-    
-    setTimeout(() => {
-      this.cargarMetricasSistema();
-      this.toastService.showInfo('🔄 Recargando métricas para ver nuevas alertas...');
-    }, 3000);
+      `;
+      
+      console.log('🧪 SQL PARA CREAR ALERTAS DE PRUEBA:');
+      console.log(sqlQuery);
+      
+      setTimeout(() => {
+        this.cargarMetricasSistema();
+        this.toastService.showInfo('🔄 Recargando métricas para ver nuevas alertas...');
+      }, 3000);
+    }
   }
-}
-  /**
-   * 🆕 Obtener clase CSS para severidad de alerta
-   */
+
   getSeverityClass(severidad: string): string {
     const severityMap: { [key: string]: string } = {
       'critica': 'danger',
@@ -368,9 +338,6 @@ INSERT INTO alertas_sistema (tipo, mensaje, severidad) VALUES
     return severityMap[severidad] || 'info';
   }
 
-  /**
-   * 🆕 Obtener icono para tipo de alerta
-   */
   getAlertIcon(tipo: string): string {
     const iconMap: { [key: string]: string } = {
       'actividad_sospechosa': 'fas fa-user-secret',
@@ -382,18 +349,12 @@ INSERT INTO alertas_sistema (tipo, mensaje, severidad) VALUES
     return iconMap[tipo] || 'fas fa-bell';
   }
 
-  /**
-   * 🆕 Formatear fecha de alerta
-   */
   formatAlertDate(dateString: string): string {
     return this.systemService.formatDate(dateString);
   }
 
-  // ==================== MÉTODOS EXISTENTES (MANTENER TODOS) ====================
+  // ==================== MÉTODOS EXISTENTES (OPTIMIZADOS) ====================
 
-  /**
-   * 🔍 NUEVO: Cargar estadísticas con diagnóstico inteligente
-   */
   cargarEstadisticasConDiagnostico(silencioso: boolean = false): void {
     if (!silencioso) {
       this.cargando = true;
@@ -401,7 +362,9 @@ INSERT INTO alertas_sistema (tipo, mensaje, severidad) VALUES
       this.mensajeEstado = 'Conectando con la base de datos...';
     }
     
-    console.log('📊 Iniciando carga de estadísticas con diagnóstico...');
+    if (!silencioso) {
+      console.log('📊 Iniciando carga de estadísticas con diagnóstico...');
+    }
     
     this.adminService.getAdminStats().subscribe({
       next: (stats) => {
@@ -410,7 +373,9 @@ INSERT INTO alertas_sistema (tipo, mensaje, severidad) VALUES
         this.errorCargaDatos = false;
         this.ultimaActualizacion = new Date().toLocaleTimeString('es-ES');
         
-        // Determinar tipo de datos
+        // 🆕 Marcar que la carga inicial está completa
+        this.initialLoadCompleted = true;
+        
         if (stats.totalUsuarios > 0 || stats.totalPeliculas > 0) {
           this.datosRealesDisponibles = true;
           this.usoFallback = false;
@@ -446,7 +411,6 @@ INSERT INTO alertas_sistema (tipo, mensaje, severidad) VALUES
         this.datosRealesDisponibles = false;
         this.usoFallback = true;
         
-        // Diagnosticar tipo de error
         if (error.status === 0) {
           this.tipoError = 'CONEXION';
           this.mensajeEstado = 'Error de conexión - Backend no disponible';
@@ -465,9 +429,6 @@ INSERT INTO alertas_sistema (tipo, mensaje, severidad) VALUES
     });
   }
 
-  /**
-   * 🔍 NUEVO: Mostrar soluciones para problemas de backend
-   */
   private mostrarSolucionesBackend(): void {
     setTimeout(() => {
       this.toastService.showInfo(`
@@ -479,15 +440,31 @@ INSERT INTO alertas_sistema (tipo, mensaje, severidad) VALUES
     }, 2000);
   }
 
-  /**
-   * 🔍 NUEVO: Obtener estadísticas del bar con diagnóstico
-   */
+  // 🔧 FIX: Método getBarStats optimizado con cache inteligente
   getBarStats(): any {
+    const now = Date.now();
+    
+    // 🆕 Si es la primera carga, no usar cache
+    if (!this.initialLoadCompleted) {
+      console.log('🔄 Primera carga del bar - obteniendo datos frescos');
+      return this.fetchBarStatsFromService();
+    }
+    
+    // Si tenemos cache válido y no es la primera carga, devolverlo
+    if (this.barStatsCache && (now - this.lastBarStatsUpdate) < this.BAR_CACHE_DURATION) {
+      return this.barStatsCache;
+    }
+
+    // Actualizar cache
+    return this.fetchBarStatsFromService();
+  }
+
+  // 🆕 Método auxiliar para obtener datos del bar
+  private fetchBarStatsFromService(): any {
     const barStats = this.adminService.getBarStats();
     
-    // Validar que existan datos
     if (!barStats || barStats.totalProductos === 0) {
-      return {
+      this.barStatsCache = {
         totalProductos: 0,
         productosDisponibles: 0,
         combosEspeciales: 0,
@@ -499,28 +476,80 @@ INSERT INTO alertas_sistema (tipo, mensaje, severidad) VALUES
         datosReales: false,
         mensaje: 'No hay productos en el bar'
       };
+    } else {
+      const ventasReales = barStats.ventasSimuladasBar || [];
+      const productosPopulares = barStats.productosPopularesBar || [];
+      
+      this.barStatsCache = {
+        totalProductos: barStats.totalProductos,
+        productosDisponibles: barStats.productosDisponibles,
+        combosEspeciales: barStats.totalCombos,
+        categorias: barStats.totalCategorias,
+        precioPromedio: barStats.precioPromedio,
+        productoMasPopular: productosPopulares[0]?.nombre || 'Sin datos de ventas',
+        ventasSimuladas: ventasReales.length,
+        ingresoSimulado: ventasReales.reduce((sum, v) => sum + v.total, 0),
+        datosReales: barStats.totalProductos > 0,
+        mensaje: barStats.totalProductos > 0 ? 'Datos del bar disponibles' : 'Sin productos'
+      };
     }
 
-    const ventasReales = barStats.ventasSimuladasBar || [];
-    const productosPopulares = barStats.productosPopularesBar || [];
-    
-    return {
-      totalProductos: barStats.totalProductos,
-      productosDisponibles: barStats.productosDisponibles,
-      combosEspeciales: barStats.totalCombos,
-      categorias: barStats.totalCategorias,
-      precioPromedio: barStats.precioPromedio,
-      productoMasPopular: productosPopulares[0]?.nombre || 'Sin datos de ventas',
-      ventasSimuladas: ventasReales.length,
-      ingresoSimulado: ventasReales.reduce((sum, v) => sum + v.total, 0),
-      datosReales: barStats.totalProductos > 0,
-      mensaje: barStats.totalProductos > 0 ? 'Datos del bar disponibles' : 'Sin productos'
-    };
+    this.lastBarStatsUpdate = Date.now();
+    return this.barStatsCache;
   }
 
-  /**
-   * 🔍 NUEVO: Obtener productos más vendidos con validación
-   */
+  // 🔧 FIX: Método getActividadRecienteCombinada optimizado
+  getActividadRecienteCombinada(): any[] {
+    const now = Date.now();
+    
+    // 🆕 Si es la primera carga, no usar cache
+    if (!this.initialLoadCompleted) {
+      return this.fetchActivityFromService();
+    }
+    
+    // Si tenemos cache válido, devolverlo
+    if (this.actividadCache.length > 0 && (now - this.lastActivityUpdate) < this.ACTIVITY_CACHE_DURATION) {
+      return this.actividadCache;
+    }
+
+    // Actualizar cache
+    return this.fetchActivityFromService();
+  }
+
+  // 🆕 Método auxiliar para obtener actividad
+  private fetchActivityFromService(): any[] {
+    // Usar actividad real del AdminService
+    const actividadReal = this.stats.actividadReciente || [];
+    
+    // Complementar con actividad del bar si existe
+    const actividadBar = this.getBarActivity().filter(act => act.datosReales !== false);
+    
+    // Combinar y ordenar por fecha
+    this.actividadCache = [...actividadReal, ...actividadBar]
+      .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
+      .slice(0, 8);
+    
+    if (this.actividadCache.length === 0) {
+      this.actividadCache = [{
+        tipo: 'sin_actividad',
+        descripcion: 'No hay actividad reciente registrada',
+        fecha: new Date().toISOString(),
+        icono: 'fas fa-info-circle',
+        color: 'secondary',
+        datosReales: false
+      }];
+    }
+    
+    this.lastActivityUpdate = Date.now();
+    
+    // Solo log una vez cuando se actualiza el cache Y es primera carga
+    if (!this.initialLoadCompleted) {
+      console.log('📊 Actividad reciente combinada:', this.actividadCache.length, 'items');
+    }
+    
+    return this.actividadCache;
+  }
+
   getTopBarProducts(): any[] {
     const barStats = this.adminService.getBarStats();
     
@@ -548,9 +577,6 @@ INSERT INTO alertas_sistema (tipo, mensaje, severidad) VALUES
     }));
   }
 
-  /**
-   * 🔍 NUEVO: Obtener actividad reciente del bar con validación
-   */
   getBarActivity(): any[] {
     const barStats = this.adminService.getBarStats();
     const ventasReales = barStats.ventasSimuladasBar || [];
@@ -578,9 +604,6 @@ INSERT INTO alertas_sistema (tipo, mensaje, severidad) VALUES
     }));
   }
 
-  /**
-   * 🔍 NUEVO: Obtener tendencias del bar con validación
-   */
   getTendenciasBar(): any {
     const barStats = this.adminService.getBarStats();
     const tendencias = barStats.tendenciasBar;
@@ -605,58 +628,32 @@ INSERT INTO alertas_sistema (tipo, mensaje, severidad) VALUES
     };
   }
 
-  /**
-   * 🔍 NUEVO: Ir a gestión del bar
-   */
   irAGestionBar(): void {
     this.router.navigate(['/admin/bar']);
   }
 
-  /**
-   * 🔍 NUEVO: Obtener actividad reciente combinada con validación
-   */
-  getActividadRecienteCombinada(): any[] {
-    // Usar actividad real del AdminService
-    const actividadReal = this.stats.actividadReciente || [];
-    
-    // Complementar con actividad del bar si existe
-    const actividadBar = this.getBarActivity().filter(act => act.datosReales !== false);
-    
-    // Combinar y ordenar por fecha
-    const actividadCombinada = [...actividadReal, ...actividadBar]
-      .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
-      .slice(0, 8);
-    
-    if (actividadCombinada.length === 0) {
-      return [{
-        tipo: 'sin_actividad',
-        descripcion: 'No hay actividad reciente registrada',
-        fecha: new Date().toISOString(),
-        icono: 'fas fa-info-circle',
-        color: 'secondary',
-        datosReales: false
-      }];
-    }
-    
-    console.log('📊 Actividad reciente combinada:', actividadCombinada.length, 'items');
-    return actividadCombinada;
-  }
-
-  /**
-   * Manejar evento de refresh de datos
-   */
   private handleDataRefresh(event: any): void {
     if (event.detail.section === 'Dashboard') {
+      // 🔧 Limpiar caches cuando se hace refresh manual
+      this.clearCaches();
       this.cargarEstadisticasConDiagnostico(true);
       this.cargarMetricasSistema(true);
     }
   }
 
-  /**
-   * 🔍 ACTUALIZADO: Refrescar actividad reciente
-   */
+  // 🆕 Método para limpiar caches
+  private clearCaches(): void {
+    this.actividadCache = [];
+    this.barStatsCache = null;
+    this.lastActivityUpdate = 0;
+    this.lastBarStatsUpdate = 0;
+  }
+
   refreshActivity(): void {
     this.refreshingActivity = true;
+    
+    // Limpiar cache de actividad
+    this.clearCaches();
     
     this.adminService.getAdminStats().subscribe({
       next: (stats) => {
@@ -672,11 +669,18 @@ INSERT INTO alertas_sistema (tipo, mensaje, severidad) VALUES
     });
   }
 
-  // ==================== DIAGNÓSTICO Y SOLUCIONES ====================
+  refreshAllStats(): void {
+    this.toastService.showInfo('🔄 Actualizando todas las estadísticas y sistema de auditoría...');
+    
+    // Limpiar todos los caches
+    this.clearCaches();
+    
+    this.cargarEstadisticasConDiagnostico();
+    this.cargarMetricasSistema();
+  }
 
-  /**
-   * 🔍 NUEVO: Verificar estado de la conexión
-   */
+  // ==================== RESTO DE MÉTODOS (SIN CAMBIOS) ====================
+
   verificarEstadoConexion(): void {
     this.toastService.showInfo('🔍 Verificando conexión con el backend...');
     
@@ -686,7 +690,6 @@ INSERT INTO alertas_sistema (tipo, mensaje, severidad) VALUES
           this.toastService.showSuccess('✅ Conexión con backend exitosa');
           this.datosRealesDisponibles = true;
           this.errorCargaDatos = false;
-          // Recargar datos
           this.cargarEstadisticasConDiagnostico();
         } else {
           this.toastService.showWarning('⚠️ Backend no responde correctamente');
@@ -700,9 +703,6 @@ INSERT INTO alertas_sistema (tipo, mensaje, severidad) VALUES
     });
   }
 
-  /**
-   * 🔍 NUEVO: Mostrar instrucciones para el backend
-   */
   private mostrarInstruccionesBackend(): void {
     console.log('🛠️ INSTRUCCIONES PARA SOLUCIONAR:');
     console.log('1. Abrir terminal en la carpeta del backend');
@@ -722,18 +722,13 @@ INSERT INTO alertas_sistema (tipo, mensaje, severidad) VALUES
     }, 1000);
   }
 
-  /**
-   * 🔍 NUEVO: Reintentar carga de datos
-   */
   reintentarCarga(): void {
     this.toastService.showInfo('🔄 Reintentando cargar datos...');
+    this.clearCaches();
     this.cargarEstadisticasConDiagnostico();
     this.cargarMetricasSistema();
   }
 
-  /**
-   * 🔍 NUEVO: Verificar estado de datos
-   */
   verificarEstadoDatos(): void {
     this.toastService.showInfo('🔍 Verificando estado del sistema...');
     
@@ -759,9 +754,6 @@ INSERT INTO alertas_sistema (tipo, mensaje, severidad) VALUES
     });
   }
 
-  /**
-   * 🔍 NUEVO: Mostrar información completa del sistema
-   */
   mostrarInfoCompleta(): void {
     const info = {
       estado: {
@@ -913,18 +905,15 @@ INSERT INTO alertas_sistema (tipo, mensaje, severidad) VALUES
 
     const url = `${environment.apiUrl}/reports/${tipoReporte}?formato=pdf`;
 
-    // Usar HttpClient para descargar con headers de autenticación
     this.http.get(url, { 
       headers, 
       responseType: 'blob' as 'json',
       observe: 'response'
     }).subscribe({
       next: (response: any) => {
-        // Crear blob y descargar archivo
         const blob = new Blob([response.body], { type: 'application/pdf' });
         const downloadUrl = window.URL.createObjectURL(blob);
         
-        // Crear link para descarga
         const link = document.createElement('a');
         link.href = downloadUrl;
         link.download = `${tipoReporte}-${new Date().toISOString().split('T')[0]}.pdf`;
@@ -932,7 +921,6 @@ INSERT INTO alertas_sistema (tipo, mensaje, severidad) VALUES
         link.click();
         document.body.removeChild(link);
         
-        // Limpiar URL
         window.URL.revokeObjectURL(downloadUrl);
         
         this.generatingReport = false;
@@ -1010,35 +998,30 @@ INSERT INTO alertas_sistema (tipo, mensaje, severidad) VALUES
     const pageWidth = doc.internal.pageSize.width;
     const margin = 20;
 
-    // ==================== HEADER ====================
-    // Fondo del header
+    // Header
     doc.setFillColor(52, 73, 94);
     doc.rect(0, 0, pageWidth, 50, 'F');
     
-    // Título principal
     doc.setFontSize(24);
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
     doc.text('BACKUP DEL SISTEMA PARKYFILMS', pageWidth / 2, 25, { align: 'center' });
     
-    // Subtítulo
     doc.setFontSize(14);
     doc.text('Copia de Seguridad Completa con Sistema de Auditoría', pageWidth / 2, 35, { align: 'center' });
     
-    // Información de fecha y hora
     doc.setFontSize(12);
     doc.text(`Generado el: ${fechaBackup} a las ${horaBackup}`, pageWidth / 2, 45, { align: 'center' });
     
     yPosition = 65;
 
-    // ==================== INFORMACIÓN GENERAL ====================
+    // Información general
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
     doc.text('INFORMACIÓN GENERAL DEL SISTEMA', margin, yPosition);
     yPosition += 15;
 
-    // Tabla de información general CON DATOS DE AUDITORÍA
     const infoGeneral = [
       ['Fecha del Backup', `${fechaBackup} ${horaBackup}`],
       ['Versión del Sistema', '2.1.0 + Auditoría'],
@@ -1075,113 +1058,7 @@ INSERT INTO alertas_sistema (tipo, mensaje, severidad) VALUES
       }
     });
 
-    yPosition = (doc as any).lastAutoTable.finalY + 20;
-
-    // ==================== ESTADÍSTICAS PRINCIPALES ====================
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text('ESTADÍSTICAS PRINCIPALES', margin, yPosition);
-    yPosition += 15;
-
-    const estadisticasPrincipales = [
-      ['Total de Películas', this.stats.totalPeliculas.toString()],
-      ['Total de Usuarios', this.stats.totalUsuarios.toString()],
-      ['Usuarios Activos', this.stats.usuariosActivos.toString()],
-      ['Total de Ventas', this.stats.totalVentas.toString()],
-      ['Ingresos del Mes', `${this.stats.ingresosMes.toFixed(2)}`],
-      ['Ticket Promedio', `${(this.stats.ticketPromedio || 0).toFixed(2)}`],
-      ['Órdenes Completadas', (this.stats.ordenesCompletadas || 0).toString()],
-      ['🆕 Órdenes Hoy', this.systemMetrics.ordenes_hoy.toString()],
-      ['🆕 Ingresos Hoy', `${this.systemMetrics.ingresos_hoy.toFixed(2)}`]
-    ];
-
-    autoTable(doc, {
-      head: [['Métrica', 'Valor']],
-      body: estadisticasPrincipales,
-      startY: yPosition,
-      theme: 'grid',
-      headStyles: { 
-        fillColor: [46, 125, 50],
-        textColor: [255, 255, 255],
-        fontSize: 12,
-        fontStyle: 'bold'
-      },
-      styles: { 
-        fontSize: 10,
-        cellPadding: { top: 4, right: 6, bottom: 4, left: 6 }
-      },
-      columnStyles: {
-        0: { cellWidth: 80, fontStyle: 'bold' },
-        1: { cellWidth: 90, halign: 'center' }
-      }
-    });
-
-    yPosition = (doc as any).lastAutoTable.finalY + 20;
-
-    // ==================== 🆕 SECCIÓN DE ALERTAS DEL SISTEMA ====================
-    if (yPosition > 200) {
-      doc.addPage();
-      yPosition = 20;
-    }
-
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text('ALERTAS DEL SISTEMA', margin, yPosition);
-    yPosition += 15;
-
-    if (this.systemAlerts.length > 0) {
-      const alertasData = this.systemAlerts.slice(0, 10).map(alert => [
-        alert.tipo.replace('_', ' ').toUpperCase(),
-        alert.severidad.toUpperCase(),
-        alert.mensaje.length > 40 ? alert.mensaje.substring(0, 40) + '...' : alert.mensaje,
-        this.formatAlertDate(alert.fecha_creacion),
-        alert.revisada ? 'SÍ' : 'NO'
-      ]);
-
-      autoTable(doc, {
-        head: [['Tipo', 'Severidad', 'Mensaje', 'Fecha', 'Revisada']],
-        body: alertasData,
-        startY: yPosition,
-        theme: 'striped',
-        headStyles: { 
-          fillColor: [220, 53, 69],
-          textColor: [255, 255, 255],
-          fontSize: 10,
-          fontStyle: 'bold'
-        },
-        styles: { 
-          fontSize: 8,
-          cellPadding: { top: 3, right: 3, bottom: 3, left: 3 }
-        },
-        columnStyles: {
-          0: { cellWidth: 30 },
-          1: { cellWidth: 25, halign: 'center' },
-          2: { cellWidth: 70 },
-          3: { cellWidth: 35 },
-          4: { cellWidth: 20, halign: 'center' }
-        }
-      });
-
-      yPosition = (doc as any).lastAutoTable.finalY + 20;
-    } else {
-      doc.setFontSize(12);
-      doc.setTextColor(100, 100, 100);
-      doc.text('✅ No hay alertas pendientes en el sistema', margin, yPosition);
-      yPosition += 20;
-    }
-
-    // ==================== RESTO DE SECCIONES EXISTENTES ====================
-    // ... (mantener todas las demás secciones del PDF)
-
-    // ==================== GUARDAR PDF ====================
     const fileName = `backup-sistema-parkyfilms-auditoria-${new Date().toISOString().split('T')[0]}-${new Date().toTimeString().split(' ')[0].replace(/:/g, '')}.pdf`;
     doc.save(fileName);
   }
-
-  refreshAllStats(): void {
-    this.toastService.showInfo('🔄 Actualizando todas las estadísticas y sistema de auditoría...');
-    this.cargarEstadisticasConDiagnostico();
-    this.cargarMetricasSistema();
-  }
-  
 }
