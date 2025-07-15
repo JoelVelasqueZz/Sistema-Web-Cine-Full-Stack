@@ -1,9 +1,12 @@
-import { Injectable } from '@angular/core';
+import { Injectable, Inject, PLATFORM_ID, Optional } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable, BehaviorSubject, of } from 'rxjs';
-import { map, catchError } from 'rxjs/operators';
+import { Observable, BehaviorSubject, of, throwError } from 'rxjs';
+import { map, catchError, delay, retry } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
-import { ToastService } from './toast.service';
+
+// 🛡️ IMPORT OPCIONAL del ToastService para evitar dependencia circular
+// import { ToastService } from './toast.service';
 
 @Injectable({
   providedIn: 'root'
@@ -28,221 +31,350 @@ export class AuthService {
   // 🆕 Variable para el intervalo de monitoreo
   private tokenMonitorInterval: any = null;
 
-  constructor(private http: HttpClient, private toastService?: ToastService) {
-  console.log('🔐 AuthService conectado a API:', this.API_URL);
-  
-  // 🛡️ NUEVO: Limpieza preventiva antes de cargar
-  this.preventiveCleanup();
-  
-  // Cargar datos de autenticación
-  this.loadAuthFromStorage();
-  
-  // Iniciar monitoreo si hay sesión
-  if (this.isLoggedIn()) {
-    this.startTokenMonitoring();
-  }
-}
-private preventiveCleanup(): void {
-  try {
-    console.log('🔍 Ejecutando limpieza preventiva...');
+  // 🛡️ NUEVO: Flag para evitar inicialización múltiple
+  private isInitialized: boolean = false;
+
+  // 🛡️ NUEVO: Referencia opcional al ToastService
+  private toastService: any = null;
+
+  constructor(
+    private http: HttpClient,
+    @Inject(PLATFORM_ID) private platformId: Object
+    // 🛡️ REMOVER ToastService del constructor para evitar dependencia circular
+    // @Optional() private toastService?: ToastService
+  ) {
+    console.log('🔐 AuthService conectado a API:', this.API_URL);
     
-    // 1. Verificar si hay tokens obviamente expirados
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      if (!this.isValidJWTFormat(token)) {
-        console.log('🧹 Token con formato inválido detectado - limpiando');
+    // 🛡️ SOLO inicializar en el navegador
+    if (isPlatformBrowser(this.platformId)) {
+      this.initializeService();
+    }
+  }
+
+  // 🛡️ NUEVO: Método de inicialización segura
+  private initializeService(): void {
+    if (this.isInitialized) {
+      console.log('⚠️ AuthService ya inicializado, saltando...');
+      return;
+    }
+
+    try {
+      console.log('🚀 Inicializando AuthService...');
+      
+      // 🛡️ Prevenir inicialización múltiple
+      this.isInitialized = true;
+
+      // Usar setTimeout para permitir que Angular termine la hidratación
+      setTimeout(() => {
+        this.performInitialization();
+      }, 100);
+
+    } catch (error) {
+      console.error('❌ Error en inicialización:', error);
+      this.handleInitializationError();
+    }
+  }
+
+  // 🛡️ NUEVO: Realizar inicialización después de hidratación
+  private performInitialization(): void {
+    try {
+      console.log('🔧 Ejecutando inicialización diferida...');
+      
+      // 1. Limpieza preventiva
+      this.preventiveCleanup();
+      
+      // 2. Cargar datos de autenticación
+      this.loadAuthFromStorage();
+      
+      // 3. Iniciar monitoreo si hay sesión
+      if (this.isLoggedIn()) {
+        console.log('✅ Sesión detectada, iniciando monitoreo...');
+        this.startTokenMonitoring();
+      }
+
+      console.log('✅ AuthService inicializado correctamente');
+
+    } catch (error) {
+      console.error('❌ Error en inicialización diferida:', error);
+      this.handleInitializationError();
+    }
+  }
+
+  // 🛡️ NUEVO: Manejar errores de inicialización
+  private handleInitializationError(): void {
+    console.log('🧹 Limpiando datos por error de inicialización...');
+    this.clearAuthData();
+    this.isInitialized = false;
+  }
+
+  // 🛡️ NUEVO: Método para inyectar ToastService después de la inicialización
+  public setToastService(toastService: any): void {
+    this.toastService = toastService;
+    console.log('📧 ToastService conectado al AuthService');
+  }
+
+  // 🛡️ MEJORADO: Verificación más robusta de plataforma
+  private isBrowser(): boolean {
+    return isPlatformBrowser(this.platformId) && typeof window !== 'undefined' && typeof localStorage !== 'undefined';
+  }
+
+  private preventiveCleanup(): void {
+    if (!this.isBrowser()) {
+      console.log('⚠️ No es navegador, saltando limpieza preventiva');
+      return;
+    }
+
+    try {
+      console.log('🔍 Ejecutando limpieza preventiva...');
+      
+      // 1. Verificar si hay tokens obviamente expirados
+      const token = this.getStorageItem('auth_token');
+      if (token) {
+        if (!this.isValidJWTFormat(token)) {
+          console.log('🧹 Token con formato inválido detectado - limpiando');
+          this.clearAuthData();
+          return;
+        }
+        
+        if (this.isTokenExpiredLocally(token)) {
+          console.log('🧹 Token expirado detectado - limpiando');
+          this.clearAuthData();
+          return;
+        }
+      }
+      
+      // 2. Verificar consistencia de datos
+      const userStr = this.getStorageItem('current_user');
+      const isAuth = this.getStorageItem('is_authenticated');
+      
+      if ((token && !userStr) || (userStr && !token) || (token && isAuth !== 'true')) {
+        console.log('🧹 Datos inconsistentes detectados - limpiando');
         this.clearAuthData();
         return;
       }
       
-      if (this.isTokenExpiredLocally(token)) {
-        console.log('🧹 Token expirado detectado - limpiando');
-        this.clearAuthData();
-        return;
-      }
-    }
-    
-    // 2. Verificar consistencia de datos
-    const userStr = localStorage.getItem('current_user');
-    const isAuth = localStorage.getItem('is_authenticated');
-    
-    if ((token && !userStr) || (userStr && !token) || (token && isAuth !== 'true')) {
-      console.log('🧹 Datos inconsistentes detectados - limpiando');
-      this.clearAuthData();
-      return;
-    }
-    
-    // 3. Verificar datos de usuario válidos
-    if (userStr) {
-      try {
-        const user = JSON.parse(userStr);
-        if (!user.id || !user.email || !user.nombre) {
-          console.log('🧹 Datos de usuario incompletos - limpiando');
+      // 3. Verificar datos de usuario válidos
+      if (userStr) {
+        try {
+          const user = JSON.parse(userStr);
+          if (!user.id || !user.email || !user.nombre) {
+            console.log('🧹 Datos de usuario incompletos - limpiando');
+            this.clearAuthData();
+            return;
+          }
+        } catch (parseError) {
+          console.log('🧹 Datos de usuario corruptos - limpiando');
           this.clearAuthData();
           return;
         }
-      } catch (parseError) {
-        console.log('🧹 Datos de usuario corruptos - limpiando');
-        this.clearAuthData();
-        return;
       }
+      
+      console.log('✅ Limpieza preventiva completada - datos válidos');
+      
+    } catch (error) {
+      console.error('❌ Error en limpieza preventiva:', error);
+      // En caso de error, limpiar por seguridad
+      this.clearAuthData();
+    }
+  }
+
+  // 🛡️ NUEVO: Método seguro para acceder a localStorage
+  private getStorageItem(key: string): string | null {
+    if (!this.isBrowser()) {
+      return null;
     }
     
-    console.log('✅ Limpieza preventiva completada - datos válidos');
+    try {
+      return localStorage.getItem(key);
+    } catch (error) {
+      console.error(`❌ Error accediendo a localStorage[${key}]:`, error);
+      return null;
+    }
+  }
+
+  // 🛡️ NUEVO: Método seguro para escribir a localStorage
+  private setStorageItem(key: string, value: string): boolean {
+    if (!this.isBrowser()) {
+      return false;
+    }
     
-  } catch (error) {
-    console.error('❌ Error en limpieza preventiva:', error);
-    // En caso de error, limpiar por seguridad
-    this.clearAuthData();
-  }
-}
-private isValidJWTFormat(token: string): boolean {
-  if (!token || typeof token !== 'string') {
-    return false;
-  }
-
-  const parts = token.split('.');
-  if (parts.length !== 3) {
-    return false;
-  }
-
-  // Verificar que cada parte no esté vacía
-  for (const part of parts) {
-    if (!part || part.trim() === '') {
+    try {
+      localStorage.setItem(key, value);
+      return true;
+    } catch (error) {
+      console.error(`❌ Error escribiendo a localStorage[${key}]:`, error);
       return false;
     }
   }
 
-  // Intentar decodificar el payload
-  try {
-    atob(parts[1]);
-    return true;
-  } catch (error) {
-    return false;
+  // 🛡️ NUEVO: Método seguro para remover de localStorage
+  private removeStorageItem(key: string): boolean {
+    if (!this.isBrowser()) {
+      return false;
+    }
+    
+    try {
+      localStorage.removeItem(key);
+      return true;
+    } catch (error) {
+      console.error(`❌ Error removiendo localStorage[${key}]:`, error);
+      return false;
+    }
   }
-}
 
-private isTokenExpiredLocally(token: string): boolean {
-  try {
-    if (!this.isValidJWTFormat(token)) {
+  private isValidJWTFormat(token: string): boolean {
+    if (!token || typeof token !== 'string') {
+      return false;
+    }
+
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      return false;
+    }
+
+    // Verificar que cada parte no esté vacía
+    for (const part of parts) {
+      if (!part || part.trim() === '') {
+        return false;
+      }
+    }
+
+    // Intentar decodificar el payload
+    try {
+      atob(parts[1]);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  private isTokenExpiredLocally(token: string): boolean {
+    try {
+      if (!this.isValidJWTFormat(token)) {
+        return true;
+      }
+
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      
+      if (!payload.exp) {
+        return false; // Sin expiración = válido
+      }
+
+      const currentTime = Date.now() / 1000;
+      const isExpired = payload.exp < currentTime;
+
+      if (isExpired) {
+        const expDate = new Date(payload.exp * 1000);
+        const now = new Date();
+        console.log(`⏰ Token expirado desde: ${expDate.toLocaleString()} (actual: ${now.toLocaleString()})`);
+      }
+
+      return isExpired;
+    } catch (error) {
+      console.error('❌ Error verificando expiración:', error);
       return true;
     }
+  }
 
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    
-    if (!payload.exp) {
-      return false; // Sin expiración = válido
+  private setupAutoCleanup(): void {
+    const token = this.getToken();
+    if (!token) return;
+
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      if (!payload.exp) return;
+
+      const expirationTime = payload.exp * 1000;
+      const now = Date.now();
+      const timeUntilExpiration = expirationTime - now;
+      const thirtyMinutes = 30 * 60 * 1000;
+
+      // Si queda menos de 30 minutos, limpiar ahora
+      if (timeUntilExpiration <= thirtyMinutes) {
+        console.log('⚠️ Token expira en menos de 30 minutos - limpiando ahora');
+        this.handleTokenExpiration();
+        return;
+      }
+
+      // Configurar limpieza automática 30 minutos antes
+      const timeoutDuration = timeUntilExpiration - thirtyMinutes;
+      
+      setTimeout(() => {
+        console.log('⏰ Token próximo a expirar - ejecutando limpieza automática');
+        this.handleTokenExpiration();
+      }, timeoutDuration);
+
+      console.log(`⏰ Auto-limpieza programada en ${Math.round(timeoutDuration / 1000 / 60)} minutos`);
+
+    } catch (error) {
+      console.error('❌ Error configurando auto-limpieza:', error);
     }
-
-    const currentTime = Date.now() / 1000;
-    const isExpired = payload.exp < currentTime;
-
-    if (isExpired) {
-      const expDate = new Date(payload.exp * 1000);
-      const now = new Date();
-      console.log(`⏰ Token expirado desde: ${expDate.toLocaleString()} (actual: ${now.toLocaleString()})`);
-    }
-
-    return isExpired;
-  } catch (error) {
-    console.error('❌ Error verificando expiración:', error);
-    return true;
   }
-}
 
-
-private setupAutoCleanup(): void {
-  const token = this.getToken();
-  if (!token) return;
-
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    if (!payload.exp) return;
-
-    const expirationTime = payload.exp * 1000;
-    const now = Date.now();
-    const timeUntilExpiration = expirationTime - now;
-    const thirtyMinutes = 30 * 60 * 1000;
-
-    // Si queda menos de 30 minutos, limpiar ahora
-    if (timeUntilExpiration <= thirtyMinutes) {
-      console.log('⚠️ Token expira en menos de 30 minutos - limpiando ahora');
-      this.handleTokenExpiration();
-      return;
-    }
-
-    // Configurar limpieza automática 30 minutos antes
-    const timeoutDuration = timeUntilExpiration - thirtyMinutes;
+  private handleTokenExpiration(): void {
+    console.log('⏰ Manejando expiración de token...');
     
-    setTimeout(() => {
-      console.log('⏰ Token próximo a expirar - ejecutando limpieza automática');
-      this.handleTokenExpiration();
-    }, timeoutDuration);
-
-    console.log(`⏰ Auto-limpieza programada en ${Math.round(timeoutDuration / 1000 / 60)} minutos`);
-
-  } catch (error) {
-    console.error('❌ Error configurando auto-limpieza:', error);
-  }
-}
-
-private handleTokenExpiration(): void {
-  console.log('⏰ Manejando expiración de token...');
-  
-  // Mostrar notificación al usuario
-  if (this.toastService) {
-    this.toastService.showWarning('⏰ Tu sesión ha expirado. Por favor, inicia sesión nuevamente.');
-  }
-  
-  // Limpiar datos
-  this.clearAuthData();
-  
-  // Redirigir al login si estamos en una página protegida
-  const currentUrl = window.location.pathname;
-  const protectedRoutes = ['/admin', '/profile', '/checkout', '/orders'];
-  
-  if (protectedRoutes.some(route => currentUrl.includes(route))) {
-    setTimeout(() => {
-      window.location.href = '/login';
-    }, 2000);
-  }
-}
-private checkEnvironmentTokenCompatibility(): void {
-  const token = this.getToken();
-  if (!token) return;
-
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    const tokenIssuer = payload.iss; // Emisor del token
-    const currentDomain = window.location.hostname;
-    
-    // Si el token fue emitido para un entorno diferente, limpiarlo
-    if (tokenIssuer && tokenIssuer !== 'parkyfilms-api') {
-      console.log('🧹 Token de entorno diferente detectado - limpiando');
-      this.clearAuthData();
-      return;
+    // Mostrar notificación al usuario SI tenemos ToastService
+    if (this.toastService && this.toastService.showWarning) {
+      this.toastService.showWarning('⏰ Tu sesión ha expirado. Por favor, inicia sesión nuevamente.');
     }
     
-    // Verificar dominio
-    if (currentDomain.includes('localhost') && payload.aud !== 'parkyfilms-app') {
-      console.log('🧹 Token incompatible con entorno local - limpiando');
-      this.clearAuthData();
-      return;
-    }
+    // Limpiar datos
+    this.clearAuthData();
     
-  } catch (error) {
-    console.error('❌ Error verificando compatibilidad:', error);
+    // Redirigir al login si estamos en una página protegida
+    if (this.isBrowser()) {
+      const currentUrl = window.location.pathname;
+      const protectedRoutes = ['/admin', '/profile', '/checkout', '/orders'];
+      
+      if (protectedRoutes.some(route => currentUrl.includes(route))) {
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 2000);
+      }
+    }
   }
-}
-public checkAndCleanIfNeeded(): void {
-  console.log('🔍 Verificación manual de token solicitada');
-  this.preventiveCleanup();
-  
-  if (this.getToken()) {
-    this.setupAutoCleanup();
-    this.checkEnvironmentTokenCompatibility();
+
+  private checkEnvironmentTokenCompatibility(): void {
+    const token = this.getToken();
+    if (!token) return;
+
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const tokenIssuer = payload.iss; // Emisor del token
+      
+      if (!this.isBrowser()) return;
+      const currentDomain = window.location.hostname;
+      
+      // Si el token fue emitido para un entorno diferente, limpiarlo
+      if (tokenIssuer && tokenIssuer !== 'parkyfilms-api') {
+        console.log('🧹 Token de entorno diferente detectado - limpiando');
+        this.clearAuthData();
+        return;
+      }
+      
+      // Verificar dominio
+      if (currentDomain.includes('localhost') && payload.aud !== 'parkyfilms-app') {
+        console.log('🧹 Token incompatible con entorno local - limpiando');
+        this.clearAuthData();
+        return;
+      }
+      
+    } catch (error) {
+      console.error('❌ Error verificando compatibilidad:', error);
+    }
   }
-}
+
+  public checkAndCleanIfNeeded(): void {
+    console.log('🔍 Verificación manual de token solicitada');
+    this.preventiveCleanup();
+    
+    if (this.getToken()) {
+      this.setupAutoCleanup();
+      this.checkEnvironmentTokenCompatibility();
+    }
+  }
+
   // ==================== 🆕 MÉTODOS DE RENOVACIÓN AUTOMÁTICA ====================
 
   /**
@@ -448,7 +580,9 @@ public checkAndCleanIfNeeded(): void {
    */
   loginWithGoogle(): void {
     console.log('🔗 Iniciando autenticación con Google...');
-    window.location.href = `${this.API_URL}/auth/google`;
+    if (this.isBrowser()) {
+      window.location.href = `${this.API_URL}/auth/google`;
+    }
   }
 
   /**
@@ -456,7 +590,9 @@ public checkAndCleanIfNeeded(): void {
    */
   loginWithFacebook(): void {
     console.log('🔗 Iniciando autenticación con Facebook...');
-    window.location.href = `${this.API_URL}/auth/facebook`;
+    if (this.isBrowser()) {
+      window.location.href = `${this.API_URL}/auth/facebook`;
+    }
   }
 
   /**
@@ -464,7 +600,9 @@ public checkAndCleanIfNeeded(): void {
    */
   loginWithGitHub(): void {
     console.log('🔗 Iniciando autenticación con GitHub...');
-    window.location.href = `${this.API_URL}/auth/github`;
+    if (this.isBrowser()) {
+      window.location.href = `${this.API_URL}/auth/github`;
+    }
   }
 
   /**
@@ -589,7 +727,7 @@ public checkAndCleanIfNeeded(): void {
   // ==================== MÉTODOS DE VERIFICACIÓN ====================
 
   /**
-   * Verificar token
+   * 🛡️ MEJORADO: Verificar token con retry y delay
    */
   verifyToken(): Observable<boolean> {
     const token = this.getToken();
@@ -598,6 +736,8 @@ public checkAndCleanIfNeeded(): void {
     const headers = this.getAuthHeaders();
 
     return this.http.get<any>(`${this.API_URL}/auth/verify`, { headers }).pipe(
+      retry(2), // Reintentar 2 veces
+      delay(100), // Delay de 100ms
       map(response => {
         console.log('🔍 Respuesta de verify:', response);
         
@@ -688,7 +828,7 @@ public checkAndCleanIfNeeded(): void {
    * Obtener token de autenticación
    */
   getToken(): string | null {
-    return this.authToken || localStorage.getItem('auth_token');
+    return this.authToken || this.getStorageItem('auth_token');
   }
 
   getCurrentUserName(): string {
@@ -736,21 +876,22 @@ public checkAndCleanIfNeeded(): void {
    * Manejar éxito de autenticación
    */
   private handleAuthSuccess(authData: AuthData): void {
-  this.currentUser = this.convertApiUser(authData.user);
-  this.authToken = authData.token || null;
-  this.isAuthenticated = true;
+    this.currentUser = this.convertApiUser(authData.user);
+    this.authToken = authData.token || null;
+    this.isAuthenticated = true;
 
-  // Guardar en localStorage
-  this.saveAuthToStorage();
-  
-  // Actualizar observables
-  this.updateAuthState();
+    // Guardar en localStorage
+    this.saveAuthToStorage();
+    
+    // Actualizar observables
+    this.updateAuthState();
 
-  // 🛡️ NUEVO: Configurar auto-limpieza para el nuevo token
-  this.setupAutoCleanup();
+    // 🛡️ NUEVO: Configurar auto-limpieza para el nuevo token
+    this.setupAutoCleanup();
 
-  console.log('✅ Autenticación exitosa:', this.currentUser.nombre);
-}
+    console.log('✅ Autenticación exitosa:', this.currentUser.nombre);
+  }
+
   /**
    * Convertir usuario de API a formato local
    */
@@ -793,30 +934,48 @@ public checkAndCleanIfNeeded(): void {
   }
 
   /**
-   * Guardar datos de autenticación en localStorage
+   * 🛡️ MEJORADO: Guardar datos de autenticación en localStorage con verificación
    */
   private saveAuthToStorage(): void {
+    if (!this.isBrowser()) {
+      console.warn('⚠️ No es navegador, saltando guardado en localStorage');
+      return;
+    }
+
     try {
       if (this.authToken) {
-        localStorage.setItem('auth_token', this.authToken);
+        this.setStorageItem('auth_token', this.authToken);
       }
       if (this.currentUser) {
-        localStorage.setItem('current_user', JSON.stringify(this.currentUser));
+        this.setStorageItem('current_user', JSON.stringify(this.currentUser));
       }
-      localStorage.setItem('is_authenticated', 'true');
+      this.setStorageItem('is_authenticated', 'true');
+      
+      console.log('💾 Datos de autenticación guardados');
     } catch (error) {
       console.error('❌ Error al guardar datos de auth:', error);
     }
   }
 
   /**
-   * Cargar datos de autenticación desde localStorage
+   * 🛡️ MEJORADO: Cargar datos de autenticación desde localStorage con verificación
    */
   private loadAuthFromStorage(): void {
+    if (!this.isBrowser()) {
+      console.warn('⚠️ No es navegador, saltando carga desde localStorage');
+      return;
+    }
+
     try {
-      const token = localStorage.getItem('auth_token');
-      const userStr = localStorage.getItem('current_user');
-      const isAuth = localStorage.getItem('is_authenticated') === 'true';
+      const token = this.getStorageItem('auth_token');
+      const userStr = this.getStorageItem('current_user');
+      const isAuth = this.getStorageItem('is_authenticated') === 'true';
+
+      console.log('🔍 Cargando desde localStorage:', {
+        hasToken: !!token,
+        hasUser: !!userStr,
+        isAuth
+      });
 
       if (token && userStr && isAuth) {
         this.authToken = token;
@@ -824,8 +983,26 @@ public checkAndCleanIfNeeded(): void {
         this.isAuthenticated = true;
         this.updateAuthState();
 
-        // Verificar token con el servidor
-        this.verifyToken().subscribe();
+        console.log('✅ Datos cargados desde localStorage:', this.currentUser?.nombre);
+
+        // 🛡️ VERIFICACIÓN DIFERIDA: Verificar token con el servidor después de un delay
+        setTimeout(() => {
+          this.verifyToken().subscribe({
+            next: (isValid) => {
+              if (!isValid) {
+                console.log('⚠️ Token inválido detectado durante verificación diferida');
+              } else {
+                console.log('✅ Token verificado correctamente');
+              }
+            },
+            error: (error) => {
+              console.warn('⚠️ Error en verificación diferida:', error);
+            }
+          });
+        }, 1000); // Verificar después de 1 segundo
+
+      } else {
+        console.log('ℹ️ No hay datos de autenticación válidos en localStorage');
       }
     } catch (error) {
       console.error('❌ Error al cargar datos de auth:', error);
@@ -834,9 +1011,11 @@ public checkAndCleanIfNeeded(): void {
   }
 
   /**
-   * Limpiar todos los datos de autenticación
+   * 🛡️ MEJORADO: Limpiar todos los datos de autenticación
    */
   private clearAuthData(): void {
+    console.log('🧹 Limpiando datos de autenticación...');
+    
     this.currentUser = null;
     this.authToken = null;
     this.isAuthenticated = false;
@@ -844,11 +1023,13 @@ public checkAndCleanIfNeeded(): void {
     // 🆕 DETENER MONITOREO
     this.stopTokenMonitoring();
 
-    // Limpiar localStorage
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('current_user');
-    localStorage.removeItem('is_authenticated');
-    localStorage.removeItem('redirectUrl');
+    // 🛡️ Limpiar localStorage de forma segura
+    if (this.isBrowser()) {
+      this.removeStorageItem('auth_token');
+      this.removeStorageItem('current_user');
+      this.removeStorageItem('is_authenticated');
+      this.removeStorageItem('redirectUrl');
+    }
 
     // Actualizar observables
     this.updateAuthState();
@@ -920,6 +1101,74 @@ public checkAndCleanIfNeeded(): void {
   findUserById(userId: number): Usuario | null {
     const usuarios = this.getAllRegisteredUsers();
     return usuarios.find(u => u.id === userId) || null;
+  }
+
+  // ==================== 🛡️ MÉTODOS PÚBLICOS PARA DEBUGGING ====================
+
+  /**
+   * 🛡️ NUEVO: Método para debugging manual
+   */
+  public debugAuthState(): void {
+    console.log('🔍 === DEBUG AUTH STATE ===');
+    console.log('isAuthenticated:', this.isAuthenticated);
+    console.log('currentUser:', this.currentUser);
+    console.log('authToken:', this.authToken ? 'Present' : 'Null');
+    console.log('localStorage token:', this.getStorageItem('auth_token') ? 'Present' : 'Null');
+    console.log('localStorage user:', this.getStorageItem('current_user') ? 'Present' : 'Null');
+    console.log('localStorage isAuth:', this.getStorageItem('is_authenticated'));
+    console.log('isLoggedIn():', this.isLoggedIn());
+    console.log('Token time remaining:', this.getTokenTimeRemaining(), 'minutes');
+    console.log('=========================');
+  }
+
+  /**
+   * 🛡️ NUEVO: Forzar re-inicialización
+   */
+  public forceReinitialization(): void {
+    console.log('🔄 Forzando re-inicialización del AuthService...');
+    this.isInitialized = false;
+    this.stopTokenMonitoring();
+    
+    setTimeout(() => {
+      this.initializeService();
+    }, 200);
+  }
+
+  /**
+   * 🛡️ NUEVO: Verificación manual de salud del servicio
+   */
+  public healthCheck(): {status: string, issues: string[]} {
+    const issues: string[] = [];
+    
+    if (!this.isBrowser()) {
+      issues.push('No ejecutándose en navegador');
+    }
+    
+    if (!this.isInitialized) {
+      issues.push('Servicio no inicializado');
+    }
+    
+    const token = this.getToken();
+    if (token && !this.isValidJWTFormat(token)) {
+      issues.push('Token con formato inválido');
+    }
+    
+    if (token && this.isTokenExpiredLocally(token)) {
+      issues.push('Token expirado');
+    }
+    
+    if (this.isAuthenticated && !this.currentUser) {
+      issues.push('Autenticado pero sin datos de usuario');
+    }
+    
+    if (this.currentUser && !this.authToken) {
+      issues.push('Datos de usuario pero sin token');
+    }
+    
+    return {
+      status: issues.length === 0 ? 'healthy' : 'issues_detected',
+      issues
+    };
   }
 }
 
