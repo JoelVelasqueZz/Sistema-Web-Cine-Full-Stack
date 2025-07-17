@@ -654,7 +654,7 @@ export class AdminComingSoonComponent implements OnInit, OnDestroy {
         (index + 1).toString(),
         estreno.titulo.length > 25 ? estreno.titulo.substring(0, 25) + '...' : estreno.titulo,
         estreno.director.length > 20 ? estreno.director.substring(0, 20) + '...' : estreno.director,
-        estreno.genero,
+        estreno.genero, 
         this.formatearFecha(estreno.fechaEstreno),
         estreno.estudio || 'N/A',
         estreno.duracion || 'N/A'
