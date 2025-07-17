@@ -65,7 +65,7 @@ export class AdminComingSoonComponent implements OnInit, OnDestroy {
   readonly estudiosDisponibles = [
     'Disney', 'Marvel Studios', 'Warner Bros', 'Universal Pictures',
     'Paramount Pictures', 'Sony Pictures', 'Lionsgate', 'Netflix',
-    'Amazon Studios', 'Apple TV+'
+    'Amazon Studios', 'Apple TV+', 'Blumhouse'
   ];
 
   actoresTexto: string = '';

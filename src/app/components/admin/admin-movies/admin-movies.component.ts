@@ -58,7 +58,8 @@ export class AdminMoviesComponent implements OnInit, OnDestroy {
   readonly estudiosDisponibles = [
     'assets/studios/disney.png', 'assets/studios/marvel.png', 'assets/studios/warner.png',
     'assets/studios/universal.png', 'assets/studios/paramount.png', 'assets/studios/sony.png',
-    'assets/studios/lionsgate.png'
+    'assets/studios/lionsgate.png', 'assets/studios/netflix.png', 'assets/studios/amazon.png',
+    'assets/studios/apple.png', 'assets/studios/blumhouse.png'
   ];
 
   connectionStatus = 'connected'; // Siempre conectado con nueva API
