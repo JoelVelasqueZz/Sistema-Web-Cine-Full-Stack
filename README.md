@@ -1,59 +1,214 @@
-# ProyectoCine
+# ParkyFilms - Sistema de Gestión Cinematográfica
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 19.2.7.
+Sistema completo de gestión cinematográfica con autenticación OAuth, reservas de boletos, administración de películas y sistema de recompensas.
 
-## Development server
+## Stack Tecnológico
 
-To start a local development server, run:
+### Frontend
+- **Angular 19.2.x** con TypeScript 5.7.2
+- **RxJS** para programación reactiva con Observables
+- **jsPDF** para generación de reportes PDF
+- **Bootstrap/CSS3** para UI responsiva
 
+### Backend
+- **Node.js/Express.js** como servidor API REST
+- **PostgreSQL** como base de datos principal
+- **JWT** para autenticación de sesiones
+- **OAuth 2.0** integrado con Google
+
+### Infraestructura
+- **Railway** para despliegue en producción
+- **Nodemon** para desarrollo
+
+## Requisitos del Sistema
+
+- Node.js ≥ 18.0.0
+- npm ≥ 8.0.0
+- PostgreSQL ≥ 12.0
+- Git
+
+## Instalación y Configuración
+
+### 1. Clonar el repositorio
 ```bash
-ng serve
+git clone https://github.com/tu-usuario/ParkyFilms.git
+cd ParkyFilms
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
+### 2. Configurar Frontend
 ```bash
-ng generate component component-name
+# Instalar dependencias del frontend
+npm install
+
+# Iniciar servidor de desarrollo
+npm run dev
+```
+El frontend estará disponible en `http://localhost:4200/`
+
+### 3. Configurar Backend
+```bash
+# Cambiar al directorio del backend
+cd backend
+
+# Instalar dependencias
+npm install
+
+# Configurar variables de entorno (ver sección siguiente)
+cp .env.example .env
+
+# Ejecutar migraciones de base de datos
+npm run migrate
+
+# Iniciar servidor de desarrollo
+npm run dev
+```
+El backend estará disponible en `http://localhost:3000/`
+
+## Variables de Entorno
+
+Crear archivo `.env` en el directorio `backend/`:
+
+```env
+# Base de Datos
+DATABASE_URL=postgresql://usuario:password@localhost:5432/parkyfilms
+
+# JWT
+JWT_SECRET=tu_clave_secreta_muy_segura
+
+# OAuth - Google
+GOOGLE_CLIENT_ID=tu_google_client_id
+GOOGLE_CLIENT_SECRET=tu_google_client_secret
+
+# Configuración del servidor
+PORT=3000
+NODE_ENV=development
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+## Scripts Disponibles
 
+### Frontend
 ```bash
-ng generate --help
+npm run dev          # Servidor de desarrollo (puerto 4200)
+npm run build        # Build de producción
+npm run build:prod   # Build optimizado para producción
+npm start            # Servidor de producción
+npm test             # Tests unitarios con Karma
+npm run lint         # Linting del código
 ```
 
-## Building
-
-To build the project run:
-
+### Backend
 ```bash
-ng build
+npm run dev          # Servidor con nodemon (desarrollo)
+npm start            # Servidor de producción
+npm run migrate      # Ejecutar migraciones de BD
+npm run seed         # Poblar BD con datos de prueba
+npm test             # Tests unitarios con Jest
+npm run test:watch   # Tests en modo watch
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+## Arquitectura del Sistema
 
-## Running unit tests
-
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
-
-```bash
-ng test
+```
+┌─────────────────┐    HTTP/REST API    ┌──────────────────┐
+│   Frontend SPA  │ ◄─────────────────► │   Backend API    │
+│   (Angular)     │                     │   (Express.js)   │
+└─────────────────┘                     └──────────────────┘
+                                                   │
+                                                   ▼
+                                        ┌──────────────────┐
+                                        │   PostgreSQL     │
+                                        │   (Database)     │
+                                        └──────────────────┘
 ```
 
-## Running end-to-end tests
+### Componentes Principales:
+- **Frontend SPA**: Angular con routing client-side y state management
+- **API REST**: Express.js con middleware de autenticación JWT
+- **Base de Datos**: PostgreSQL con migraciones y seeding
+- **Autenticación**: OAuth 2.0 + JWT tokens para sesiones seguras
+- **Despliegue**: Railway para producción con CI/CD
 
-For end-to-end (e2e) testing, run:
+## Funcionalidades Principales
+
+### Autenticación y Usuarios
+- Registro e inicio de sesión tradicional
+- OAuth con Google
+- Gestión de perfiles de usuario
+- Roles y permisos (Admin, Usuario)
+
+### Gestión de Películas
+- Catálogo completo de películas
+- Búsqueda y filtros avanzados
+- Gestión de horarios y funciones
+- Upload de posters e imágenes
+
+###  Sistema de Reservas
+- Reserva de boletos en tiempo real
+- Selección de asientos interactiva
+- Confirmación por email
+- Historial de reservas
+
+### Sistema de Recompensas
+- Puntos por compras y actividades
+- Niveles de membresía
+- Descuentos y promociones
+- Dashboard de recompensas
+
+### Reportes y Analytics
+- Generación de reportes PDF
+- Estadísticas de ventas
+- Analytics de usuarios
+- Dashboards administrativos
+
+## Despliegue
+
+### Desarrollo Local
+1. Seguir los pasos de instalación
+2. Configurar variables de entorno
+3. Ejecutar `npm run dev` en ambos directorios
+
+### Producción
+El proyecto está configurado para despliegue en **Railway**:
 
 ```bash
-ng e2e
+# Build de producción
+npm run build:prod
+
+# El despliegue se realiza automáticamente via GitHub Actions
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+## Estructura del Proyecto
 
-## Additional Resources
+```
+ParkyFilms/
+├── src/                    # Código fuente del frontend
+│   ├── app/               # Componentes Angular
+│   ├── assets/            # Recursos estáticos
+│   └── environments/      # Configuraciones de entorno
+├── backend/               # Servidor Express.js
+│   ├── controllers/       # Controladores de la API
+│   ├── models/           # Modelos de base de datos
+│   ├── routes/           # Definición de rutas
+│   ├── middleware/       # Middleware personalizado
+│   └── migrations/       # Migraciones de BD
+├── docs/                 # Documentación
+└── README.md            # Este archivo
+```
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+## Testing
+
+### Frontend
+```bash
+npm test                 # Tests unitarios
+npm run test:coverage    # Tests con coverage
+npm run e2e             # Tests end-to-end
+```
+
+### Backend
+```bash
+npm test                 # Tests con Jest
+npm run test:watch       # Tests en modo watch
+npm run test:coverage    # Coverage completo
+```
+
+⭐ Si este proyecto te resulta útil, ¡no olvides darle una estrella en GitHub!
