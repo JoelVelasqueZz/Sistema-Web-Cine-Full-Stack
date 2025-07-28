@@ -4,18 +4,19 @@ import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { Router, ActivatedRoute } from '@angular/router';
-import { MovieService, ProximoEstreno } from '../../../services/movie.service'; // 🔧 USAR INTERFAZ DEL SERVICE
-import { AdminService } from '../../../services/admin.service';
-import { AuthService } from '../../../services/auth.service';
-import { ToastService } from '../../../services/toast.service';
 import { Subscription } from 'rxjs';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+import { MovieService, ProximoEstreno } from '../../../services/movie.service';
+import { AdminService } from '../../../services/admin.service';
+import { AuthService } from '../../../services/auth.service';
+import { ToastService } from '../../../services/toast.service';
+
 @Component({
   selector: 'app-admin-coming-soon',
-  standalone: true,  // ✅ CONVERTIDO A STANDALONE
-  imports: [         // ✅ IMPORTS NECESARIOS PARA STANDALONE
+  standalone: true,
+  imports: [
     CommonModule,
     FormsModule,
     ReactiveFormsModule,
@@ -25,31 +26,40 @@ import autoTable from 'jspdf-autotable';
   styleUrls: ['./admin-coming-soon.component.css']
 })
 export class AdminComingSoonComponent implements OnInit, OnDestroy {
+  // ==================== DATOS PRINCIPALES ====================
   estrenos: ProximoEstreno[] = [];
   estrenosFiltrados: ProximoEstreno[] = [];
   
+  // ==================== ESTADOS DE VISTA ====================
   vistaActual: 'lista' | 'agregar' | 'editar' = 'lista';
   cargando = true;
   procesando = false;
   
+  // ==================== FORMULARIO DE ESTRENO ====================
   estrenoForm: Partial<ProximoEstreno> = {};
   estrenoEditandoIndex = -1;
   erroresValidacion: string[] = [];
+  actoresTexto: string = '';
   
+  // ==================== ESTADOS DE IMAGEN ====================
   imageLoaded = false;
   imageError = false;
   
+  // ==================== FILTROS Y BÚSQUEDA ====================
   filtroGenero = '';
   filtroAnio = '';
   terminoBusqueda = '';
   
+  // ==================== PAGINACIÓN ====================
   paginaActual = 1;
   estrenosPorPagina = 10;
   totalPaginas = 1;
   
+  // ==================== MODAL DE CONFIRMACIÓN ====================
   mostrarModalConfirmacion = false;
   estrenoParaEliminar = -1;
   
+  // ==================== ESTADÍSTICAS ====================
   estadisticas = {
     total: 0,
     porGenero: {} as { [key: string]: number },
@@ -57,6 +67,7 @@ export class AdminComingSoonComponent implements OnInit, OnDestroy {
     anioMasReciente: 0
   };
   
+  // ==================== CONSTANTES ====================
   readonly generosDisponibles = [
     'Acción', 'Aventura', 'Comedia', 'Drama', 'Terror', 'Romance', 
     'Ciencia Ficción', 'Fantasía', 'Animación', 'Misterio'
@@ -68,7 +79,7 @@ export class AdminComingSoonComponent implements OnInit, OnDestroy {
     'Amazon Studios', 'Apple TV+', 'Blumhouse'
   ];
 
-  actoresTexto: string = '';
+  // ==================== SUBSCRIPCIONES ====================
   private subscriptions = new Subscription();
 
   constructor(
@@ -79,6 +90,8 @@ export class AdminComingSoonComponent implements OnInit, OnDestroy {
     private router: Router,
     private route: ActivatedRoute
   ) {}
+
+  // ==================== LIFECYCLE HOOKS ====================
 
   ngOnInit(): void {
     if (!this.authService.isAdmin()) {
@@ -108,12 +121,11 @@ export class AdminComingSoonComponent implements OnInit, OnDestroy {
     window.removeEventListener('adminDataRefresh', this.handleDataRefresh.bind(this));
   }
 
-  // ==================== CARGAR DATOS ====================
+  // ==================== CARGA DE DATOS ====================
 
   cargarEstrenos(): void {
     this.cargando = true;
     
-    // 🔄 USAR MÉTODO HÍBRIDO API + FALLBACK LOCAL
     this.movieService.getProximosEstrenosHybrid().subscribe(
       estrenos => {
         console.log('📡 Próximos estrenos cargados:', estrenos.length);
@@ -137,7 +149,13 @@ export class AdminComingSoonComponent implements OnInit, OnDestroy {
     );
   }
 
-  // ==================== CRUD OPERATIONS ====================
+  private handleDataRefresh(event: any): void {
+    if (event.detail.section === 'Gestión de Próximos Estrenos') {
+      this.cargarEstrenos();
+    }
+  }
+
+  // ==================== CRUD DE ESTRENOS ====================
 
   guardarEstreno(): void {
     const validacion = this.movieService.validateProximoEstrenoData(this.estrenoForm);
@@ -192,7 +210,6 @@ export class AdminComingSoonComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // 🔧 USAR id O idx PARA COMPATIBILIDAD
     const estrenoId = estrenoSeleccionado.id || estrenoSeleccionado.idx;
     
     if (!estrenoId || estrenoId === 0) {
@@ -233,7 +250,6 @@ export class AdminComingSoonComponent implements OnInit, OnDestroy {
         return;
       }
 
-      // 🔧 USAR id O idx PARA COMPATIBILIDAD
       const estrenoId = estrenoSeleccionado.id || estrenoSeleccionado.idx;
       
       if (!estrenoId || estrenoId === 0) {
@@ -265,84 +281,7 @@ export class AdminComingSoonComponent implements OnInit, OnDestroy {
     }
   }
 
-  // ==================== MÉTODOS DE INTERFAZ ====================
-
-  private handleDataRefresh(event: any): void {
-    if (event.detail.section === 'Gestión de Próximos Estrenos') {
-      this.cargarEstrenos();
-    }
-  }
-
-  actualizarActores(): void {
-    if (this.actoresTexto.trim()) {
-      this.estrenoForm.actores = this.actoresTexto.split(',').map(actor => actor.trim()).filter(actor => actor.length > 0);
-    } else {
-      this.estrenoForm.actores = [];
-    }
-  }
-
-  getStatsArray() {
-    return [
-      { 
-        value: this.estadisticas.total, 
-        label: 'Total Estrenos', 
-        bgClass: 'bg-primary text-white', 
-        icon: 'fas fa-calendar-star'
-      },
-      { 
-        value: this.getCantidadGeneros(), 
-        label: 'Géneros Diferentes', 
-        bgClass: 'bg-success text-white', 
-        icon: 'fas fa-tags' 
-      },
-      { 
-        value: this.getEstrenosProximoMes(), 
-        label: 'Próximo Mes', 
-        bgClass: 'bg-info text-white', 
-        icon: 'fas fa-clock' 
-      },
-      { 
-        value: this.estadisticas.anioMasReciente, 
-        label: 'Año Más Lejano', 
-        bgClass: 'bg-warning text-dark', 
-        icon: 'fas fa-calendar' 
-      }
-    ];
-  }
-
-  getTableColumns() {
-    return [
-      { name: 'Estreno', width: '300' },
-      { name: 'Género', width: '120' },
-      { name: 'Fecha Estreno', width: '120' },
-      { name: 'Director', width: '150' },
-      { name: 'Estado', width: '100' },
-      { name: 'Acciones', width: '150' }
-    ];
-  }
-
-  getActions(estreno: ProximoEstreno) {
-    return [
-      { 
-        icon: 'fas fa-eye', 
-        class: 'btn-outline-info', 
-        title: 'Ver detalles', 
-        action: () => this.verEstreno(estreno) 
-      },
-      { 
-        icon: 'fas fa-edit', 
-        class: 'btn-outline-primary', 
-        title: 'Editar estreno', 
-        action: () => this.mostrarFormularioEditar(estreno) 
-      },
-      { 
-        icon: 'fas fa-trash', 
-        class: 'btn-outline-danger', 
-        title: 'Eliminar estreno', 
-        action: () => this.confirmarEliminarEstreno(estreno) 
-      }
-    ];
-  }
+  // ==================== GESTIÓN DE VISTA ====================
 
   cambiarVista(vista: 'lista' | 'agregar' | 'editar'): void {
     this.vistaActual = vista;
@@ -400,7 +339,6 @@ export class AdminComingSoonComponent implements OnInit, OnDestroy {
   }
 
   verEstreno(estreno: ProximoEstreno): void {
-    // 🔧 USAR id O idx PARA COMPATIBILIDAD
     const estrenoId = estreno.id || estreno.idx;
     
     if (estrenoId) {
@@ -409,6 +347,8 @@ export class AdminComingSoonComponent implements OnInit, OnDestroy {
       this.toastService.showError('No se pudo encontrar el estreno');
     }
   }
+
+  // ==================== FILTROS Y BÚSQUEDA ====================
 
   aplicarFiltros(): void {
     this.estrenosFiltrados = this.estrenos.filter(estreno => {
@@ -445,6 +385,8 @@ export class AdminComingSoonComponent implements OnInit, OnDestroy {
     return !!(this.terminoBusqueda || this.filtroGenero || this.filtroAnio);
   }
 
+  // ==================== PAGINACIÓN ====================
+
   calcularPaginacion(): void {
     this.totalPaginas = Math.ceil(this.estrenosFiltrados.length / this.estrenosPorPagina);
     this.paginaActual = Math.min(this.paginaActual, Math.max(1, this.totalPaginas));
@@ -467,6 +409,8 @@ export class AdminComingSoonComponent implements OnInit, OnDestroy {
     return Array.from({ length: fin - inicio + 1 }, (_, i) => inicio + i);
   }
 
+  // ==================== ESTADÍSTICAS ====================
+
   calcularEstadisticas(): void {
     const stats = this.estrenos.reduce((acc, estreno) => {
       acc.total++;
@@ -488,6 +432,37 @@ export class AdminComingSoonComponent implements OnInit, OnDestroy {
     };
   }
 
+  getStatsArray() {
+    return [
+      { 
+        value: this.estadisticas.total, 
+        label: 'Total Estrenos', 
+        bgClass: 'bg-primary text-white', 
+        icon: 'fas fa-calendar-star'
+      },
+      { 
+        value: this.getCantidadGeneros(), 
+        label: 'Géneros Diferentes', 
+        bgClass: 'bg-success text-white', 
+        icon: 'fas fa-tags' 
+      },
+      { 
+        value: this.getEstrenosProximoMes(), 
+        label: 'Próximo Mes', 
+        bgClass: 'bg-info text-white', 
+        icon: 'fas fa-clock' 
+      },
+      { 
+        value: this.estadisticas.anioMasReciente, 
+        label: 'Año Más Lejano', 
+        bgClass: 'bg-warning text-dark', 
+        icon: 'fas fa-calendar' 
+      }
+    ];
+  }
+
+  // ==================== GESTIÓN DE FORMULARIO ====================
+
   resetearFormulario(): void {
     this.estrenoForm = {
       titulo: '',
@@ -508,7 +483,91 @@ export class AdminComingSoonComponent implements OnInit, OnDestroy {
     this.imageLoaded = false;
   }
 
-  // ==================== MÉTODOS DE UTILIDAD ====================
+  actualizarActores(): void {
+    if (this.actoresTexto.trim()) {
+      this.estrenoForm.actores = this.actoresTexto.split(',').map(actor => actor.trim()).filter(actor => actor.length > 0);
+    } else {
+      this.estrenoForm.actores = [];
+    }
+  }
+
+  // ==================== MÉTODOS DE INTERFAZ ====================
+
+  getTableColumns() {
+    return [
+      { name: 'Estreno', width: '300' },
+      { name: 'Género', width: '120' },
+      { name: 'Fecha Estreno', width: '120' },
+      { name: 'Director', width: '150' },
+      { name: 'Estado', width: '100' },
+      { name: 'Acciones', width: '150' }
+    ];
+  }
+
+  getActions(estreno: ProximoEstreno) {
+    return [
+      { 
+        icon: 'fas fa-eye', 
+        class: 'btn-outline-info', 
+        title: 'Ver detalles', 
+        action: () => this.verEstreno(estreno) 
+      },
+      { 
+        icon: 'fas fa-edit', 
+        class: 'btn-outline-primary', 
+        title: 'Editar estreno', 
+        action: () => this.mostrarFormularioEditar(estreno) 
+      },
+      { 
+        icon: 'fas fa-trash', 
+        class: 'btn-outline-danger', 
+        title: 'Eliminar estreno', 
+        action: () => this.confirmarEliminarEstreno(estreno) 
+      }
+    ];
+  }
+
+  trackEstrenoFn(index: number, estreno: ProximoEstreno): string {
+    return estreno.titulo + estreno.director;
+  }
+
+  // ==================== MANEJO DE IMÁGENES ====================
+
+  onImageErrorTable(event: Event): void {
+    const target = event.target as HTMLImageElement;
+    if (target) {
+      target.src = 'https://via.placeholder.com/300x450/cccccc/666666?text=Sin+Imagen';
+    }
+  }
+
+  onImageError(event: Event): void {
+    this.imageError = true;
+    this.imageLoaded = false;
+    const target = event.target as HTMLImageElement;
+    if (target) {
+      target.src = 'https://via.placeholder.com/300x450/cccccc/666666?text=Sin+Imagen';
+    }
+  }
+
+  onImageLoad(event: Event): void {
+    this.imageError = false;
+    this.imageLoaded = true;
+  }
+
+  setExamplePoster(url: string): void {
+    this.estrenoForm.poster = url;
+    this.imageError = false;
+    this.imageLoaded = false;
+  }
+
+  getPosterExamples() {
+    return [
+      { url: 'assets/coming-soon/ejemplo.png', label: 'Assets', icon: 'fas fa-folder' },
+      { url: 'https://via.placeholder.com/300x450/28a745/ffffff?text=Próximo+Estreno', label: 'URL Externa', icon: 'fas fa-globe' }
+    ];
+  }
+
+  // ==================== UTILIDADES DE FECHAS Y DATOS ====================
 
   getAniosDisponibles(): number[] {
     const anios = [...new Set(this.estrenos.map(e => this.getAnioFromFecha(e.fechaEstreno)))];
@@ -576,197 +635,149 @@ export class AdminComingSoonComponent implements OnInit, OnDestroy {
     return `${inicio}-${fin} de ${this.estrenosFiltrados.length}`;
   }
 
-  // ==================== MÉTODOS PARA MANEJO DE IMÁGENES ====================
-
-  onImageErrorTable(event: Event): void {
-    const target = event.target as HTMLImageElement;
-    if (target) {
-      target.src = 'https://via.placeholder.com/300x450/cccccc/666666?text=Sin+Imagen';
-    }
-  }
-
-  onImageError(event: Event): void {
-    this.imageError = true;
-    this.imageLoaded = false;
-    const target = event.target as HTMLImageElement;
-    if (target) {
-      target.src = 'https://via.placeholder.com/300x450/cccccc/666666?text=Sin+Imagen';
-    }
-  }
-
-  onImageLoad(event: Event): void {
-    this.imageError = false;
-    this.imageLoaded = true;
-  }
-
-  setExamplePoster(url: string): void {
-    this.estrenoForm.poster = url;
-    this.imageError = false;
-    this.imageLoaded = false;
-  }
-
-  getPosterExamples() {
-    return [
-      { url: 'assets/coming-soon/ejemplo.png', label: 'Assets', icon: 'fas fa-folder' },
-      { url: 'https://via.placeholder.com/300x450/28a745/ffffff?text=Próximo+Estreno', label: 'URL Externa', icon: 'fas fa-globe' }
-    ];
-  }
+  // ==================== EXPORTACIÓN PDF ====================
 
   exportarEstrenos(): void {
-  this.procesando = true;
-  this.toastService.showInfo('Generando exportación de próximos estrenos en PDF...');
+    this.procesando = true;
+    this.toastService.showInfo('Generando exportación de próximos estrenos en PDF...');
 
-  setTimeout(() => {
-    try {
-      const doc = new jsPDF();
-      
-      // Header del PDF
-      this.setupPDFHeader(doc, 'EXPORTACIÓN DE PRÓXIMOS ESTRENOS', 
-        `Lista de próximos estrenos - ${this.estrenosFiltrados.length} estrenos`);
-      
-      let currentY = 110;
-      
-      // Mostrar filtros si están activos
-      if (this.hasActiveFilters()) {
-        doc.setFillColor(240, 240, 240);
-        doc.rect(20, currentY - 5, 170, 15, 'F');
-        doc.setFontSize(12);
-        doc.setTextColor(52, 73, 94);
-        doc.text('FILTROS APLICADOS', 25, currentY + 5);
-        currentY += 20;
+    setTimeout(() => {
+      try {
+        const doc = new jsPDF();
         
-        const filtros = [];
-        if (this.terminoBusqueda) filtros.push(`Búsqueda: "${this.terminoBusqueda}"`);
-        if (this.filtroGenero) filtros.push(`Género: ${this.filtroGenero}`);
-        if (this.filtroAnio) filtros.push(`Año: ${this.filtroAnio}`);
+        this.setupPDFHeader(doc, 'EXPORTACIÓN DE PRÓXIMOS ESTRENOS', 
+          `Lista de próximos estrenos - ${this.estrenosFiltrados.length} estrenos`);
         
-        doc.setFontSize(10);
-        doc.setTextColor(100, 100, 100);
-        filtros.forEach(filtro => {
-          doc.text(`• ${filtro}`, 25, currentY);
-          currentY += 8;
+        let currentY = 110;
+        
+        if (this.hasActiveFilters()) {
+          doc.setFillColor(240, 240, 240);
+          doc.rect(20, currentY - 5, 170, 15, 'F');
+          doc.setFontSize(12);
+          doc.setTextColor(52, 73, 94);
+          doc.text('FILTROS APLICADOS', 25, currentY + 5);
+          currentY += 20;
+          
+          const filtros = [];
+          if (this.terminoBusqueda) filtros.push(`Búsqueda: "${this.terminoBusqueda}"`);
+          if (this.filtroGenero) filtros.push(`Género: ${this.filtroGenero}`);
+          if (this.filtroAnio) filtros.push(`Año: ${this.filtroAnio}`);
+          
+          doc.setFontSize(10);
+          doc.setTextColor(100, 100, 100);
+          filtros.forEach(filtro => {
+            doc.text(`• ${filtro}`, 25, currentY);
+            currentY += 8;
+          });
+          currentY += 10;
+        }
+        
+        const estrenosData = this.estrenosFiltrados.map((estreno, index) => [
+          (index + 1).toString(),
+          estreno.titulo.length > 25 ? estreno.titulo.substring(0, 25) + '...' : estreno.titulo,
+          estreno.director.length > 20 ? estreno.director.substring(0, 20) + '...' : estreno.director,
+          estreno.genero, 
+          this.formatearFecha(estreno.fechaEstreno),
+          estreno.estudio || 'N/A',
+          estreno.duracion || 'N/A'
+        ]);
+        
+        autoTable(doc, {
+          head: [['#', 'Título', 'Director', 'Género', 'Fecha Estreno', 'Estudio', 'Duración']],
+          body: estrenosData,
+          startY: currentY,
+          theme: 'striped',
+          headStyles: { 
+            fillColor: [40, 167, 69],
+            textColor: [255, 255, 255],
+            fontSize: 10,
+            fontStyle: 'bold'
+          },
+          styles: { 
+            fontSize: 8,
+            cellPadding: { top: 3, right: 4, bottom: 3, left: 4 }
+          },
+          columnStyles: {
+            0: { cellWidth: 15, halign: 'center' },
+            1: { cellWidth: 40 },
+            2: { cellWidth: 30 },
+            3: { cellWidth: 25 },
+            4: { cellWidth: 25, halign: 'center' },
+            5: { cellWidth: 30 },
+            6: { cellWidth: 20, halign: 'center' }
+          },
+          alternateRowStyles: { fillColor: [248, 249, 250] }
         });
-        currentY += 10;
+        
+        this.setupPDFFooter(doc, 'Próximos Estrenos');
+        doc.save(`proximos-estrenos-export-${new Date().toISOString().split('T')[0]}.pdf`);
+        
+        this.procesando = false;
+        this.toastService.showSuccess('Exportación de próximos estrenos completada en PDF');
+        
+      } catch (error) {
+        console.error('Error generando exportación:', error);
+        this.procesando = false;
+        this.toastService.showError('Error al generar la exportación PDF');
       }
-      
-      // Datos de la tabla
-      const estrenosData = this.estrenosFiltrados.map((estreno, index) => [
-        (index + 1).toString(),
-        estreno.titulo.length > 25 ? estreno.titulo.substring(0, 25) + '...' : estreno.titulo,
-        estreno.director.length > 20 ? estreno.director.substring(0, 20) + '...' : estreno.director,
-        estreno.genero, 
-        this.formatearFecha(estreno.fechaEstreno),
-        estreno.estudio || 'N/A',
-        estreno.duracion || 'N/A'
-      ]);
-      
-      // Crear tabla
-      autoTable(doc, {
-        head: [['#', 'Título', 'Director', 'Género', 'Fecha Estreno', 'Estudio', 'Duración']],
-        body: estrenosData,
-        startY: currentY,
-        theme: 'striped',
-        headStyles: { 
-          fillColor: [40, 167, 69],
-          textColor: [255, 255, 255],
-          fontSize: 10,
-          fontStyle: 'bold'
-        },
-        styles: { 
-          fontSize: 8,
-          cellPadding: { top: 3, right: 4, bottom: 3, left: 4 }
-        },
-        columnStyles: {
-          0: { cellWidth: 15, halign: 'center' },
-          1: { cellWidth: 40 },
-          2: { cellWidth: 30 },
-          3: { cellWidth: 25 },
-          4: { cellWidth: 25, halign: 'center' },
-          5: { cellWidth: 30 },
-          6: { cellWidth: 20, halign: 'center' }
-        },
-        alternateRowStyles: { fillColor: [248, 249, 250] }
-      });
-      
-      this.setupPDFFooter(doc, 'Próximos Estrenos');
-      doc.save(`proximos-estrenos-export-${new Date().toISOString().split('T')[0]}.pdf`);
-      
-      this.procesando = false;
-      this.toastService.showSuccess('Exportación de próximos estrenos completada en PDF');
-      
-    } catch (error) {
-      console.error('Error generando exportación:', error);
-      this.procesando = false;
-      this.toastService.showError('Error al generar la exportación PDF');
-    }
-  }, 1000);
-}
-private setupPDFHeader(doc: jsPDF, titulo: string, subtitulo?: string): void {
-  // Header verde
-  doc.setFillColor(40, 167, 69);
-  doc.rect(0, 0, 210, 45, 'F');
-  
-  // Logo y título principal
-  doc.setFontSize(24);
-  doc.setTextColor(255, 255, 255);
-  doc.text('ParkyFilms', 20, 25);
-  
-  doc.setFontSize(12);
-  doc.text('Próximos Estrenos', 20, 35);
-  
-  // Título del reporte
-  doc.setFontSize(18);
-  doc.setTextColor(0, 0, 0);
-  doc.text(titulo, 20, 60);
-  
-  if (subtitulo) {
-    doc.setFontSize(12);
-    doc.setTextColor(100, 100, 100);
-    doc.text(subtitulo, 20, 72);
+    }, 1000);
   }
-  
-  // Información de generación
-  doc.setFontSize(10);
-  doc.setTextColor(150, 150, 150);
-  const fechaGeneracion = new Date().toLocaleString('es-ES');
-  doc.text(`Generado el: ${fechaGeneracion}`, 20, 85);
-  doc.text(`Por: ${this.authService.getCurrentUser()?.nombre || 'Admin'}`, 20, 95);
-  
-  // Línea separadora
-  doc.setDrawColor(200, 200, 200);
-  doc.setLineWidth(0.5);
-  doc.line(20, 100, 190, 100);
-}
 
-private setupPDFFooter(doc: jsPDF, seccion: string): void {
-  const pageCount = (doc as any).internal.getNumberOfPages();
-  
-  for (let i = 1; i <= pageCount; i++) {
-    doc.setPage(i);
+  private setupPDFHeader(doc: jsPDF, titulo: string, subtitulo?: string): void {
+    doc.setFillColor(40, 167, 69);
+    doc.rect(0, 0, 210, 45, 'F');
     
-    // Línea superior del footer
-    doc.setDrawColor(40, 167, 69);
-    doc.setLineWidth(1);
-    doc.line(20, 275, 190, 275);
+    doc.setFontSize(24);
+    doc.setTextColor(255, 255, 255);
+    doc.text('ParkyFilms', 20, 25);
     
-    // Información del footer
-    doc.setFontSize(8);
-    doc.setTextColor(100, 100, 100);
-    doc.text(`ParkyFilms - ${seccion}`, 20, 282);
-    doc.text('Documento Confidencial - Solo uso interno', 20, 287);
+    doc.setFontSize(12);
+    doc.text('Próximos Estrenos', 20, 35);
     
-    // Número de página
-    doc.setTextColor(40, 167, 69);
-    doc.text(`Página ${i} de ${pageCount}`, 150, 282);
+    doc.setFontSize(18);
+    doc.setTextColor(0, 0, 0);
+    doc.text(titulo, 20, 60);
     
-    const timestamp = new Date().toLocaleTimeString('es-ES', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
-    doc.text(`Hora: ${timestamp}`, 150, 287);
+    if (subtitulo) {
+      doc.setFontSize(12);
+      doc.setTextColor(100, 100, 100);
+      doc.text(subtitulo, 20, 72);
+    }
+    
+    doc.setFontSize(10);
+    doc.setTextColor(150, 150, 150);
+    const fechaGeneracion = new Date().toLocaleString('es-ES');
+    doc.text(`Generado el: ${fechaGeneracion}`, 20, 85);
+    doc.text(`Por: ${this.authService.getCurrentUser()?.nombre || 'Admin'}`, 20, 95);
+    
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.5);
+    doc.line(20, 100, 190, 100);
   }
-}
-  trackEstrenoFn(index: number, estreno: ProximoEstreno): string {
-    return estreno.titulo + estreno.director;
+
+  private setupPDFFooter(doc: jsPDF, seccion: string): void {
+    const pageCount = (doc as any).internal.getNumberOfPages();
+    
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      
+      doc.setDrawColor(40, 167, 69);
+      doc.setLineWidth(1);
+      doc.line(20, 275, 190, 275);
+      
+      doc.setFontSize(8);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`ParkyFilms - ${seccion}`, 20, 282);
+      doc.text('Documento Confidencial - Solo uso interno', 20, 287);
+      
+      doc.setTextColor(40, 167, 69);
+      doc.text(`Página ${i} de ${pageCount}`, 150, 282);
+      
+      const timestamp = new Date().toLocaleTimeString('es-ES', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
+      doc.text(`Hora: ${timestamp}`, 150, 287);
+    }
   }
 }

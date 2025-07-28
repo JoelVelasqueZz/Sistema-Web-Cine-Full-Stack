@@ -1,3 +1,5 @@
+/* ==================== LAYOUT Y OVERLAYS ==================== */
+
 .loading-overlay {
   position: fixed;
   top: 0;
@@ -7,6 +9,12 @@
   background-color: rgba(255, 255, 255, 0.8);
   z-index: 9999;
 }
+
+.modal-backdrop {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+/* ==================== TARJETAS DE ESTADÍSTICAS ==================== */
 
 .stat-card {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -31,8 +39,19 @@
   opacity: 0.7;
 }
 
+/* ==================== TARJETA DE BIENVENIDA ==================== */
+
 .welcome-card {
   background: linear-gradient(135deg, #ffc107 0%, #ff8f00 100%);
+}
+
+/* ==================== COMPONENTES DE IMAGEN ==================== */
+
+.image-preview-container {
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .image-preview-container img {
@@ -42,6 +61,8 @@
 .image-preview-container img:hover {
   transform: scale(1.05);
 }
+
+/* ==================== TABLAS Y LISTAS ==================== */
 
 .table-responsive {
   max-height: 600px;
@@ -55,34 +76,51 @@
   z-index: 10;
 }
 
+/* ==================== BOTONES Y CONTROLES ==================== */
+
 .btn-group-sm .btn {
   padding: 0.25rem 0.5rem;
   font-size: 0.875rem;
 }
+
+.btn {
+  transition: all 0.2s ease;
+}
+
+.btn:focus {
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.btn-danger:focus {
+  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+}
+
+.btn-success:focus {
+  box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.25);
+}
+
+/* ==================== FORMULARIOS ==================== */
 
 .form-check-input:checked {
   background-color: #198754;
   border-color: #198754;
 }
 
-.badge {
-  font-size: 0.75rem;
+.form-control:focus {
+  border-color: #198754;
+  box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.25);
 }
 
-.pagination-sm .page-link {
-  padding: 0.25rem 0.5rem;
-  font-size: 0.875rem;
+.form-select:focus {
+  border-color: #198754;
+  box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.25);
 }
 
-.modal-backdrop {
-  background-color: rgba(0, 0, 0, 0.5);
-}
+/* ==================== CONTENEDORES DE ARRAYS DINÁMICOS ==================== */
 
-.border-bottom {
-  border-bottom: 2px solid #dee2e6 !important;
-}
-
-.combo-items, .tamanos-container, .extras-container {
+.combo-items,
+.tamanos-container,
+.extras-container {
   max-height: 300px;
   overflow-y: auto;
   border: 1px solid #dee2e6;
@@ -91,13 +129,47 @@
   background-color: #f8f9fa;
 }
 
-.image-preview-container {
-  min-height: 120px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* ==================== ELEMENTOS TIPOGRÁFICOS ==================== */
+
+.badge {
+  font-size: 0.75rem;
 }
 
+.border-bottom {
+  border-bottom: 2px solid #dee2e6 !important;
+}
+
+.text-shadow {
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* ==================== PAGINACIÓN ==================== */
+
+.pagination-sm .page-link {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+}
+
+/* ==================== ESTADOS DE CARGA ==================== */
+
+.spinner-border-sm {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* ==================== ANIMACIONES GLOBALES ==================== */
+
+.card {
+  transition: all 0.2s ease;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+/* ==================== RESPONSIVE DESIGN ==================== */
+
+/* Tablet y pantallas medianas */
 @media (max-width: 768px) {
   .stat-number {
     font-size: 1.5rem;
@@ -117,54 +189,7 @@
   }
 }
 
-/* Animaciones suaves */
-.card {
-  transition: all 0.2s ease;
-}
-
-.btn {
-  transition: all 0.2s ease;
-}
-
-.form-control:focus {
-  border-color: #198754;
-  box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.25);
-}
-
-.form-select:focus {
-  border-color: #198754;
-  box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.25);
-}
-
-/* Estados de carga */
-.spinner-border-sm {
-  width: 1rem;
-  height: 1rem;
-}
-
-/* Mejoras de accesibilidad */
-.btn:focus {
-  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
-}
-
-.btn-danger:focus {
-  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
-}
-
-.btn-success:focus {
-  box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.25);
-}
-
-/* Indicadores visuales */
-.text-shadow {
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-.cursor-pointer {
-  cursor: pointer;
-}
-
-/* Responsive improvements */
+/* Móviles y pantallas pequeñas */
 @media (max-width: 576px) {
   .welcome-card h4 {
     font-size: 1.25rem;
