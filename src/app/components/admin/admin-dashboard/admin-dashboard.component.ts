@@ -1073,4 +1073,4 @@ INSERT INTO alertas_sistema (tipo, mensaje, severidad) VALUES
     const fileName = `backup-sistema-parkyfilms-auditoria-${new Date().toISOString().split('T')[0]}-${new Date().toTimeString().split(' ')[0].replace(/:/g, '')}.pdf`;
     doc.save(fileName);
   }
-}
+} 
