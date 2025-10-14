@@ -1,0 +1,24 @@
+{
+  "testUser": {
+    "email": "test@parkyfilms.com",
+    "password": "Test123!",
+    "nombre": "Usuario Test",
+    "role": "cliente"
+  },
+  "testAdmin": {
+    "email": "admin@parkyfilms.com",
+    "password": "Admin123!",
+    "nombre": "Admin Test",
+    "role": "admin"
+  },
+  "invalidUser": {
+    "email": "invalid@example.com",
+    "password": "wrongpassword"
+  },
+  "newUser": {
+    "nombre": "Nuevo Usuario",
+    "email": "nuevo@parkyfilms.com",
+    "password": "NuevoUser123!",
+    "confirmarPassword": "NuevoUser123!"
+  }
+}

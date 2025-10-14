@@ -1,0 +1,63 @@
+{
+  "publicRoutes": [
+    "/home",
+    "/movies",
+    "/coming-soon",
+    "/bar",
+    "/login",
+    "/register",
+    "/forgot-password"
+  ],
+  "protectedRoutes": [
+    "/profile",
+    "/favorites",
+    "/history",
+    "/cart",
+    "/checkout",
+    "/rewards",
+    "/order-history",
+    "/points-history",
+    "/suggestions"
+  ],
+  "adminRoutes": [
+    "/admin",
+    "/admin/dashboard",
+    "/admin/movies",
+    "/admin/users",
+    "/admin/functions",
+    "/admin/bar",
+    "/admin/rewards",
+    "/admin/config",
+    "/admin/logs"
+  ],
+  "routesWithParams": [
+    {
+      "path": "/movie/:id",
+      "example": "/movie/1"
+    },
+    {
+      "path": "/ticket-purchase/:id",
+      "example": "/ticket-purchase/1"
+    },
+    {
+      "path": "/seat-selection/:movieId/:funcionId/:cantidad",
+      "example": "/seat-selection/1/1/2"
+    },
+    {
+      "path": "/bar/:id",
+      "example": "/bar/1"
+    },
+    {
+      "path": "/coming-soon/:id",
+      "example": "/coming-soon/1"
+    },
+    {
+      "path": "/buscar/:termino",
+      "example": "/buscar/avengers"
+    },
+    {
+      "path": "/reset-password/:token",
+      "example": "/reset-password/fake-token-123"
+    }
+  ]
+}

@@ -2,8 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const session = require('express-session'); // 🆕 NUEVO PARA OAUTH
 const passport = require('passport'); // 🆕 NUEVO PARA OAUTH
-require('dotenv').config();
-
+require('dotenv').config({ path: '.env.local' });
 // 🆕 IMPORTAR CONFIGURACIÓN DE PASSPORT
 require('./src/config/passport');
 

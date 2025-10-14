@@ -20,7 +20,7 @@ const pool = new Pool({
   connectionTimeoutMillis: 2000,
   
   // SSL para Railway (requerido en producción)
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  ssl: false
 });
 
 // Función para conectar a la base de datos

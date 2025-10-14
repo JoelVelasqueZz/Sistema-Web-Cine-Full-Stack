@@ -1,0 +1,18 @@
+{
+  "sampleMovie": {
+    "id": 1,
+    "titulo": "Película de Prueba",
+    "genero": "Acción",
+    "duracion": 120,
+    "clasificacion": "PG-13",
+    "director": "Director Test",
+    "sinopsis": "Esta es una película de prueba para testing E2E"
+  },
+  "searchTerms": [
+    "avengers",
+    "spider",
+    "batman",
+    "action",
+    "comedy"
+  ]
+}
