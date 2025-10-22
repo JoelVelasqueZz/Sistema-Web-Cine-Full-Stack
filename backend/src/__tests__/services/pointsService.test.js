@@ -42,7 +42,12 @@ describe('PointsService - Pruebas Unitarias', () => {
    */
   describe('PU-01: calculateUserLevel', () => {
     test('Debe retornar nivel Bronce para 0-499 puntos', () => {
-      const nivel = pointsService.calculateUserLevel(250);
+      const puntos = 250;
+      const nivel = pointsService.calculateUserLevel(puntos);
+
+      console.log(`\n📊 PU-01: Calculando nivel para ${puntos} puntos`);
+      console.log(`   Resultado: ${nivel.name} (${nivel.min}-${nivel.max})`);
+      console.log(`   Progreso: ${nivel.progress} puntos, ${nivel.progressPercent?.toFixed(2)}%`);
 
       expect(nivel.name).toBe('Bronce');
       expect(nivel.min).toBe(0);
@@ -86,10 +91,17 @@ describe('PointsService - Pruebas Unitarias', () => {
     });
 
     test('Debe calcular correctamente el progreso porcentual', () => {
-      const nivel = pointsService.calculateUserLevel(1000); // Nivel Plata
+      const puntos = 1000;
+      const nivel = pointsService.calculateUserLevel(puntos); // Nivel Plata
+
+      const expectedProgress = ((1000 - 500) / (1499 - 500)) * 100;
+      console.log(`\n📊 PU-01: Progreso porcentual para ${puntos} puntos`);
+      console.log(`   Nivel: ${nivel.name}`);
+      console.log(`   Cálculo: ((${puntos} - ${nivel.min}) / (${nivel.max} - ${nivel.min})) * 100`);
+      console.log(`   Esperado: ${expectedProgress.toFixed(2)}%`);
+      console.log(`   Obtenido: ${nivel.progressPercent?.toFixed(2)}%`);
 
       expect(nivel.name).toBe('Plata');
-      const expectedProgress = ((1000 - 500) / (1499 - 500)) * 100;
       expect(nivel.progressPercent).toBeCloseTo(expectedProgress, 2);
     });
   });
@@ -106,7 +118,13 @@ describe('PointsService - Pruebas Unitarias', () => {
     });
 
     test('Debe calcular descuento correcto para 100 puntos', () => {
-      const resultado = pointsService.calculatePointsDiscount(100);
+      const puntos = 100;
+      const resultado = pointsService.calculatePointsDiscount(puntos);
+
+      console.log(`\n💰 PU-02: Calculando descuento para ${puntos} puntos`);
+      console.log(`   Fórmula: puntos × 0.1 = ${puntos} × 0.1`);
+      console.log(`   Descuento: $${resultado.descuento.toFixed(2)}`);
+      console.log(`   Formato: ${resultado.formatted}`);
 
       expect(resultado.puntos).toBe(100);
       expect(resultado.descuento).toBe(10);
@@ -138,11 +156,20 @@ describe('PointsService - Pruebas Unitarias', () => {
    */
   describe('PU-03: validatePointsUsage', () => {
     test('Debe retornar válido cuando hay puntos suficientes', async () => {
+      const puntosDisponibles = 1000;
+      const puntosRequeridos = 500;
+
       mockPointsModel.getUserPoints.mockResolvedValue({
-        puntos_actuales: 1000
+        puntos_actuales: puntosDisponibles
       });
 
-      const resultado = await pointsService.validatePointsUsage(1, 500);
+      const resultado = await pointsService.validatePointsUsage(1, puntosRequeridos);
+
+      console.log(`\n✅ PU-03: Validando uso de puntos (caso válido)`);
+      console.log(`   Disponibles: ${resultado.available} puntos`);
+      console.log(`   Requeridos: ${resultado.required} puntos`);
+      console.log(`   Diferencia: ${resultado.difference} puntos`);
+      console.log(`   Válido: ${resultado.valid}`);
 
       expect(resultado.valid).toBe(true);
       expect(resultado.available).toBe(1000);
@@ -151,11 +178,20 @@ describe('PointsService - Pruebas Unitarias', () => {
     });
 
     test('Debe retornar inválido cuando no hay puntos suficientes', async () => {
+      const puntosDisponibles = 300;
+      const puntosRequeridos = 500;
+
       mockPointsModel.getUserPoints.mockResolvedValue({
-        puntos_actuales: 300
+        puntos_actuales: puntosDisponibles
       });
 
-      const resultado = await pointsService.validatePointsUsage(1, 500);
+      const resultado = await pointsService.validatePointsUsage(1, puntosRequeridos);
+
+      console.log(`\n❌ PU-03: Validando uso de puntos (caso inválido)`);
+      console.log(`   Disponibles: ${resultado.available} puntos`);
+      console.log(`   Requeridos: ${resultado.required} puntos`);
+      console.log(`   Diferencia: ${resultado.difference} puntos (insuficientes)`);
+      console.log(`   Válido: ${resultado.valid}`);
 
       expect(resultado.valid).toBe(false);
       expect(resultado.available).toBe(300);
@@ -187,7 +223,14 @@ describe('PointsService - Pruebas Unitarias', () => {
    */
   describe('PU-04: getNextMilestone', () => {
     test('Debe retornar milestone 500 para usuario con 100 puntos', () => {
-      const milestone = pointsService.getNextMilestone(100);
+      const puntosActuales = 100;
+      const milestone = pointsService.getNextMilestone(puntosActuales);
+
+      console.log(`\n🎯 PU-04: Calculando siguiente milestone`);
+      console.log(`   Puntos actuales: ${puntosActuales}`);
+      console.log(`   Próximo milestone: ${milestone.points} puntos`);
+      console.log(`   Puntos faltantes: ${milestone.remaining}`);
+      console.log(`   Recompensa: ${milestone.reward}`);
 
       expect(milestone.points).toBe(500);
       expect(milestone.remaining).toBe(400);
@@ -222,9 +265,18 @@ describe('PointsService - Pruebas Unitarias', () => {
     });
 
     test('Debe formatear miles con "K"', () => {
-      expect(pointsService.formatPoints(1000)).toBe('1.0K');
-      expect(pointsService.formatPoints(5500)).toBe('5.5K');
-      expect(pointsService.formatPoints(99999)).toBe('100.0K');
+      const casos = [
+        { puntos: 1000, esperado: '1.0K' },
+        { puntos: 5500, esperado: '5.5K' },
+        { puntos: 99999, esperado: '100.0K' }
+      ];
+
+      console.log(`\n🔢 PU-05: Formateando puntos (miles)`);
+      casos.forEach(caso => {
+        const resultado = pointsService.formatPoints(caso.puntos);
+        console.log(`   ${caso.puntos} puntos → ${resultado}`);
+        expect(resultado).toBe(caso.esperado);
+      });
     });
 
     test('Debe formatear millones con "M"', () => {
@@ -247,6 +299,11 @@ describe('PointsService - Pruebas Unitarias', () => {
       ];
 
       const categorias = pointsService.categorizeActivities(history);
+
+      console.log(`\n📂 PU-06: Categorizando actividades (Compras)`);
+      console.log(`   Transacciones analizadas: ${history.length}`);
+      console.log(`   Compras detectadas: ${categorias.purchases.count}`);
+      console.log(`   Puntos totales de compras: ${categorias.purchases.points}`);
 
       expect(categorias.purchases.count).toBe(2);
       expect(categorias.purchases.points).toBe(80);
@@ -295,7 +352,13 @@ describe('PointsService - Pruebas Unitarias', () => {
    */
   describe('PU-07: validatePointsTransaction', () => {
     test('Debe rechazar cantidad de puntos <= 0', async () => {
-      const resultado = await pointsService.validatePointsTransaction(1, 'add', 0, 'Test');
+      const puntos = 0;
+      const resultado = await pointsService.validatePointsTransaction(1, 'add', puntos, 'Test');
+
+      console.log(`\n🔒 PU-07: Validando transacción (puntos <= 0)`);
+      console.log(`   Puntos: ${puntos}`);
+      console.log(`   Válido: ${resultado.valid}`);
+      console.log(`   Errores: ${resultado.errors.join(', ')}`);
 
       expect(resultado.valid).toBe(false);
       expect(resultado.errors).toContain('La cantidad de puntos debe ser mayor a 0');
@@ -316,11 +379,20 @@ describe('PointsService - Pruebas Unitarias', () => {
     });
 
     test('Debe validar puntos disponibles para uso', async () => {
+      const puntosDisponibles = 50;
+      const puntosRequeridos = 100;
+
       mockPointsModel.getUserPoints.mockResolvedValue({
-        puntos_actuales: 50
+        puntos_actuales: puntosDisponibles
       });
 
-      const resultado = await pointsService.validatePointsTransaction(1, 'use', 100, 'Canje');
+      const resultado = await pointsService.validatePointsTransaction(1, 'use', puntosRequeridos, 'Canje');
+
+      console.log(`\n🔒 PU-07: Validando puntos disponibles para uso`);
+      console.log(`   Disponibles: ${puntosDisponibles}`);
+      console.log(`   Requeridos: ${puntosRequeridos}`);
+      console.log(`   Válido: ${resultado.valid}`);
+      console.log(`   Errores: ${resultado.errors.join(', ')}`);
 
       expect(resultado.valid).toBe(false);
       expect(resultado.errors).toContain('Puntos insuficientes');
