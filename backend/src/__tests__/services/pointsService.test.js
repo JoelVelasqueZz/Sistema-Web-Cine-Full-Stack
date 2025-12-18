@@ -156,47 +156,59 @@ describe('PointsService - Pruebas Unitarias', () => {
    */
   describe('PU-03: validatePointsUsage', () => {
     test('Debe retornar válido cuando hay puntos suficientes', async () => {
+      const userId = 1;
       const puntosDisponibles = 1000;
       const puntosRequeridos = 500;
+
+      console.log(`\n✅ PU-03: Validando uso de puntos (caso válido)`);
+      console.log(`   📊 Mock DB Query: getUserPoints(userId: ${userId})`);
+      console.log(`   📤 Response simulada: { puntos_actuales: ${puntosDisponibles} }`);
 
       mockPointsModel.getUserPoints.mockResolvedValue({
         puntos_actuales: puntosDisponibles
       });
 
-      const resultado = await pointsService.validatePointsUsage(1, puntosRequeridos);
+      const resultado = await pointsService.validatePointsUsage(userId, puntosRequeridos);
 
-      console.log(`\n✅ PU-03: Validando uso de puntos (caso válido)`);
-      console.log(`   Disponibles: ${resultado.available} puntos`);
-      console.log(`   Requeridos: ${resultado.required} puntos`);
-      console.log(`   Diferencia: ${resultado.difference} puntos`);
-      console.log(`   Válido: ${resultado.valid}`);
+      console.log(`   🧮 Cálculos:`);
+      console.log(`      Disponibles: ${resultado.available} puntos`);
+      console.log(`      Requeridos: ${resultado.required} puntos`);
+      console.log(`      Diferencia: ${resultado.difference} puntos`);
+      console.log(`      Válido: ${resultado.valid}`);
 
       expect(resultado.valid).toBe(true);
       expect(resultado.available).toBe(1000);
       expect(resultado.required).toBe(500);
       expect(resultado.difference).toBe(500);
+      expect(mockPointsModel.getUserPoints).toHaveBeenCalledWith(userId);
     });
 
     test('Debe retornar inválido cuando no hay puntos suficientes', async () => {
+      const userId = 1;
       const puntosDisponibles = 300;
       const puntosRequeridos = 500;
+
+      console.log(`\n❌ PU-03: Validando uso de puntos (caso inválido)`);
+      console.log(`   📊 Mock DB Query: getUserPoints(userId: ${userId})`);
+      console.log(`   📤 Response simulada: { puntos_actuales: ${puntosDisponibles} }`);
 
       mockPointsModel.getUserPoints.mockResolvedValue({
         puntos_actuales: puntosDisponibles
       });
 
-      const resultado = await pointsService.validatePointsUsage(1, puntosRequeridos);
+      const resultado = await pointsService.validatePointsUsage(userId, puntosRequeridos);
 
-      console.log(`\n❌ PU-03: Validando uso de puntos (caso inválido)`);
-      console.log(`   Disponibles: ${resultado.available} puntos`);
-      console.log(`   Requeridos: ${resultado.required} puntos`);
-      console.log(`   Diferencia: ${resultado.difference} puntos (insuficientes)`);
-      console.log(`   Válido: ${resultado.valid}`);
+      console.log(`   🧮 Cálculos:`);
+      console.log(`      Disponibles: ${resultado.available} puntos`);
+      console.log(`      Requeridos: ${resultado.required} puntos`);
+      console.log(`      Diferencia: ${resultado.difference} puntos (insuficientes)`);
+      console.log(`      Válido: ${resultado.valid}`);
 
       expect(resultado.valid).toBe(false);
       expect(resultado.available).toBe(300);
       expect(resultado.required).toBe(500);
       expect(resultado.difference).toBe(-200);
+      expect(mockPointsModel.getUserPoints).toHaveBeenCalledWith(userId);
     });
 
     test('Debe manejar errores correctamente', async () => {
@@ -379,35 +391,87 @@ describe('PointsService - Pruebas Unitarias', () => {
     });
 
     test('Debe validar puntos disponibles para uso', async () => {
+      const userId = 1;
       const puntosDisponibles = 50;
       const puntosRequeridos = 100;
+
+      console.log(`\n🔒 PU-07: Validando puntos disponibles para uso`);
+      console.log(`   📊 Mock DB Query: getUserPoints(userId: ${userId})`);
+      console.log(`   📤 Response simulada: { puntos_actuales: ${puntosDisponibles} }`);
+      console.log(`   📊 Mock DB Query: getPointsHistory(userId: ${userId}, limit: 100, offset: 0)`);
+      console.log(`   📤 Response simulada: [] (sin historial)`);
 
       mockPointsModel.getUserPoints.mockResolvedValue({
         puntos_actuales: puntosDisponibles
       });
 
-      const resultado = await pointsService.validatePointsTransaction(1, 'use', puntosRequeridos, 'Canje');
+      const resultado = await pointsService.validatePointsTransaction(userId, 'use', puntosRequeridos, 'Canje');
 
-      console.log(`\n🔒 PU-07: Validando puntos disponibles para uso`);
-      console.log(`   Disponibles: ${puntosDisponibles}`);
-      console.log(`   Requeridos: ${puntosRequeridos}`);
-      console.log(`   Válido: ${resultado.valid}`);
-      console.log(`   Errores: ${resultado.errors.join(', ')}`);
+      console.log(`   🧮 Validación:`);
+      console.log(`      Disponibles: ${puntosDisponibles}`);
+      console.log(`      Requeridos: ${puntosRequeridos}`);
+      console.log(`      Válido: ${resultado.valid}`);
+      console.log(`      Errores: ${resultado.errors.join(', ')}`);
 
       expect(resultado.valid).toBe(false);
       expect(resultado.errors).toContain('Puntos insuficientes');
+      expect(mockPointsModel.getUserPoints).toHaveBeenCalledWith(userId);
     });
 
     test('Debe aceptar transacción válida', async () => {
+      const userId = 1;
+      const puntos = 100;
+
+      console.log(`\n✅ PU-07: Aceptando transacción válida (uso de puntos)`);
+      console.log(`   📊 Mock DB Query: getUserPoints(userId: ${userId})`);
+      console.log(`   📤 Response simulada: { puntos_actuales: 500 }`);
+
       mockPointsModel.getUserPoints.mockResolvedValue({
         puntos_actuales: 500
       });
       mockPointsModel.getPointsHistory.mockResolvedValue([]);
 
-      const resultado = await pointsService.validatePointsTransaction(1, 'use', 100, 'Canje válido');
+      const resultado = await pointsService.validatePointsTransaction(userId, 'use', puntos, 'Canje válido');
+
+      console.log(`   🧮 Resultado:`);
+      console.log(`      Puntos a usar: ${puntos}`);
+      console.log(`      Válido: ${resultado.valid}`);
+      console.log(`      Errores: ${resultado.errors.length === 0 ? 'Ninguno' : resultado.errors.join(', ')}`);
 
       expect(resultado.valid).toBe(true);
       expect(resultado.errors).toHaveLength(0);
+      expect(mockPointsModel.getUserPoints).toHaveBeenCalledWith(userId);
+    });
+
+    test('Debe validar límite diario al agregar puntos', async () => {
+      const userId = 2;
+      const puntosNuevos = 200;
+      const historialHoy = [
+        { tipo: 'ganancia', puntos: 400, concepto: 'Compra #1', fecha: new Date().toISOString() },
+        { tipo: 'ganancia', puntos: 500, concepto: 'Compra #2', fecha: new Date().toISOString() }
+      ];
+
+      console.log(`\n⚠️  PU-07: Validando límite diario (1000 puntos/día)`);
+      console.log(`   📊 Mock DB Query: getPointsHistory(userId: ${userId}, limit: 100, offset: 0)`);
+      console.log(`   📤 Response simulada (historial de hoy):`);
+      historialHoy.forEach((h, i) => {
+        console.log(`      [${i+1}] ${h.tipo}: ${h.puntos} pts - ${h.concepto}`);
+      });
+      console.log(`   🧮 Total ganado hoy: ${historialHoy.reduce((sum, h) => sum + h.puntos, 0)} pts`);
+      console.log(`   ➕ Intentando agregar: ${puntosNuevos} pts`);
+      console.log(`   ⚠️  Total sería: ${historialHoy.reduce((sum, h) => sum + h.puntos, 0) + puntosNuevos} pts (excede límite de 1000)`);
+
+      mockPointsModel.getPointsHistory.mockResolvedValue(historialHoy);
+
+      const resultado = await pointsService.validatePointsTransaction(userId, 'add', puntosNuevos, 'Nueva compra');
+
+      console.log(`   🧮 Resultado:`);
+      console.log(`      Válido: ${resultado.valid}`);
+      console.log(`      Errores: ${resultado.errors.join(', ')}`);
+
+      expect(resultado.valid).toBe(false);
+      expect(resultado.errors).toContain('Límite diario de puntos ganados excedido (1000 puntos)');
+      expect(mockPointsModel.getPointsHistory).toHaveBeenCalledWith(userId, 100, 0);
     });
   });
 });
